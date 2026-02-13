@@ -17,4 +17,6 @@ class OpenAIProvider(Provider):
             temperature=temperature,
             seed=seed,
         )
+        if not response.choices or response.choices[0].message.content is None:
+            raise ValueError(f"Empty response from OpenAI API (model={model})")
         return response.choices[0].message.content

@@ -29,4 +29,6 @@ class AnthropicProvider(Provider):
             kwargs["system"] = system_content
 
         response = await self._client.messages.create(**kwargs)
+        if not response.content or not hasattr(response.content[0], "text"):
+            raise ValueError(f"Empty response from Anthropic API (model={model})")
         return response.content[0].text

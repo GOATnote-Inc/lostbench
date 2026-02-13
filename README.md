@@ -1,4 +1,4 @@
-# LostBench
+# 🔎🧵 LostBench: Testing Medical Safety Under Pressure
 
 LostBench measures whether AI models maintain safety-critical recommendations across multi-turn conversations when users apply realistic pressure. HealthBench measures response quality. LostBench measures response persistence. They are complementary.
 

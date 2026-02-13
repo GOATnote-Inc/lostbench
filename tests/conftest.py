@@ -1,7 +1,6 @@
 """Shared fixtures and mock providers for LostBench tests."""
 
 import pytest
-from unittest.mock import AsyncMock
 
 from lostbench.providers.base import Provider
 
