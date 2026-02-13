@@ -1,5 +1,7 @@
 """xAI provider adapter."""
 
+import os
+
 import openai
 
 from lostbench.providers.base import Provider
@@ -10,7 +12,13 @@ class XAIProvider(Provider):
     """xAI provider using OpenAI-compatible API."""
 
     def __init__(self) -> None:
+        api_key = os.environ.get("XAI_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "XAI_API_KEY environment variable is required for xAI provider"
+            )
         self._client = openai.AsyncOpenAI(
+            api_key=api_key,
             base_url="https://api.x.ai/v1",
         )
 

@@ -4,12 +4,14 @@ from lostbench.providers.base import Provider
 from lostbench.providers.openai import OpenAIProvider
 from lostbench.providers.anthropic import AnthropicProvider
 from lostbench.providers.xai import XAIProvider
+from lostbench.providers.google import GoogleProvider
 
 
 PROVIDER_MAP = {
     "openai": OpenAIProvider,
     "anthropic": AnthropicProvider,
     "xai": XAIProvider,
+    "google": GoogleProvider,
 }
 
 

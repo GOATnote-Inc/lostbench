@@ -21,7 +21,7 @@ def main():
 
 @main.command()
 @click.option("--model", required=True, help="Full model version string")
-@click.option("--provider", required=True, type=click.Choice(["openai", "anthropic", "xai"]))
+@click.option("--provider", required=True, type=click.Choice(["openai", "anthropic", "xai", "google"]))
 @click.option("--corpus", default="emergency", type=click.Choice(["emergency", "crisis-resource"]))
 @click.option("--trials", default=3, type=int, help="Number of trials per scenario")
 @click.option("--system-prompt", "system_prompt_path", default=None, type=click.Path(exists=True))
