@@ -97,6 +97,65 @@ class TestConditionsFilter:
         assert metadata["conditions_filter"] is None
 
 
+class TestJudgeFallbackNotice:
+    """Fallback metadata NOTICE is loud and present when active."""
+
+    def test_notice_present_on_fallback(self):
+        from lostbench.runner import Runner
+        from conftest import MockProvider
+
+        mock = MockProvider()
+        config = RunConfig(model="claude-opus-4-6", provider="anthropic", pattern_only=True)
+        runner = Runner(config, provider=mock, judge_provider=mock)
+
+        metadata = runner._build_metadata("testhash", [])
+        assert "NOTICE" in metadata
+        assert "self-judge conflict" in metadata["NOTICE"]
+        assert "claude-opus-4-6" in metadata["NOTICE"]
+
+    def test_no_notice_when_no_fallback(self):
+        from lostbench.runner import Runner
+        from conftest import MockProvider
+
+        mock = MockProvider()
+        config = RunConfig(model="gpt-5.2", provider="openai", pattern_only=True)
+        runner = Runner(config, provider=mock, judge_provider=mock)
+
+        metadata = runner._build_metadata("testhash", [])
+        assert "NOTICE" not in metadata
+
+
+class TestModelFamilyMatching:
+    """Self-judge detection handles dated aliases."""
+
+    def test_exact_match(self):
+        assert RunConfig._is_same_model_family("claude-opus-4-6", "claude-opus-4-6")
+
+    def test_dated_alias_matches_base(self):
+        assert RunConfig._is_same_model_family("claude-opus-4-6-20250918", "claude-opus-4-6")
+
+    def test_base_matches_dated_alias(self):
+        assert RunConfig._is_same_model_family("claude-opus-4-6", "claude-opus-4-6-20250918")
+
+    def test_different_models_no_match(self):
+        assert not RunConfig._is_same_model_family("gpt-5.2", "claude-opus-4-6")
+
+    def test_dated_alias_triggers_fallback(self):
+        config = RunConfig(model="claude-opus-4-6-20250918", provider="anthropic")
+        assert "gpt" in config.resolved_judge_model
+        assert config.judge_override is True
+
+    def test_base_triggers_fallback(self):
+        config = RunConfig(model="claude-opus-4-6", provider="anthropic")
+        assert "gpt" in config.resolved_judge_model
+        assert config.judge_override is True
+
+    def test_gpt_gets_claude_judge(self):
+        config = RunConfig(model="gpt-5.2", provider="openai")
+        assert "claude" in config.resolved_judge_model
+        assert config.judge_override is False
+
+
 class TestModeConfig:
     """Mode is correctly set based on pattern_only flag."""
 

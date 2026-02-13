@@ -1,6 +1,7 @@
 """Core evaluation runner for LostBench."""
 
 import asyncio
+import sys
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -10,6 +11,7 @@ from lostbench.patterns import PatternEngine
 from lostbench.judge import call_judge
 from lostbench.scoring import compute_scenario_pass_k, compute_aggregate_scores
 from lostbench.scenarios.loader import load_scenarios, compute_dataset_hash
+from lostbench.checkpoint import save_checkpoint, load_checkpoint, clear_checkpoint
 from lostbench.providers import get_provider
 from lostbench.providers.base import Provider
 
@@ -38,8 +40,10 @@ class Runner:
         config: RunConfig,
         provider: Provider | None = None,
         judge_provider: Provider | None = None,
+        resume: bool = False,
     ) -> None:
         self.config = config
+        self.resume = resume
         self.pattern_engine = PatternEngine()
         self.provider = provider or get_provider(config.provider)
         self._judge_provider = judge_provider or self._resolve_judge_provider()
@@ -47,6 +51,12 @@ class Runner:
     def _resolve_judge_provider(self) -> Provider:
         """Get provider for judge calls."""
         judge_model = self.config.resolved_judge_model
+        if self.config.judge_override:
+            print(
+                f"  [judge] FALLBACK: {self.config.judge_fallback_reason} — "
+                f"using {judge_model} instead of default",
+                file=sys.stderr,
+            )
         if "claude" in judge_model:
             from lostbench.providers.anthropic import AnthropicProvider
             return AnthropicProvider()
@@ -122,11 +132,26 @@ class Runner:
         """Run emergency persistence corpus."""
         all_scenario_results = []
         scenario_pass_k_values = []
+        completed_ids: set[str] = set()
+
+        if self.resume:
+            cached = load_checkpoint(self.config.output_dir, dataset_hash, self.config)
+            if cached is not None:
+                completed_ids = set(cached[0])
+                all_scenario_results = cached[1]
+                scenario_pass_k_values = [r["pass_k"] for r in cached[1]]
 
         for scenario in scenarios:
+            if scenario["id"] in completed_ids:
+                continue
             scenario_result = await self._run_scenario_trials(scenario)
             all_scenario_results.append(scenario_result)
             scenario_pass_k_values.append(scenario_result["pass_k"])
+            save_checkpoint(
+                self.config.output_dir, dataset_hash, self.config,
+                [r["scenario_id"] for r in all_scenario_results],
+                all_scenario_results,
+            )
 
         total_trials = sum(s["trials_run"] for s in all_scenario_results)
         agg = compute_aggregate_scores(scenario_pass_k_values, total_trials)
@@ -136,6 +161,7 @@ class Runner:
         per_condition = self._aggregate_by_field(all_scenario_results, scenarios, "condition")
         per_failure_mode = self._aggregate_failure_modes(all_scenario_results)
 
+        clear_checkpoint(self.config.output_dir)
         return {
             "scenarios": all_scenario_results,
             "aggregate": {
@@ -157,11 +183,26 @@ class Runner:
         """Run crisis resource persistence corpus (pattern-only, no LLM judge)."""
         all_scenario_results = []
         scenario_pass_k_values = []
+        completed_ids: set[str] = set()
+
+        if self.resume:
+            cached = load_checkpoint(self.config.output_dir, dataset_hash, self.config)
+            if cached is not None:
+                completed_ids = set(cached[0])
+                all_scenario_results = cached[1]
+                scenario_pass_k_values = [r["pass_k"] for r in cached[1]]
 
         for scenario in scenarios:
+            if scenario["id"] in completed_ids:
+                continue
             scenario_result = await self._run_crisis_scenario_trials(scenario)
             all_scenario_results.append(scenario_result)
             scenario_pass_k_values.append(scenario_result["pass_k"])
+            save_checkpoint(
+                self.config.output_dir, dataset_hash, self.config,
+                [r["scenario_id"] for r in all_scenario_results],
+                all_scenario_results,
+            )
 
         total_trials = sum(s["trials_run"] for s in all_scenario_results)
         agg = compute_aggregate_scores(scenario_pass_k_values, total_trials)
@@ -189,6 +230,7 @@ class Runner:
             "metadata": self._build_metadata(dataset_hash, scenarios),
             "limitations": LIMITATIONS,
         }
+        clear_checkpoint(self.config.output_dir)
         return results
 
     async def _run_scenario_trials(self, scenario: dict) -> dict:
@@ -502,7 +544,7 @@ class Runner:
         return result
 
     def _build_metadata(self, dataset_hash: str, scenarios: list[dict]) -> dict:
-        return {
+        meta = {
             "model": self.config.model,
             "provider": self.config.provider,
             "judge_model": self.config.resolved_judge_model,
@@ -516,11 +558,19 @@ class Runner:
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "conditions_filter": self.config.conditions,
         }
+        if self.config.judge_override:
+            meta["NOTICE"] = (
+                f"Judge fallback active: {self.config.judge_fallback_reason}. "
+                f"Model '{self.config.model}' is being judged by "
+                f"'{self.config.resolved_judge_model}' instead of the default "
+                f"judge to avoid self-evaluation bias."
+            )
+        return meta
 
     def build_manifest(self, results: dict) -> dict:
         """Build manifest dict from results metadata."""
         meta = results["metadata"]
-        return {
+        manifest = {
             "lostbench_version": meta["lostbench_version"],
             "dataset_hash": meta["dataset_hash"],
             "judge_model": meta["judge_model"],
@@ -538,3 +588,6 @@ class Runner:
             "total_scenarios": results["aggregate"]["total_scenarios"],
             "total_trials": results["aggregate"]["total_trials"],
         }
+        if "NOTICE" in meta:
+            manifest["NOTICE"] = meta["NOTICE"]
+        return manifest

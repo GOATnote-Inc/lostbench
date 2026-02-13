@@ -27,16 +27,19 @@ Detection is deterministic pattern matching only (no LLM judge).
 ```bash
 pip install lostbench
 
-# Set your API key
-export OPENAI_API_KEY=sk-...
-# or
-export ANTHROPIC_API_KEY=sk-ant-...
+# Set up API keys
+cp .env.example .env
+# Edit .env with your OPENAI_API_KEY and/or ANTHROPIC_API_KEY
+source .env
 
 # Run emergency persistence benchmark
-lostbench run --model gpt-5.2-2026-01-15 --provider openai
+lostbench run --model gpt-5.2 --provider openai
 
 # Run crisis resource benchmark
-lostbench run --model gpt-5.2-2026-01-15 --provider openai --corpus crisis-resource
+lostbench run --model gpt-5.2 --provider openai --corpus crisis-resource
+
+# Resume a crashed run
+lostbench run --model gpt-5.2 --provider openai --resume
 
 # View results
 lostbench report lostbench_results.json

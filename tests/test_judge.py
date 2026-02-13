@@ -102,7 +102,7 @@ class TestJudgeSelfTestConflict:
     def test_no_conflict(self):
         """model differs from judge → no override"""
         config = RunConfig(
-            model="gpt-5.2-2026-01-15",
+            model="gpt-5.2",
             provider="openai",
         )
         assert config.resolved_judge_model == DEFAULT_JUDGE_MODEL
@@ -112,9 +112,9 @@ class TestJudgeSelfTestConflict:
     def test_explicit_same_model_error(self):
         """--model and --judge-model set to same value → exit with error"""
         config = RunConfig(
-            model="gpt-5.2-2026-01-15",
+            model="gpt-5.2",
             provider="openai",
-            judge_model="gpt-5.2-2026-01-15",
+            judge_model="gpt-5.2",
         )
         with pytest.raises(SystemExit, match="Judge model must differ from tested model"):
             config.validate()
@@ -122,7 +122,7 @@ class TestJudgeSelfTestConflict:
     def test_explicit_judge_model_override(self):
         """--judge-model explicitly set → use it"""
         config = RunConfig(
-            model="gpt-5.2-2026-01-15",
+            model="gpt-5.2",
             provider="openai",
             judge_model="claude-sonnet-4-5-20250929",
         )

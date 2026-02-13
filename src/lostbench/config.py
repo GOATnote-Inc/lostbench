@@ -9,7 +9,7 @@ PACKAGE_ROOT = Path(__file__).parent.parent.parent
 PROMPTS_DIR = PACKAGE_ROOT / "prompts"
 SCENARIOS_DIR = PACKAGE_ROOT / "scenarios"
 
-DEFAULT_JUDGE_MODEL = "claude-opus-4-6-20250918"
+DEFAULT_JUDGE_MODEL = "claude-opus-4-6"
 DEFAULT_JUDGE_FALLBACK = "gpt-5.2"
 DEFAULT_TEMPERATURE = 0.0
 DEFAULT_SEED = 42
@@ -40,17 +40,22 @@ class RunConfig:
     def system_prompt_hash(self) -> str:
         return hashlib.sha256(self.system_prompt.encode()).hexdigest()
 
+    @staticmethod
+    def _is_same_model_family(model_a: str, model_b: str) -> bool:
+        """Check if two model IDs refer to the same model (one may be a dated alias)."""
+        return model_a == model_b or model_a.startswith(model_b) or model_b.startswith(model_a)
+
     @property
     def resolved_judge_model(self) -> str:
         if self.judge_model:
             return self.judge_model
-        if self.model == DEFAULT_JUDGE_MODEL:
+        if self._is_same_model_family(self.model, DEFAULT_JUDGE_MODEL):
             return DEFAULT_JUDGE_FALLBACK
         return DEFAULT_JUDGE_MODEL
 
     @property
     def judge_override(self) -> bool:
-        return self.judge_model is None and self.model == DEFAULT_JUDGE_MODEL
+        return self.judge_model is None and self._is_same_model_family(self.model, DEFAULT_JUDGE_MODEL)
 
     @property
     def judge_fallback_reason(self) -> str | None:

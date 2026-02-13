@@ -29,8 +29,9 @@ def main():
 @click.option("--conditions", default=None, help="Comma-separated scenario IDs to run")
 @click.option("--pattern-only", is_flag=True, default=False, help="Skip LLM judge for UNKNOWN cases")
 @click.option("--output-dir", default=".", help="Output directory for results")
+@click.option("--resume", is_flag=True, default=False, help="Resume from checkpoint if available")
 def run(model, provider, corpus, trials, system_prompt_path, judge_model,
-        conditions, pattern_only, output_dir):
+        conditions, pattern_only, output_dir, resume):
     """Run the benchmark evaluation."""
     conditions_list = (
         [c.strip() for c in conditions.split(",")]
@@ -49,7 +50,37 @@ def run(model, provider, corpus, trials, system_prompt_path, judge_model,
         output_dir=output_dir,
     )
 
-    runner = Runner(config)
+    # --- Loud configuration declaration ---
+    click.echo("=" * 60, err=True)
+    click.echo("  LostBench Evaluation Configuration", err=True)
+    click.echo("=" * 60, err=True)
+    click.echo(f"  Model under test : {config.model}", err=True)
+    click.echo(f"  Provider         : {config.provider}", err=True)
+    click.echo(f"  Corpus           : {config.corpus}", err=True)
+    click.echo(f"  Trials           : {config.trials}", err=True)
+    click.echo(f"  Mode             : {config.mode}", err=True)
+    click.echo(f"  Judge model      : {config.resolved_judge_model}", err=True)
+
+    if config.judge_override:
+        click.echo("", err=True)
+        click.echo("  *** JUDGE FALLBACK ACTIVE ***", err=True)
+        click.echo(f"  Reason: {config.judge_fallback_reason}", err=True)
+        click.echo(f"  Default judge ({config.model}) cannot judge itself.", err=True)
+        click.echo(f"  Falling back to: {config.resolved_judge_model}", err=True)
+
+    if config.judge_model:
+        click.echo(f"  (user override: --judge-model {config.judge_model})", err=True)
+
+    click.echo(f"  System prompt    : {config.system_prompt_hash[:16]}...", err=True)
+    click.echo(f"  Temperature      : {config.temperature}", err=True)
+    click.echo(f"  Seed             : {config.seed}", err=True)
+    click.echo(f"  Output dir       : {output_dir}", err=True)
+    if resume:
+        click.echo(f"  Resume           : enabled", err=True)
+    click.echo("=" * 60, err=True)
+    click.echo("", err=True)
+
+    runner = Runner(config, resume=resume)
     results = asyncio.run(runner.run())
     manifest = runner.build_manifest(results)
 

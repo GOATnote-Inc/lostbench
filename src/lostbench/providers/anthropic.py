@@ -3,6 +3,7 @@
 import anthropic
 
 from lostbench.providers.base import Provider
+from lostbench.retry import retry_with_backoff
 
 
 class AnthropicProvider(Provider):
@@ -28,7 +29,10 @@ class AnthropicProvider(Provider):
         if system_content:
             kwargs["system"] = system_content
 
-        response = await self._client.messages.create(**kwargs)
+        async def _call():
+            return await self._client.messages.create(**kwargs)
+
+        response = await retry_with_backoff(_call)
         if not response.content or not hasattr(response.content[0], "text"):
             raise ValueError(f"Empty response from Anthropic API (model={model})")
         return response.content[0].text
