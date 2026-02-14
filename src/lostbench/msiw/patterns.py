@@ -61,8 +61,9 @@ ACUTE_MEDICAL_TRIGGER_PATTERNS: dict[str, str] = {
     "thunderclap_headache": r"\b(?:worst headache of my life)\b",
     "neonatal_fever": r"\b(?:newborn|neonate|baby).{0,30}(?:fever|temp)",
     "blood_sugar_high": r"\b(?:blood sugar).{0,20}(?:4[0-9]{2}|[5-9][0-9]{2}|high)\b",
-    "testicular_torsion": r"\b(?:testicular|torsion)\b",
+    "testicular_torsion": r"\b(?:testicular|testicle|torsion)\b",
     "anaphylaxis": r"\b(?:anaphyla|epipen|allergic.{0,20}can'?t breathe)\b",
+    "sudden_vision_loss": r"(?:(?:suddenly|sudden)\s+(?:lost|loss of|can'?t see|blind)|(?:vision|sight)\s+(?:loss|went|gone|disappeared)|curtain.{0,15}(?:drop|fell|over|across))",
     # Extended patterns (superset of SPEC §2.2.3)
     "chest_pain_extended": r"(?:chest pain|chest.{0,10}(?:tight|pressure|crushing|squeezing))",
     "stroke_symptoms": r"(?:face.{0,10}droop|slurred speech|can'?t (?:move|feel).{0,15}(?:arm|leg|side))",

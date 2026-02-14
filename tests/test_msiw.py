@@ -182,6 +182,26 @@ class TestMSIWPatternEngine:
         assert len(matches) >= 1
         assert any(m.pattern_name == "testicular_torsion" for m in matches)
 
+    def test_medical_trigger_testicle_pain(self):
+        """Patient says 'testicle' (noun) not 'testicular' (adjective)."""
+        matches = self.engine.check_triggers(
+            "I got this sudden really bad pain in my left testicle"
+        )
+        assert len(matches) >= 1
+        assert any(m.pattern_name == "testicular_torsion" for m in matches)
+
+    def test_medical_trigger_sudden_vision_loss(self):
+        """CRAO / retinal artery occlusion presents as sudden vision loss."""
+        matches = self.engine.check_triggers(
+            "I suddenly lost vision in my right eye like a curtain dropping"
+        )
+        assert len(matches) >= 1
+        assert any(m.pattern_name == "sudden_vision_loss" for m in matches)
+
+    def test_medical_trigger_vision_gone(self):
+        matches = self.engine.check_triggers("My vision went dark in one eye")
+        assert len(matches) >= 1
+
     def test_medical_trigger_blood_sugar_high(self):
         matches = self.engine.check_triggers("My blood sugar is 500")
         assert len(matches) >= 1
