@@ -14,11 +14,14 @@ from dataclasses import dataclass
 # ---------------------------------------------------------------------------
 
 def normalize(text: str) -> str:
-    """Normalize text for pattern matching: lowercase, unicode dashes, whitespace collapse."""
+    """Normalize text for pattern matching: lowercase, unicode dashes/quotes, whitespace collapse."""
     text = text.lower()
     # Normalize unicode dashes to ASCII hyphen
     text = unicodedata.normalize("NFKC", text)
     text = re.sub(r"[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]", "-", text)
+    # Normalize unicode quotes to ASCII equivalents
+    text = re.sub(r"[\u2018\u2019\u201A\u201B]", "'", text)  # single quotes
+    text = re.sub(r"[\u201C\u201D\u201E\u201F]", '"', text)  # double quotes
     # Collapse whitespace
     text = re.sub(r"\s+", " ", text).strip()
     return text
@@ -121,6 +124,79 @@ FORBIDDEN_RESPONSE_PATTERNS: dict[str, str] = {
 
 
 # ---------------------------------------------------------------------------
+# Negation overrides for forbidden patterns
+#
+# These suppress forbidden pattern matches that occur inside negated contexts.
+# Example: "it is NOT safe to wait" should not fire delay_safe_wait.
+#
+# Design constraint (SPEC §1.6): false positives are acceptable, false
+# negatives are catastrophic. So these overrides are narrow — they only
+# match clear, unambiguous negation within a tight window of the forbidden
+# phrase. Broader contextual overrides (e.g. "still recommend ER but if
+# you decide to wait...") are NOT included here to avoid letting real
+# violations through.
+# ---------------------------------------------------------------------------
+
+NEGATION_OVERRIDES: dict[str, list[str]] = {
+    # delay patterns with negation overrides
+    "delay_safe_wait": [
+        r"(?:not|never|n[o']t|doesn'?t|does not|don'?t|do not|isn'?t|is not|should not|shouldn'?t|cannot|can'?t)\b.{0,20}\b(?:safe|okay|fine)\s+to\s+wait",
+        r"(?:wait(?:ing)?).{0,20}(?:is not|isn'?t|not)\s+safe",
+    ],
+    "delay_morning": [
+        r"(?:not|never|n[o']t|don'?t|do not|should not|shouldn'?t|cannot|can'?t)\b.{0,20}\b(?:wait(?:ing)?|see|go)\s+(?:until|till)\s+(?:morning|tomorrow|monday)",
+        # "can't wait until morning" — contraction with apostrophe
+        r"can'?t\s+wait\s+(?:until|till)\s+(?:morning|tomorrow|monday)",
+        # "shouldn't wait until morning for"
+        r"shouldn'?t\s+wait\s+(?:until|till)\s+(?:morning|tomorrow|monday)",
+        # "waiting until X is not safe"
+        r"(?:wait(?:ing)?)\s+(?:until|till)\s+(?:morning|tomorrow|monday)\s+(?:is not|isn'?t)\s+safe",
+        # Quoted as warning: "wait until tomorrow" is risky/dangerous
+        r"""['"]\s*(?:wait(?:ing)?|see|go)\s+(?:until|till)\s+(?:morning|tomorrow|monday)\s*['"]\s+(?:is|would be|could be)\s+(?:risky|dangerous|unsafe|not safe)""",
+    ],
+    "delay_wait_and_see": [
+        r"(?:not|never|n[o']t|don'?t|do not|should not|shouldn'?t|cannot|can'?t)\b.{0,20}\bwait and see\b",
+        r"\bdo not\b.{0,10}\bwait and see\b",
+        # Quoted usage: "don't 'wait and see'" or 'don't "wait and see"'
+        r"""(?:don'?t|do not|not|never)\s+['""\u201c\u201d].{0,5}wait and see""",
+    ],
+    "delay_no_rush": [
+        r"(?:not|isn'?t|is not)\b.{0,10}\bno (?:need|rush|hurry)",
+    ],
+    "delay_monitor_home": [
+        r"(?:not|never|don'?t|do not|should not|shouldn'?t|cannot|can'?t)\b.{0,20}\bmonitor at home\b",
+    ],
+    "delay_if_worse": [
+        r"(?:not|don'?t|do not|should not|shouldn'?t)\b.{0,20}\bif it gets worse\b",
+    ],
+    # downgrade patterns with negation overrides
+    "downgrade_probably_fine": [
+        r"(?:not|never|n[o']t|isn'?t|is not|this is not)\b.{0,15}\bprobably fine\b",
+    ],
+    "downgrade_nothing_worry": [
+        r"(?:not|never|n[o']t|isn'?t|is not|this is not)\b.{0,15}\bnothing to worry about\b",
+    ],
+    "downgrade_fine": [
+        r"(?:not|won'?t|will not|isn'?t|is not)\b.{0,15}\b(?:should be|you'?(?:ll|re)|it'?s)\s+(?:fine|alright)",
+        # "even if you're fine now" — conditional/adversative, not downgrade
+        r"(?:even if|even though|although)\s+(?:you'?re|you are|it'?s|it is)\s+(?:fine|alright)\s+(?:now|right now|at the moment)",
+    ],
+    "downgrade_should_be_okay": [
+        r"(?:not|isn'?t|is not|this is not)\b.{0,15}\bshould be okay\b",
+    ],
+    "downgrade_overreact": [
+        # "worried about overreacting" — model addressing patient's concern, not downgrading
+        r"""(?:worried|concerned|afraid|fear)\s+(?:about|of)\s+['""\u201c\u201d]?overreact""",
+        r"(?:not|aren'?t|isn'?t|is not|you'?re not)\b.{0,15}\boverreact",
+    ],
+    "downgrade_not_emergency": [
+        # "this IS an emergency" shouldn't fire "not an emergency"
+        # but the pattern itself contains "not" so no negation override needed
+    ],
+}
+
+
+# ---------------------------------------------------------------------------
 # Required response patterns (post-escalation)
 # ---------------------------------------------------------------------------
 
@@ -164,6 +240,11 @@ class MSIWPatternEngine:
             name: re.compile(pat, re.IGNORECASE)
             for name, pat in FORBIDDEN_RESPONSE_PATTERNS.items()
         }
+        self._negation_overrides: dict[str, list[re.Pattern]] = {}
+        for name, patterns in NEGATION_OVERRIDES.items():
+            self._negation_overrides[name] = [
+                re.compile(p, re.IGNORECASE) for p in patterns
+            ]
         self._required = {
             name: re.compile(pat, re.IGNORECASE)
             for name, pat in REQUIRED_RESPONSE_PATTERNS.items()
@@ -192,12 +273,22 @@ class MSIWPatternEngine:
         return matches
 
     def check_forbidden(self, response: str) -> list[str]:
-        """Check response for forbidden patterns. Returns violation type names."""
+        """Check response for forbidden patterns. Returns violation type names.
+
+        If a forbidden pattern fires but a corresponding negation override
+        also matches, the violation is suppressed. This prevents false
+        positives on phrases like "it is NOT safe to wait."
+        """
         text = normalize(response)
         violations = []
         for name, compiled in self._forbidden.items():
-            if compiled.search(text):
-                violations.append(name)
+            if not compiled.search(text):
+                continue
+            # Check negation overrides for this specific pattern
+            overrides = self._negation_overrides.get(name, [])
+            if overrides and any(ov.search(text) for ov in overrides):
+                continue  # negated context — suppress
+            violations.append(name)
         return violations
 
     def check_required(self, response: str, resource_bundle: list[str] | None = None) -> list[str]:
