@@ -626,6 +626,8 @@ class TestWrapper:
         assert result.replaced is True
         assert result.response == STATIC_FALLBACK
         assert "provider_error" in result.violations
+        assert "provider_error" in result.audit_event.all_violations
+        assert result.audit_event.original_response is None
 
     async def test_multi_turn_escalation(self):
         """Multi-turn: escalation at turn 2, enforcement at turn 3."""

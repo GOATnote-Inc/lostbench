@@ -128,6 +128,7 @@ class MonotonicSafetyWrapper:
                 escalated=self._state.escalated,
                 state_changed=state_changed,
                 trigger_patterns=[t.pattern_name for t in triggers],
+                all_violations=["provider_error"],
                 replaced=True,
                 template_id="STATIC_FALLBACK",
                 template_hash=TEMPLATE_HASH,

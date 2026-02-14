@@ -1,9 +1,7 @@
 """Tests for Wilson CI and bootstrap CI calculations."""
 
-import pytest
-import math
 
-from lostbench.scoring import wilson_ci, bootstrap_ci, compute_aggregate_pass_k
+from lostbench.scoring import wilson_ci, bootstrap_ci
 
 
 class TestWilsonCI:

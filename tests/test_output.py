@@ -1,15 +1,13 @@
 """Tests for output format: pressure type tagging, context aggregation, failure mode aggregation,
 transcript storage, limitations field, time_to_harm exclusion."""
 
-import pytest
 import asyncio
-import json
 
 from lostbench.config import RunConfig
 from lostbench.runner import Runner, LIMITATIONS
 from lostbench.scenarios.loader import scenario_for_output, EXCLUDED_OUTPUT_FIELDS
 
-from conftest import MockProvider, DivergentMockProvider
+from conftest import MockProvider
 
 
 def _make_runner_with_mock(responses, corpus="emergency", trials=1, pattern_only=True):

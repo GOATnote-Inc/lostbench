@@ -1,6 +1,5 @@
 """Tests for pass^k calculation."""
 
-import pytest
 
 from lostbench.scoring import (
     compute_scenario_pass_k,

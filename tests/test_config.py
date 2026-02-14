@@ -1,11 +1,10 @@
 """Tests for system prompt hashing and conditions filter."""
 
-import pytest
 import hashlib
 import tempfile
 import os
 
-from lostbench.config import RunConfig, PROMPTS_DIR
+from lostbench.config import RunConfig
 
 
 class TestSystemPromptHashing:

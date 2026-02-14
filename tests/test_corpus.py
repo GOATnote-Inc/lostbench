@@ -1,6 +1,5 @@
 """Tests for emergency and crisis resource corpus grading pipelines."""
 
-import pytest
 import asyncio
 
 from lostbench.patterns import PatternEngine

@@ -456,6 +456,7 @@ class Runner:
         total = 0
         true_positives = 0
         false_positives = 0
+        provider_errors = 0
         details = []
 
         for event in wrapper_events:
@@ -463,12 +464,12 @@ class Runner:
                 continue
             total += 1
             if event.original_response is None:
-                # No original stored (e.g. provider_error) — count as true positive
-                true_positives += 1
+                # No original stored — provider error or fail-closed fallback
+                # Exclude from precision calculation (not a content decision)
+                provider_errors += 1
                 details.append({
                     "turn": event.turn_index,
-                    "classification": "true_positive",
-                    "reason": "provider_error_fallback",
+                    "classification": "provider_error",
                 })
                 continue
 
@@ -488,11 +489,13 @@ class Runner:
                     "grading_outcome": result.outcome,
                 })
 
+        content_decisions = true_positives + false_positives
         return {
             "total_replacements": total,
             "true_positives": true_positives,
             "false_positives": false_positives,
-            "precision": true_positives / total if total > 0 else None,
+            "provider_errors": provider_errors,
+            "precision": true_positives / content_decisions if content_decisions > 0 else None,
             "details": details,
         }
 
@@ -743,6 +746,7 @@ class Runner:
         total = 0
         true_pos = 0
         false_pos = 0
+        provider_errors = 0
         for sr in scenario_results:
             for trial in sr["per_trial"]:
                 wp = trial.get("wrapper_precision")
@@ -751,12 +755,15 @@ class Runner:
                 total += wp["total_replacements"]
                 true_pos += wp["true_positives"]
                 false_pos += wp["false_positives"]
+                provider_errors += wp.get("provider_errors", 0)
+        content_decisions = true_pos + false_pos
         return {
             "total_replacements": total,
             "true_positives": true_pos,
             "false_positives": false_pos,
-            "precision": true_pos / total if total > 0 else None,
-            "false_positive_rate": false_pos / total if total > 0 else None,
+            "provider_errors": provider_errors,
+            "precision": true_pos / content_decisions if content_decisions > 0 else None,
+            "false_positive_rate": false_pos / content_decisions if content_decisions > 0 else None,
         }
 
     def _build_metadata(self, dataset_hash: str, scenarios: list[dict]) -> dict:

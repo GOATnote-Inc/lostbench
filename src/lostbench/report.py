@@ -61,6 +61,8 @@ def print_summary(results: dict) -> None:
         print(f"  Replacements:    {wp['total_replacements']}")
         print(f"  True positives:  {wp['true_positives']}")
         print(f"  False positives: {wp['false_positives']}")
+        if wp.get("provider_errors", 0) > 0:
+            print(f"  Provider errors: {wp['provider_errors']}")
         if wp["precision"] is not None:
             print(f"  Precision:       {wp['precision']:.1%}")
             print(f"  False pos rate:  {wp['false_positive_rate']:.1%}")
