@@ -1,6 +1,5 @@
 """Core evaluation runner for LostBench."""
 
-import asyncio
 import sys
 from collections import Counter
 from datetime import datetime, timezone
@@ -13,6 +12,8 @@ from lostbench.scoring import compute_scenario_pass_k, compute_aggregate_scores
 from lostbench.scenarios.loader import load_scenarios, compute_dataset_hash
 from lostbench.checkpoint import save_checkpoint, load_checkpoint, clear_checkpoint
 from lostbench.providers import get_provider
+from lostbench.cache import ResponseCache
+from lostbench.providers.cached import CachedProvider
 from lostbench.providers.base import Provider
 
 
@@ -41,11 +42,18 @@ class Runner:
         provider: Provider | None = None,
         judge_provider: Provider | None = None,
         resume: bool = False,
+        cache_enabled: bool = False,
     ) -> None:
         self.config = config
         self.resume = resume
         self.pattern_engine = PatternEngine()
-        self.provider = provider or get_provider(config.provider)
+        self._cache = None
+        raw_provider = provider or get_provider(config.provider)
+        if cache_enabled and provider is None:
+            self._cache = ResponseCache(config.output_dir)
+            self.provider = CachedProvider(raw_provider, self._cache)
+        else:
+            self.provider = raw_provider
         self._judge_provider = judge_provider or self._resolve_judge_provider()
         self._wrapper = None
         if config.wrapper_enabled:
@@ -143,6 +151,7 @@ class Runner:
         all_scenario_results = []
         scenario_pass_k_values = []
         completed_ids: set[str] = set()
+        in_progress: dict | None = None
 
         if self.resume:
             cached = load_checkpoint(self.config.output_dir, dataset_hash, self.config)
@@ -150,11 +159,23 @@ class Runner:
                 completed_ids = set(cached[0])
                 all_scenario_results = cached[1]
                 scenario_pass_k_values = [r["pass_k"] for r in cached[1]]
+                in_progress = cached[2]
+
+        self._dataset_hash = dataset_hash
 
         for scenario in scenarios:
             if scenario["id"] in completed_ids:
                 continue
-            scenario_result = await self._run_scenario_trials(scenario)
+            # Restore partial trial results if resuming this scenario
+            prior_trials = None
+            if in_progress and in_progress["scenario_id"] == scenario["id"]:
+                prior_trials = in_progress["completed_trials"]
+                in_progress = None  # consumed
+            scenario_result = await self._run_scenario_trials(
+                scenario, prior_trials=prior_trials,
+                completed_ids=[r["scenario_id"] for r in all_scenario_results],
+                completed_results=all_scenario_results,
+            )
             all_scenario_results.append(scenario_result)
             scenario_pass_k_values.append(scenario_result["pass_k"])
             save_checkpoint(
@@ -194,6 +215,7 @@ class Runner:
         all_scenario_results = []
         scenario_pass_k_values = []
         completed_ids: set[str] = set()
+        in_progress: dict | None = None
 
         if self.resume:
             cached = load_checkpoint(self.config.output_dir, dataset_hash, self.config)
@@ -201,11 +223,22 @@ class Runner:
                 completed_ids = set(cached[0])
                 all_scenario_results = cached[1]
                 scenario_pass_k_values = [r["pass_k"] for r in cached[1]]
+                in_progress = cached[2]
+
+        self._dataset_hash = dataset_hash
 
         for scenario in scenarios:
             if scenario["id"] in completed_ids:
                 continue
-            scenario_result = await self._run_crisis_scenario_trials(scenario)
+            prior_trials = None
+            if in_progress and in_progress["scenario_id"] == scenario["id"]:
+                prior_trials = in_progress["completed_trials"]
+                in_progress = None
+            scenario_result = await self._run_crisis_scenario_trials(
+                scenario, prior_trials=prior_trials,
+                completed_ids=[r["scenario_id"] for r in all_scenario_results],
+                completed_results=all_scenario_results,
+            )
             all_scenario_results.append(scenario_result)
             scenario_pass_k_values.append(scenario_result["pass_k"])
             save_checkpoint(
@@ -243,15 +276,40 @@ class Runner:
         clear_checkpoint(self.config.output_dir)
         return results
 
-    async def _run_scenario_trials(self, scenario: dict) -> dict:
+    async def _run_scenario_trials(
+        self,
+        scenario: dict,
+        *,
+        prior_trials: list[dict] | None = None,
+        completed_ids: list[str] | None = None,
+        completed_results: list[dict] | None = None,
+    ) -> dict:
         """Run all trials for an emergency scenario."""
-        trial_results = []
-        trial_passed_list = []
+        trial_results = list(prior_trials) if prior_trials else []
+        trial_passed_list = [t["passed"] for t in trial_results]
+        start_idx = len(trial_results)
 
-        for trial_idx in range(self.config.trials):
+        if start_idx > 0:
+            print(
+                f"  [checkpoint] Resuming {scenario['id']} from trial {start_idx + 1}/{self.config.trials}",
+                file=sys.stderr,
+            )
+
+        for trial_idx in range(start_idx, self.config.trials):
             trial_result = await self._run_single_trial(scenario, trial_idx)
             trial_results.append(trial_result)
             trial_passed_list.append(trial_result["passed"])
+            # Trial-level checkpoint (save in-progress scenario)
+            if trial_idx < self.config.trials - 1 and hasattr(self, "_dataset_hash"):
+                save_checkpoint(
+                    self.config.output_dir, self._dataset_hash, self.config,
+                    completed_ids or [],
+                    completed_results or [],
+                    in_progress_scenario={
+                        "scenario_id": scenario["id"],
+                        "completed_trials": trial_results,
+                    },
+                )
 
         pass_k = compute_scenario_pass_k(trial_passed_list)
         agg = self._aggregate_trial_results(trial_results, trial_passed_list)
@@ -409,15 +467,39 @@ class Runner:
             judge_model=self.config.resolved_judge_model,
         )
 
-    async def _run_crisis_scenario_trials(self, scenario: dict) -> dict:
+    async def _run_crisis_scenario_trials(
+        self,
+        scenario: dict,
+        *,
+        prior_trials: list[dict] | None = None,
+        completed_ids: list[str] | None = None,
+        completed_results: list[dict] | None = None,
+    ) -> dict:
         """Run all trials for a crisis resource scenario."""
-        trial_results = []
-        trial_passed_list = []
+        trial_results = list(prior_trials) if prior_trials else []
+        trial_passed_list = [t["passed"] for t in trial_results]
+        start_idx = len(trial_results)
 
-        for trial_idx in range(self.config.trials):
+        if start_idx > 0:
+            print(
+                f"  [checkpoint] Resuming {scenario['id']} from trial {start_idx + 1}/{self.config.trials}",
+                file=sys.stderr,
+            )
+
+        for trial_idx in range(start_idx, self.config.trials):
             trial_result = await self._run_single_crisis_trial(scenario, trial_idx)
             trial_results.append(trial_result)
             trial_passed_list.append(trial_result["passed"])
+            if trial_idx < self.config.trials - 1 and hasattr(self, "_dataset_hash"):
+                save_checkpoint(
+                    self.config.output_dir, self._dataset_hash, self.config,
+                    completed_ids or [],
+                    completed_results or [],
+                    in_progress_scenario={
+                        "scenario_id": scenario["id"],
+                        "completed_trials": trial_results,
+                    },
+                )
 
         pass_k = compute_scenario_pass_k(trial_passed_list)
         agg = self._aggregate_trial_results(trial_results, trial_passed_list)
@@ -603,6 +685,7 @@ class Runner:
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "conditions_filter": self.config.conditions,
             "wrapper_enabled": self.config.wrapper_enabled,
+            "cache_stats": self._cache.stats if self._cache else None,
         }
         if self.config.judge_override:
             meta["NOTICE"] = (

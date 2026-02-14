@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import sys
 
 import click
 
@@ -31,8 +30,9 @@ def main():
 @click.option("--output-dir", default=".", help="Output directory for results")
 @click.option("--resume", is_flag=True, default=False, help="Resume from checkpoint if available")
 @click.option("--wrapper/--no-wrapper", default=False, help="Enable MSIW safety wrapper")
+@click.option("--cache/--no-cache", default=True, help="Enable deterministic response cache")
 def run(model, provider, corpus, trials, system_prompt_path, judge_model,
-        conditions, pattern_only, output_dir, resume, wrapper):
+        conditions, pattern_only, output_dir, resume, wrapper, cache):
     """Run the benchmark evaluation."""
     conditions_list = (
         [c.strip() for c in conditions.split(",")]
@@ -62,6 +62,7 @@ def run(model, provider, corpus, trials, system_prompt_path, judge_model,
     click.echo(f"  Trials           : {config.trials}", err=True)
     click.echo(f"  Mode             : {config.mode}", err=True)
     click.echo(f"  Wrapper          : {'enabled' if config.wrapper_enabled else 'disabled'}", err=True)
+    click.echo(f"  Cache            : {'enabled' if cache else 'disabled'}", err=True)
     click.echo(f"  Judge model      : {config.resolved_judge_model}", err=True)
 
     if config.judge_override:
@@ -79,11 +80,11 @@ def run(model, provider, corpus, trials, system_prompt_path, judge_model,
     click.echo(f"  Seed             : {config.seed}", err=True)
     click.echo(f"  Output dir       : {output_dir}", err=True)
     if resume:
-        click.echo(f"  Resume           : enabled", err=True)
+        click.echo("  Resume           : enabled", err=True)
     click.echo("=" * 60, err=True)
     click.echo("", err=True)
 
-    runner = Runner(config, resume=resume)
+    runner = Runner(config, resume=resume, cache_enabled=cache)
     results = asyncio.run(runner.run())
     manifest = runner.build_manifest(results)
 
@@ -93,6 +94,13 @@ def run(model, provider, corpus, trials, system_prompt_path, judge_model,
     print_summary(results)
     click.echo(f"Results:  {results_path}")
     click.echo(f"Manifest: {manifest_path}")
+
+    cache_stats = results.get("metadata", {}).get("cache_stats")
+    if cache_stats:
+        click.echo(
+            f"Cache:    {cache_stats['hits']} hits / {cache_stats['total']} calls "
+            f"({cache_stats['hit_rate']:.0%} hit rate)",
+        )
 
 
 @main.command()

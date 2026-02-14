@@ -40,8 +40,16 @@ def save_checkpoint(
     cfg: RunConfig,
     completed_scenario_ids: list[str],
     scenario_results: list[dict],
+    *,
+    in_progress_scenario: dict | None = None,
 ) -> None:
-    """Write checkpoint after each completed scenario."""
+    """Write checkpoint after each completed scenario or trial.
+
+    Args:
+        in_progress_scenario: Partial trial results for a scenario still running.
+            Keys: scenario_id, completed_trials (list of trial result dicts).
+            Cleared when the scenario finishes and moves to completed_scenario_ids.
+    """
     data = {
         "lostbench_version": __version__,
         "dataset_hash": dataset_hash,
@@ -53,6 +61,8 @@ def save_checkpoint(
         "completed_scenario_ids": completed_scenario_ids,
         "scenario_results": scenario_results,
     }
+    if in_progress_scenario:
+        data["in_progress_scenario"] = in_progress_scenario
     path = checkpoint_path(output_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
@@ -63,7 +73,7 @@ def save_checkpoint(
 
 def load_checkpoint(
     output_dir: str, dataset_hash: str, cfg: RunConfig
-) -> tuple[list[str], list[dict]] | None:
+) -> tuple[list[str], list[dict], dict | None] | None:
     """Load checkpoint if valid. Returns (completed_ids, scenario_results) or None."""
     path = checkpoint_path(output_dir)
     if not path.exists():
@@ -82,8 +92,15 @@ def load_checkpoint(
 
     completed = data.get("completed_scenario_ids", [])
     results = data.get("scenario_results", [])
-    print(f"  [checkpoint] Resuming — {len(completed)} scenarios already completed.", file=sys.stderr)
-    return (completed, results)
+    in_progress = data.get("in_progress_scenario")
+    trial_count = len(in_progress["completed_trials"]) if in_progress else 0
+    print(
+        f"  [checkpoint] Resuming — {len(completed)} scenarios completed"
+        + (f", 1 in-progress ({trial_count} trials done)" if in_progress else "")
+        + ".",
+        file=sys.stderr,
+    )
+    return (completed, results, in_progress)
 
 
 def clear_checkpoint(output_dir: str) -> None:

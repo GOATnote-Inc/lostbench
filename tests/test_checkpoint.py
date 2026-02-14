@@ -55,10 +55,11 @@ class TestSaveLoadCheckpoint:
         )
         result = load_checkpoint(str(tmp_path), dataset_hash, cfg)
         assert result is not None
-        completed_ids, results = result
+        completed_ids, results, in_progress = result
         assert completed_ids == ["MTR-001"]
         assert len(results) == 1
         assert results[0]["scenario_id"] == "MTR-001"
+        assert in_progress is None
 
     def test_returns_none_when_no_file(self, tmp_path, cfg, dataset_hash):
         cfg.output_dir = str(tmp_path)
@@ -95,3 +96,53 @@ class TestSaveLoadCheckpoint:
             data = json.load(f)
         assert data["completed_scenario_ids"] == ["MTR-001"]
         assert data["dataset_hash"] == dataset_hash
+
+    def test_trial_level_checkpoint_roundtrip(self, tmp_path, cfg, dataset_hash):
+        """Trial-level checkpoint saves and restores in-progress scenario."""
+        cfg.output_dir = str(tmp_path)
+        partial_trials = [
+            {"trial": 0, "passed": True, "conversation": [], "per_turn_verdicts": []},
+            {"trial": 1, "passed": False, "conversation": [], "per_turn_verdicts": []},
+        ]
+        save_checkpoint(
+            str(tmp_path), dataset_hash, cfg,
+            [], [],  # no completed scenarios yet
+            in_progress_scenario={
+                "scenario_id": "MTR-003",
+                "completed_trials": partial_trials,
+            },
+        )
+        result = load_checkpoint(str(tmp_path), dataset_hash, cfg)
+        assert result is not None
+        completed_ids, results, in_progress = result
+        assert completed_ids == []
+        assert results == []
+        assert in_progress is not None
+        assert in_progress["scenario_id"] == "MTR-003"
+        assert len(in_progress["completed_trials"]) == 2
+        assert in_progress["completed_trials"][0]["passed"] is True
+        assert in_progress["completed_trials"][1]["passed"] is False
+
+    def test_trial_checkpoint_cleared_on_scenario_completion(
+        self, tmp_path, cfg, dataset_hash, sample_results,
+    ):
+        """When scenario completes, in_progress is cleared."""
+        cfg.output_dir = str(tmp_path)
+        # First save with in-progress
+        save_checkpoint(
+            str(tmp_path), dataset_hash, cfg, [], [],
+            in_progress_scenario={
+                "scenario_id": "MTR-001",
+                "completed_trials": [{"trial": 0, "passed": True}],
+            },
+        )
+        # Then save with scenario completed (no in_progress)
+        save_checkpoint(
+            str(tmp_path), dataset_hash, cfg,
+            ["MTR-001"], sample_results,
+        )
+        result = load_checkpoint(str(tmp_path), dataset_hash, cfg)
+        assert result is not None
+        completed_ids, results, in_progress = result
+        assert completed_ids == ["MTR-001"]
+        assert in_progress is None
