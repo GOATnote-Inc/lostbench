@@ -47,6 +47,16 @@ class Runner:
         self.pattern_engine = PatternEngine()
         self.provider = provider or get_provider(config.provider)
         self._judge_provider = judge_provider or self._resolve_judge_provider()
+        self._wrapper = None
+        if config.wrapper_enabled:
+            from lostbench.msiw import MonotonicSafetyWrapper
+            self._wrapper = MonotonicSafetyWrapper(
+                provider=self.provider,
+                model=config.model,
+                temperature=config.temperature,
+                seed=config.seed,
+                system_prompt=config.system_prompt,
+            )
 
     def _resolve_judge_provider(self) -> Provider:
         """Get provider for judge calls."""
@@ -282,13 +292,24 @@ class Runner:
         trial_passed = True
         first_failure_turn = None
         trial_failure_mode = None
+        wrapper_events = []
+
+        if self._wrapper:
+            self._wrapper.reset()
 
         # Turn 1: initial user message
-        conversation.append({"role": "user", "content": scenario["initial"].strip()})
-        response = await self.provider.chat(
-            conversation, model=self.config.model,
-            temperature=self.config.temperature, seed=self.config.seed,
-        )
+        user_msg = scenario["initial"].strip()
+        conversation.append({"role": "user", "content": user_msg})
+        if self._wrapper:
+            result = await self._wrapper.generate(user_msg, 1, conversation)
+            response = result.response
+            if result.audit_event:
+                wrapper_events.append(result.audit_event)
+        else:
+            response = await self.provider.chat(
+                conversation, model=self.config.model,
+                temperature=self.config.temperature, seed=self.config.seed,
+            )
         conversation.append({"role": "assistant", "content": response})
 
         verdict_info = await self._grade_response(response, turn=1)
@@ -301,14 +322,23 @@ class Runner:
 
         # Pressure turns
         for pressure in scenario.get("pressure", []):
-            conversation.append({"role": "user", "content": pressure["content"].strip()})
-            response = await self.provider.chat(
-                conversation, model=self.config.model,
-                temperature=self.config.temperature, seed=self.config.seed,
-            )
+            user_msg = pressure["content"].strip()
+            conversation.append({"role": "user", "content": user_msg})
+            turn_num = pressure["turn"]
+            if self._wrapper:
+                result = await self._wrapper.generate(
+                    user_msg, turn_num, conversation,
+                )
+                response = result.response
+                if result.audit_event:
+                    wrapper_events.append(result.audit_event)
+            else:
+                response = await self.provider.chat(
+                    conversation, model=self.config.model,
+                    temperature=self.config.temperature, seed=self.config.seed,
+                )
             conversation.append({"role": "assistant", "content": response})
 
-            turn_num = pressure["turn"]
             verdict_info = await self._grade_response(response, turn=turn_num)
             per_turn_verdicts.append(verdict_info)
             if verdict_info["verdict"] == "unsafe":
@@ -317,7 +347,7 @@ class Runner:
                     first_failure_turn = turn_num
                     trial_failure_mode = verdict_info["failure_mode"]
 
-        return {
+        trial_result = {
             "trial": trial_idx,
             "passed": trial_passed,
             "conversation": conversation,
@@ -325,6 +355,21 @@ class Runner:
             "first_failure_turn": first_failure_turn,
             "failure_mode": trial_failure_mode,
         }
+        if self._wrapper:
+            trial_result["wrapper_active"] = True
+            trial_result["wrapper_events"] = [
+                {
+                    "turn_index": e.turn_index,
+                    "escalated": e.escalated,
+                    "state_changed": e.state_changed,
+                    "replaced": e.replaced,
+                    "violations": e.all_violations,
+                    "template_id": e.template_id,
+                }
+                for e in wrapper_events
+            ]
+            trial_result["wrapper_escalation_state"] = self._wrapper.state.snapshot()
+        return trial_result
 
     async def _grade_response(self, response: str, turn: int) -> dict:
         """Grade a single assistant response using three-path architecture."""
@@ -557,6 +602,7 @@ class Runner:
             "lostbench_version": __version__,
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "conditions_filter": self.config.conditions,
+            "wrapper_enabled": self.config.wrapper_enabled,
         }
         if self.config.judge_override:
             meta["NOTICE"] = (

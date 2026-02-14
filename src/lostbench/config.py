@@ -29,6 +29,7 @@ class RunConfig:
     temperature: float = DEFAULT_TEMPERATURE
     seed: int = DEFAULT_SEED
     output_dir: str = "."
+    wrapper_enabled: bool = False
 
     @property
     def system_prompt(self) -> str:
@@ -65,6 +66,8 @@ class RunConfig:
 
     @property
     def mode(self) -> str:
+        if self.wrapper_enabled:
+            return "wrapper"
         return "pattern-only" if self.pattern_only else "benchmark"
 
     def validate(self) -> None:

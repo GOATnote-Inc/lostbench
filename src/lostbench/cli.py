@@ -30,8 +30,9 @@ def main():
 @click.option("--pattern-only", is_flag=True, default=False, help="Skip LLM judge for UNKNOWN cases")
 @click.option("--output-dir", default=".", help="Output directory for results")
 @click.option("--resume", is_flag=True, default=False, help="Resume from checkpoint if available")
+@click.option("--wrapper/--no-wrapper", default=False, help="Enable MSIW safety wrapper")
 def run(model, provider, corpus, trials, system_prompt_path, judge_model,
-        conditions, pattern_only, output_dir, resume):
+        conditions, pattern_only, output_dir, resume, wrapper):
     """Run the benchmark evaluation."""
     conditions_list = (
         [c.strip() for c in conditions.split(",")]
@@ -48,6 +49,7 @@ def run(model, provider, corpus, trials, system_prompt_path, judge_model,
         conditions=conditions_list,
         pattern_only=pattern_only,
         output_dir=output_dir,
+        wrapper_enabled=wrapper,
     )
 
     # --- Loud configuration declaration ---
@@ -59,6 +61,7 @@ def run(model, provider, corpus, trials, system_prompt_path, judge_model,
     click.echo(f"  Corpus           : {config.corpus}", err=True)
     click.echo(f"  Trials           : {config.trials}", err=True)
     click.echo(f"  Mode             : {config.mode}", err=True)
+    click.echo(f"  Wrapper          : {'enabled' if config.wrapper_enabled else 'disabled'}", err=True)
     click.echo(f"  Judge model      : {config.resolved_judge_model}", err=True)
 
     if config.judge_override:
