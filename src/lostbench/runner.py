@@ -193,19 +193,27 @@ class Runner:
         per_failure_mode = self._aggregate_failure_modes(all_scenario_results)
 
         clear_checkpoint(self.config.output_dir)
+
+        aggregate = {
+            "pass_k": agg.pass_k,
+            "wilson_ci_95": list(agg.wilson_ci),
+            "bootstrap_ci_95": list(agg.bootstrap_ci),
+            "total_scenarios": agg.total_scenarios,
+            "total_trials": agg.total_trials,
+            "per_pressure_type": per_pressure_type,
+            "per_context": per_context,
+            "per_condition": per_condition,
+            "per_failure_mode": per_failure_mode,
+        }
+
+        if self.config.wrapper_enabled:
+            aggregate["wrapper_precision"] = self._aggregate_wrapper_precision(
+                all_scenario_results,
+            )
+
         return {
             "scenarios": all_scenario_results,
-            "aggregate": {
-                "pass_k": agg.pass_k,
-                "wilson_ci_95": list(agg.wilson_ci),
-                "bootstrap_ci_95": list(agg.bootstrap_ci),
-                "total_scenarios": agg.total_scenarios,
-                "total_trials": agg.total_trials,
-                "per_pressure_type": per_pressure_type,
-                "per_context": per_context,
-                "per_condition": per_condition,
-                "per_failure_mode": per_failure_mode,
-            },
+            "aggregate": aggregate,
             "metadata": self._build_metadata(dataset_hash, scenarios),
             "limitations": LIMITATIONS,
         }
@@ -423,11 +431,70 @@ class Runner:
                     "replaced": e.replaced,
                     "violations": e.all_violations,
                     "template_id": e.template_id,
+                    "original_response": e.original_response,
                 }
                 for e in wrapper_events
             ]
             trial_result["wrapper_escalation_state"] = self._wrapper.state.snapshot()
+            trial_result["wrapper_precision"] = self._compute_wrapper_precision(
+                wrapper_events,
+            )
         return trial_result
+
+    def _compute_wrapper_precision(
+        self, wrapper_events: list,
+    ) -> dict:
+        """Compute wrapper precision from stored original responses.
+
+        For each replacement, run the grading engine on the original response.
+        If grading says terminal_unsafe → true positive (replacement warranted).
+        Otherwise → false positive (replacement not warranted under pattern grading).
+
+        Returns dict with total_replacements, true_positives, false_positives, precision.
+        """
+        from lostbench.msiw.audit import AuditEvent
+        total = 0
+        true_positives = 0
+        false_positives = 0
+        details = []
+
+        for event in wrapper_events:
+            if not isinstance(event, AuditEvent) or not event.replaced:
+                continue
+            total += 1
+            if event.original_response is None:
+                # No original stored (e.g. provider_error) — count as true positive
+                true_positives += 1
+                details.append({
+                    "turn": event.turn_index,
+                    "classification": "true_positive",
+                    "reason": "provider_error_fallback",
+                })
+                continue
+
+            result = self.pattern_engine.check(event.original_response)
+            if result.outcome == "terminal_unsafe":
+                true_positives += 1
+                details.append({
+                    "turn": event.turn_index,
+                    "classification": "true_positive",
+                    "grading_failure_mode": result.failure_mode,
+                })
+            else:
+                false_positives += 1
+                details.append({
+                    "turn": event.turn_index,
+                    "classification": "false_positive",
+                    "grading_outcome": result.outcome,
+                })
+
+        return {
+            "total_replacements": total,
+            "true_positives": true_positives,
+            "false_positives": false_positives,
+            "precision": true_positives / total if total > 0 else None,
+            "details": details,
+        }
 
     async def _grade_response(self, response: str, turn: int) -> dict:
         """Grade a single assistant response using three-path architecture."""
@@ -669,6 +736,28 @@ class Runner:
                 "rate": count / total_verdicts if total_verdicts > 0 else 0.0,
             }
         return result
+
+    @staticmethod
+    def _aggregate_wrapper_precision(scenario_results: list[dict]) -> dict:
+        """Aggregate wrapper precision across all trials."""
+        total = 0
+        true_pos = 0
+        false_pos = 0
+        for sr in scenario_results:
+            for trial in sr["per_trial"]:
+                wp = trial.get("wrapper_precision")
+                if wp is None:
+                    continue
+                total += wp["total_replacements"]
+                true_pos += wp["true_positives"]
+                false_pos += wp["false_positives"]
+        return {
+            "total_replacements": total,
+            "true_positives": true_pos,
+            "false_positives": false_pos,
+            "precision": true_pos / total if total > 0 else None,
+            "false_positive_rate": false_pos / total if total > 0 else None,
+        }
 
     def _build_metadata(self, dataset_hash: str, scenarios: list[dict]) -> dict:
         meta = {

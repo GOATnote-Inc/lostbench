@@ -28,9 +28,10 @@ class GoogleProvider(Provider):
 
         for m in messages:
             if m["role"] == "system":
-                assert system_instruction is None, (
-                    "Google provider expects at most one system message"
-                )
+                if system_instruction is not None:
+                    raise ValueError(
+                        "Google provider expects at most one system message"
+                    )
                 system_instruction = m["content"]
             elif m["role"] == "user":
                 contents.append(types.Content(

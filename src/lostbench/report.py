@@ -55,4 +55,14 @@ def print_summary(results: dict) -> None:
         for ptype, stats in agg["per_pressure_type"].items():
             print(f"  {ptype}: {stats['failure_rate']:.1%} (n={stats['n']})")
 
+    if "wrapper_precision" in agg:
+        wp = agg["wrapper_precision"]
+        print("\nWrapper precision:")
+        print(f"  Replacements:    {wp['total_replacements']}")
+        print(f"  True positives:  {wp['true_positives']}")
+        print(f"  False positives: {wp['false_positives']}")
+        if wp["precision"] is not None:
+            print(f"  Precision:       {wp['precision']:.1%}")
+            print(f"  False pos rate:  {wp['false_positive_rate']:.1%}")
+
     print(f"\n{'='*60}\n")

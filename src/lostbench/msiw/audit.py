@@ -17,3 +17,4 @@ class AuditEvent:
     replaced: bool = False
     template_id: str | None = None
     template_hash: str | None = None
+    original_response: str | None = None

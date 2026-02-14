@@ -105,31 +105,43 @@ After the first wrapper replacement, the conversation histories diverge permanen
 
 Even post-fix, Opus has the highest replacement rate (25%) but a better baseline than Sonnet (0.875 vs 0.750). The replacement rate reflects how the MSIW-augmented prompt changes Opus's response style. The baseline comparison is the correct measure of model safety.
 
-## 4. Remaining Work
+## 4. Wrapper Precision Analysis
 
-### 4.1 Store pre-replacement responses in audit events (P1)
+### 4.1 How it works
 
-The wrapper currently discards the original model response when it replaces with a template. The `WrapperResult` and `AuditEvent` only record that a replacement happened, not what was replaced. This makes post-hoc analysis impossible — you can't determine whether a replacement was a true positive or false positive without seeing the original.
+Every replacement now stores the `original_response` — the model's actual output before the MSIW replaced it with a safe template. After each trial, the runner grades each stored original response against the same `PatternEngine` used for baseline grading. This produces a per-replacement classification:
 
-**Approach:** Add `original_response: str` field to `AuditEvent`. Store the model's actual output before replacement. This has no runtime cost (the response is already in memory) and enables the precision analysis needed to validate the wrapper.
-
-### 4.2 Add wrapper precision metric (P1)
-
-Currently we report replacement count but not whether replacements were warranted. With pre-replacement responses stored (4.1), we can compute:
+- **True positive:** original response would have been graded `terminal_unsafe` — replacement was warranted
+- **False positive:** original response would have been graded `unknown` or `ambiguous` — replacement was not warranted under pattern-only grading
 
 ```
-wrapper_precision = true_positive_replacements / total_replacements
+wrapper_precision = true_positives / total_replacements
+false_positive_rate = false_positives / total_replacements
 ```
 
-Where a true positive is a replacement where the original response would have failed grading. This requires running the grading engine on pre-replacement responses post-hoc.
+### 4.2 Why MSIW and grading diverge
 
-### 4.3 Run baselines with LLM judge (P2)
+The MSIW enforces a stricter set of forbidden patterns than the grading engine. Patterns like `monitor at home`, `schedule an appointment`, `not an emergency`, `just an AI`, and `if it gets worse` are forbidden by the MSIW (they're dangerous post-escalation) but are not classified as `terminal_unsafe` by the grading engine (which was designed for baseline evaluation, not runtime enforcement).
+
+Additionally, the MSIW system prompt preamble (§5.2) changes model behavior. The model under wrapper enforcement receives a different prompt than baseline, producing different responses. Some of these wrapper-augmented responses trigger MSIW forbidden patterns that the baseline response would not have produced.
+
+These are not bugs — they reflect the structural difference between "would this response fail a post-hoc evaluation?" (grading) and "should this response reach the user during an active emergency?" (enforcement). The MSIW is correctly more conservative.
+
+### 4.3 Interpretation
+
+Wrapper precision quantifies the overlap between enforcement and grading. A precision < 1.0 does not mean the MSIW is wrong — it means the MSIW catches things the grading engine doesn't. The `original_response` field enables manual review of every false positive to determine whether the MSIW or the grading engine has the correct threshold.
+
+The precision metric and per-replacement details are now included in the JSON results output (`wrapper_precision` in per-trial results and `aggregate.wrapper_precision` at the run level).
+
+## 5. Remaining Work
+
+### 5.1 Run baselines with LLM judge (P2)
 
 The current baselines use `--pattern-only`. This is faster and deterministic but misses the "ambiguous" path where pattern-based grading is uncertain and defers to the LLM judge. GPT-5.2's clean baseline may not hold under full judge grading.
 
 **Approach:** Rerun all three baselines with full judge grading (remove `--pattern-only`). Compare results to pattern-only baselines to quantify the grading mode gap.
 
-### 4.4 Decouple system prompt injection from enforcement (P2)
+### 5.2 Decouple system prompt injection from enforcement (P2)
 
 The MSIW system preamble serves two purposes: (1) defense-in-depth prompting to make the model more safety-aware, and (2) the wrapper then enforces on the resulting output. These should be evaluated separately:
 
@@ -138,7 +150,7 @@ The MSIW system preamble serves two purposes: (1) defense-in-depth prompting to 
 
 This 2x2 design (preamble on/off x enforcement on/off) would cleanly separate the two effects currently confounded in the wrapper results.
 
-## 5. Limitations
+## 6. Limitations
 
 - **8 scenarios, 3 trials** — small sample. Wilson CIs reflect this (0.676-1.000 for perfect scores). Results are directional, not definitive.
 - **Pattern-only grading** — lower bar than full LLM judge. Baseline scores may decrease under full grading.
@@ -146,7 +158,7 @@ This 2x2 design (preamble on/off x enforcement on/off) would cleanly separate th
 - **Emergency corpus only** — crisis-resource corpus not evaluated with wrapper in this run.
 - **No human adjudication** — all grading is automated. Pattern-based and LLM-based classification is not equivalent to clinical review.
 
-## 6. Appendix: Run Locations
+## 7. Appendix: Run Locations
 
 ### Pre-fix runs
 
@@ -167,7 +179,7 @@ This 2x2 design (preamble on/off x enforcement on/off) would cleanly separate th
 | Sonnet 4.5 wrapper (post-fix) | `/tmp/msiw-sonnet45-v3/` |
 | Opus 4.6 wrapper (post-fix) | `/tmp/msiw-opus46-v2/` |
 
-## 7. Appendix: Commits
+## 8. Appendix: Commits
 
 | Hash | Description |
 |------|------------|

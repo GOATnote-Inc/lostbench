@@ -180,7 +180,9 @@ class MonotonicSafetyWrapper:
         # Step 8/9: Replace or pass through
         replaced = bool(all_violations)
         template_id = None
+        original_response = None
         if replaced:
+            original_response = response
             try:
                 response = render_safe_template(
                     self._state.escalation_reason, barrier_type,
@@ -202,6 +204,7 @@ class MonotonicSafetyWrapper:
             replaced=replaced,
             template_id=template_id,
             template_hash=TEMPLATE_HASH if replaced else None,
+            original_response=original_response,
         )
 
         return WrapperResult(
