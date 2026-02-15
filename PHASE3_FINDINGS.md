@@ -8,15 +8,13 @@
 
 ### Pass^k (strict) — 8 scenarios, 3 trials each
 
-| Model | Baseline | + Wrapper | Lift | Replacements (pre-fix) | Replacements (post-fix) |
-|-------|----------|-----------|------|----------------------|----------------------|
-| GPT-5.2 | 1.000 | 1.000 | +0.000 | 42/120 (35%) | 3/120 (2%) |
-| Sonnet 4.5 | 0.750 | 1.000 | +0.250 | 33/120 (28%) | 12/120 (10%) |
-| Opus 4.6 | 0.875 | 1.000 | +0.125 | 60/120 (50%) | 30/120 (25%) |
+| Model | Baseline | + Wrapper | Lift | Replacements | TP | FP | Precision |
+|-------|----------|-----------|------|-------------|-----|-----|-----------|
+| GPT-5.2 | 1.000 | 1.000 | +0.000 | 0 | 0 | 0 | N/A (no replacements) |
+| Sonnet 4.5 | 0.750 | 1.000 | +0.250 | 15 | 3 | 12 | 20.0% |
+| Opus 4.6 | 0.875 | 1.000 | +0.125 | 24 | 0 | 24 | 0.0% |
 
-**Pre-fix:** MSIW forbidden patterns had no negation awareness. Medically correct responses ("this is NOT safe to wait") triggered false positive replacements.
-
-**Post-fix:** Negation overrides added to MSIW + unicode smart quote normalization + grading engine negation window widened. All three models maintain Pass^k = 1.000 with dramatically fewer replacements.
+**Precision** measures whether replacements are warranted by the grading engine: TP / (TP + FP). GPT-5.2 has zero replacements (all responses pass both MSIW and grading). Sonnet/Opus precision is low because the MSIW forbidden patterns fire on safe responses that use forbidden phrases in negated/warning/attributed contexts (the "conversation cascade" problem — see §4.4).
 
 ### Baseline failure details
 
@@ -54,11 +52,11 @@ Zero pattern-detected failures across all 8 scenarios and 3 trials without the w
 
 Every baseline failure fires identically across all 3 trials. Every wrapper replacement fires identically across trials. The evaluation infrastructure produces reproducible results at temp=0/seed=42, and the cache system validates this (67% hit rate = trials 2-3 are byte-identical to trial 1).
 
-### 2.5 Negation fix dramatically improves wrapper precision without losing safety
+### 2.5 Negation overrides are necessary but hit a precision ceiling
 
-The negation awareness fix reduced replacement rates by 50-93% while maintaining Pass^k = 1.000 across all models. This proves the original high replacement rates were dominated by false positives, not real safety interventions.
+Four rounds of negation override refinement reduced GPT-5.2 replacements from 42 → 0 (perfect). But Sonnet and Opus hit a precision ceiling at 20% and 0% respectively. The root cause is the **conversation cascade** (§4.4): each override fix changes earlier-turn replacement decisions, which changes the conversation context seen by the model at later turns, generating entirely new false positives on different patterns.
 
-Post-fix, GPT-5.2's 3 remaining replacements (all MTR-003 turn 2, `delay_wait_and_see`) are on the wrapper-augmented response path — a different prompt than baseline. The wrapper's precision on GPT-5.2 is now ~97.5%.
+The Tier 0 pattern-matching approach cannot resolve this — it requires the Tier 1 semantic classifier (currently NoOp) to understand whether forbidden phrases appear in negated/warning/attributed contexts.
 
 ## 3. What Was Artifact (now fixed)
 
@@ -133,6 +131,31 @@ Wrapper precision quantifies the overlap between enforcement and grading. A prec
 
 The precision metric and per-replacement details are now included in the JSON results output (`wrapper_precision` in per-trial results and `aggregate.wrapper_precision` at the run level).
 
+### 4.4 The conversation cascade problem
+
+When the wrapper replaces a response at turn N, the model sees the safe template (not its own response) in the conversation context for turn N+1. This changes what the model says at N+1 and all subsequent turns. Fixing a false positive at turn N (letting the original response through) changes the entire conversation trajectory from N+1 onward.
+
+This creates a whack-a-mole dynamic:
+
+1. Override fixes at turn 3 eliminate FPs on patterns A, B, C
+2. The model now sees its own turn-3 response instead of the safe template
+3. At turn 4-5, the model produces different responses that trigger patterns D, E, F
+4. Fixing D, E, F changes turn 5+ conversation context, generating new FPs on patterns G, H
+
+**Observed across 4 override iterations:**
+
+| Round | GPT-5.2 FP | Sonnet FP | Opus FP | Notes |
+|-------|-----------|----------|---------|-------|
+| Pre-fix | 18 | 12 | 15 | No negation awareness |
+| Round 1 | 0 | 6 | 15 | Adversative overrides + markdown stripping |
+| Round 2 | 3 | 6 | 15 | New FPs from changed conversation flow |
+| Round 3 | 3 | 12 | 24 | More cascade effects |
+| Round 4 | 0 | 12 | 24 | GPT converged; Sonnet/Opus still cascading |
+
+GPT-5.2 converged to 0 FP because its responses are sufficiently clean that no override fix cascades into new violations. Sonnet and Opus produce more complex language that triggers different patterns depending on the conversation context.
+
+**Implication:** Tier 0 pattern matching has a structural precision ceiling for models that use complex negation/attribution. The Tier 1 semantic classifier is required to reach acceptable precision for Sonnet and Opus.
+
 ## 5. Remaining Work
 
 ### 5.1 Run baselines with LLM judge (P2)
@@ -171,13 +194,13 @@ This 2x2 design (preamble on/off x enforcement on/off) would cleanly separate th
 | Opus 4.6 baseline | `/tmp/baseline-opus46/` |
 | Opus 4.6 wrapper (pre-fix) | `/tmp/msiw-opus46-full/` |
 
-### Post-fix runs
+### Post-fix runs (final — round 4 overrides)
 
 | Run | Output Dir |
 |-----|-----------|
-| GPT-5.2 wrapper (post-fix) | `/tmp/msiw-gpt52-v3/` |
-| Sonnet 4.5 wrapper (post-fix) | `/tmp/msiw-sonnet45-v3/` |
-| Opus 4.6 wrapper (post-fix) | `/tmp/msiw-opus46-v2/` |
+| GPT-5.2 wrapper (final) | `/tmp/msiw-gpt52-final2/` |
+| Sonnet 4.5 wrapper (final) | `/tmp/msiw-sonnet45-final2/` |
+| Opus 4.6 wrapper (final) | `/tmp/msiw-opus46-final2/` |
 
 ## 8. Appendix: Commits
 
@@ -189,3 +212,7 @@ This 2x2 design (preamble on/off x enforcement on/off) would cleanly separate th
 | `e068595` | feat: add deterministic response cache and trial-level checkpointing |
 | `70ccca1` | fix: add negation awareness to MSIW forbidden patterns |
 | `d1de9a9` | fix: widen grading engine negation window for distant negation |
+| `b65ab5b` | feat: store original_response in audit events and add wrapper precision metric |
+| `83444cf` | fix: exclude provider errors from precision metric and clean lint |
+| `56acc7b` | fix: widen MSIW negation overrides and strip markdown in normalize |
+| *(pending)* | fix: comprehensive negation overrides from 4-round precision analysis |
