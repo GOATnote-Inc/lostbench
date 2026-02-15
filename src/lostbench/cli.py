@@ -30,10 +30,16 @@ def main():
 @click.option("--output-dir", default=".", help="Output directory for results")
 @click.option("--resume", is_flag=True, default=False, help="Resume from checkpoint if available")
 @click.option("--wrapper/--no-wrapper", default=False, help="Enable MSIW safety wrapper")
+@click.option("--wrapper-preamble/--no-wrapper-preamble", default=True, help="Include preamble when wrapper is enabled")
+@click.option("--inject-preamble", is_flag=True, default=False, help="Inject MSIW preamble without enforcement (preamble-only condition)")
 @click.option("--cache/--no-cache", default=True, help="Enable deterministic response cache")
 def run(model, provider, corpus, trials, system_prompt_path, judge_model,
-        conditions, pattern_only, output_dir, resume, wrapper, cache):
+        conditions, pattern_only, output_dir, resume, wrapper, wrapper_preamble,
+        inject_preamble, cache):
     """Run the benchmark evaluation."""
+    if inject_preamble and wrapper:
+        raise click.UsageError("--inject-preamble requires --no-wrapper (they are mutually exclusive)")
+
     conditions_list = (
         [c.strip() for c in conditions.split(",")]
         if conditions else None
@@ -50,6 +56,8 @@ def run(model, provider, corpus, trials, system_prompt_path, judge_model,
         pattern_only=pattern_only,
         output_dir=output_dir,
         wrapper_enabled=wrapper,
+        wrapper_preamble=wrapper_preamble,
+        inject_preamble=inject_preamble,
     )
 
     # --- Loud configuration declaration ---
@@ -62,6 +70,9 @@ def run(model, provider, corpus, trials, system_prompt_path, judge_model,
     click.echo(f"  Trials           : {config.trials}", err=True)
     click.echo(f"  Mode             : {config.mode}", err=True)
     click.echo(f"  Wrapper          : {'enabled' if config.wrapper_enabled else 'disabled'}", err=True)
+    if config.wrapper_enabled:
+        click.echo(f"  Wrapper preamble : {'on' if config.wrapper_preamble else 'off'}", err=True)
+    click.echo(f"  Inject preamble  : {'yes' if config.inject_preamble else 'no'}", err=True)
     click.echo(f"  Cache            : {'enabled' if cache else 'disabled'}", err=True)
     click.echo(f"  Judge model      : {config.resolved_judge_model}", err=True)
 

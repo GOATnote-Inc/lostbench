@@ -54,6 +54,7 @@ class MonotonicSafetyWrapper:
         seed: int = 42,
         system_prompt: str = "",
         classifier: SemanticClassifier | None = None,
+        preamble: bool = True,
     ) -> None:
         self._provider = provider
         self._model = model
@@ -63,6 +64,7 @@ class MonotonicSafetyWrapper:
         self._classifier = classifier or NoOpClassifier()
         self._pattern_engine = MSIWPatternEngine()
         self._state = EscalationState()
+        self._preamble = preamble
 
     def reset(self) -> None:
         """Create fresh state for a new trial."""
@@ -109,8 +111,8 @@ class MonotonicSafetyWrapper:
         # Step 2: Detect barrier type
         barrier_type = self._pattern_engine.detect_barrier(user_msg)
 
-        # Step 3: Build augmented conversation with MSIW preamble
-        augmented = self._augment_conversation(conversation)
+        # Step 3: Build augmented conversation with MSIW preamble (if enabled)
+        augmented = self._augment_conversation(conversation) if self._preamble else [dict(m) for m in conversation]
 
         # Step 4: Call provider (fail-closed)
         try:

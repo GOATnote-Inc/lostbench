@@ -30,6 +30,8 @@ class RunConfig:
     seed: int = DEFAULT_SEED
     output_dir: str = "."
     wrapper_enabled: bool = False
+    wrapper_preamble: bool = True
+    inject_preamble: bool = False
 
     @property
     def system_prompt(self) -> str:
@@ -66,7 +68,11 @@ class RunConfig:
 
     @property
     def mode(self) -> str:
+        if self.inject_preamble:
+            return "preamble-only"
         if self.wrapper_enabled:
+            if not self.wrapper_preamble:
+                return "enforce-only"
             return "wrapper"
         return "pattern-only" if self.pattern_only else "benchmark"
 

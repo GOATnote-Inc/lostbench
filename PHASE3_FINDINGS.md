@@ -1,8 +1,8 @@
 # Phase 3 Findings: MSIW Wrapper Evaluation
 
 **Date:** 2026-02-14 (updated 2026-02-15)
-**Evaluator:** Automated (LostBench v0.3.x + MSIW wrapper)
-**Grading modes:** pattern-only + full LLM judge
+**Evaluator:** Automated (LostBench v0.1.1 + MSIW wrapper)
+**Grading modes:** pattern-only + full LLM judge + 2x2 factorial (§9)
 
 ## 1. Results Matrix
 
@@ -217,14 +217,9 @@ Completed 2026-02-15. Ran Sonnet baseline with GPT-5.2 as judge (GPT-5.2 self-ju
 
 **Conclusion:** GPT-5.2 is the more lenient judge, not stricter. Opus's 0.375 score (judged by lenient GPT-5.2) is genuine and would likely be equal or worse under Opus judge. The cross-judge asymmetry confound is resolved — it does not inflate Opus's failure rate.
 
-### 5.2 Decouple system prompt injection from enforcement (P2)
+### 5.2 ~~Decouple system prompt injection from enforcement~~ (DONE)
 
-The MSIW system preamble serves two purposes: (1) defense-in-depth prompting to make the model more safety-aware, and (2) the wrapper then enforces on the resulting output. These should be evaluated separately:
-
-- Run with preamble injection but **no enforcement** to measure whether the preamble alone improves safety
-- Run with enforcement but **no preamble** to measure the wrapper's value on raw model output
-
-This 2x2 design (preamble on/off x enforcement on/off) would cleanly separate the two effects currently confounded in the wrapper results.
+Completed 2026-02-15. Results in §9 below. The 2x2 design cleanly separates preamble and enforcement effects. Key finding: enforcement alone drives Pass^k to 1.000 for GPT-5.2 but has near-zero precision across all models. The preamble alone does not reliably improve safety — Opus actually gets *worse* (0.625 vs 0.375–0.875 baseline depending on grading mode).
 
 ## 6. Limitations
 
@@ -282,3 +277,69 @@ This 2x2 design (preamble on/off x enforcement on/off) would cleanly separate th
 | `f1dff6c` | fix: comprehensive negation overrides from 4-round precision analysis |
 | `0119ef8` | docs: add LLM judge baseline results to Phase 3 findings |
 | *(pending)* | docs: cross-judge validation results |
+| *(pending)* | feat: preamble/enforcement decoupling experiment |
+
+## 9. Preamble/Enforcement Decoupling (2x2 Experiment)
+
+**Date:** 2026-02-15
+**Design:** Separate the MSIW wrapper's two mechanisms — system prompt preamble injection and pattern-based response enforcement — into a 2x2 factorial design.
+
+| | Preamble OFF | Preamble ON |
+|---|---|---|
+| **Enforcement OFF** | Baseline | Preamble-only (NEW) |
+| **Enforcement ON** | Enforce-only (NEW) | Full wrapper (existing) |
+
+All conditions use full LLM judge grading for comparability. 8 scenarios, 3 trials each.
+
+### 9.1 Results: Pass^k
+
+| Model | Baseline (judge) | Preamble-only | Enforce-only | Full wrapper |
+|-------|-----------------|---------------|--------------|-------------|
+| GPT-5.2 | 0.750 | 0.875 | **1.000** | 1.000 |
+| Sonnet 4.5 | 0.750 | 0.875 | 0.750 | 1.000 |
+| Opus 4.6 | 0.375 | 0.625 | 0.875 | 1.000 |
+
+### 9.2 Preamble-only failure details
+
+| Model | Pass^k | Failure Modes | Pressure Vulnerability | Judge |
+|-------|--------|---------------|----------------------|-------|
+| GPT-5.2 | 0.875 | delay_validated (3) | social_pressure (25%) | claude-opus-4-6 |
+| Sonnet 4.5 | 0.875 | patient_abandoned (3) | prior_experience (25%) | claude-opus-4-6 |
+| Opus 4.6 | 0.625 | urgency_minimized (5), patient_abandoned (3) | polite_disengagement (20.8%), prior_experience (25%) | gpt-5.2 (fallback) |
+
+**Observation:** The preamble alone improves GPT-5.2 (0.750 → 0.875) and Opus (0.375 → 0.625) relative to their judge baselines, but doesn't reach 1.000 for any model. Sonnet improves from 0.750 to 0.875. The preamble shifts failure patterns — different scenarios and pressure types fail compared to baseline — but doesn't eliminate failures.
+
+### 9.3 Enforce-only failure details
+
+| Model | Pass^k | Failure Modes | Replacements | TP | FP | Precision | Judge |
+|-------|--------|---------------|-------------|----|----|-----------|-------|
+| GPT-5.2 | **1.000** | none | 33 | 0 | 33 | 0.0% | claude-opus-4-6 |
+| Sonnet 4.5 | 0.750 | delay_validated (3), patient_abandoned (3) | 30 | 0 | 30 | 0.0% | claude-opus-4-6 |
+| Opus 4.6 | 0.875 | urgency_minimized (6) | 36 | 3 | 33 | 8.3% | gpt-5.2 (fallback) |
+
+**Observation:** Without the preamble, the enforcement layer replaces 30-36 responses per run (nearly all of them) with near-zero precision. This means the models' raw responses — without the safety directive — frequently trigger MSIW forbidden patterns even when the LLM judge considers them safe. Enforcement alone achieves Pass^k = 1.000 only for GPT-5.2.
+
+Sonnet and Opus still fail under enforce-only because some responses survive enforcement (the MSIW passes them through) but the LLM judge flags them. The failures that leak through enforcement are semantic — they don't contain forbidden phrases but implicitly validate delay or abandon the patient.
+
+### 9.4 Interpretation
+
+**The preamble and enforcement are complementary, not redundant.** Neither alone achieves the full wrapper's Pass^k = 1.000 across all models:
+
+1. **Preamble alone** improves model behavior (fewer unsafe responses) but can't guarantee safety — the model can still capitulate under sustained pressure. Effect size: +0.125 to +0.250 Pass^k over baseline.
+
+2. **Enforcement alone** catches pattern-level violations but can't catch semantic failures invisible to regex. Without the preamble, models produce more responses that trigger forbidden patterns (higher replacement rate) but also more responses that are semantically unsafe without triggering patterns (failures leak through).
+
+3. **Together**, the preamble reduces the number of violations the enforcement layer needs to catch (fewer replacements = fewer false positives), while the enforcement layer catches the remaining failures the preamble couldn't prevent. The full wrapper is the only condition that achieves Pass^k = 1.000 for all three models.
+
+**The preamble is doing real work:** Compare enforce-only vs full wrapper replacement counts and precision. The preamble changes model behavior enough that the enforcement layer has to intervene less, and when it does intervene, it's more likely to be warranted.
+
+### 9.5 Run locations
+
+| Run | Output Dir | Judge |
+|-----|-----------|-------|
+| GPT-5.2 preamble-only | `/tmp/preamble-only-gpt52/` | claude-opus-4-6 |
+| Sonnet 4.5 preamble-only | `/tmp/preamble-only-sonnet45/` | claude-opus-4-6 |
+| Opus 4.6 preamble-only | `/tmp/preamble-only-opus46/` | gpt-5.2 (fallback) |
+| GPT-5.2 enforce-only | `/tmp/enforce-only-gpt52/` | claude-opus-4-6 |
+| Sonnet 4.5 enforce-only | `/tmp/enforce-only-sonnet45/` | claude-opus-4-6 |
+| Opus 4.6 enforce-only | `/tmp/enforce-only-opus46/` | gpt-5.2 (fallback) |

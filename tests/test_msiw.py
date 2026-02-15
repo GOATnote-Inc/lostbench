@@ -950,6 +950,62 @@ class TestWrapper:
         assert system_msg.startswith(MSIW_SYSTEM_PREAMBLE)
         assert "original prompt" in system_msg
 
+    async def test_wrapper_preamble_false_no_augmentation(self):
+        """When preamble=False, conversation is NOT augmented with MSIW preamble."""
+        from lostbench.msiw.wrapper import MSIW_SYSTEM_PREAMBLE
+
+        calls = []
+
+        class CapturingProvider:
+            async def chat(self, messages, **kwargs):
+                calls.append(messages)
+                return "Call 911 immediately right now. Call 988 for crisis."
+
+        wrapper = MonotonicSafetyWrapper(
+            provider=CapturingProvider(),
+            model="test",
+            system_prompt="original prompt",
+            preamble=False,
+        )
+        conv = [
+            {"role": "system", "content": "original prompt"},
+            {"role": "user", "content": "test"},
+        ]
+        await wrapper.generate("test", 1, conv)
+
+        assert len(calls) == 1
+        system_msg = calls[0][0]["content"]
+        assert not system_msg.startswith(MSIW_SYSTEM_PREAMBLE)
+        assert system_msg == "original prompt"
+
+    async def test_wrapper_preamble_true_augments(self):
+        """When preamble=True (default), conversation IS augmented with MSIW preamble."""
+        from lostbench.msiw.wrapper import MSIW_SYSTEM_PREAMBLE
+
+        calls = []
+
+        class CapturingProvider:
+            async def chat(self, messages, **kwargs):
+                calls.append(messages)
+                return "Call 911 immediately right now. Call 988 for crisis."
+
+        wrapper = MonotonicSafetyWrapper(
+            provider=CapturingProvider(),
+            model="test",
+            system_prompt="original prompt",
+            preamble=True,
+        )
+        conv = [
+            {"role": "system", "content": "original prompt"},
+            {"role": "user", "content": "test"},
+        ]
+        await wrapper.generate("test", 1, conv)
+
+        assert len(calls) == 1
+        system_msg = calls[0][0]["content"]
+        assert system_msg.startswith(MSIW_SYSTEM_PREAMBLE)
+        assert "original prompt" in system_msg
+
 
 # ============================================================
 # TestRunnerIntegration
@@ -1020,6 +1076,24 @@ class TestRunnerIntegration:
     def test_config_mode_benchmark(self):
         config = self._make_config(wrapper_enabled=False)
         assert config.mode == "pattern-only"  # pattern_only=True
+
+    def test_config_modes_2x2(self):
+        """All 4 conditions in the preamble/enforcement 2x2 return correct mode strings."""
+        # Baseline: no wrapper, no inject_preamble
+        baseline = RunConfig(model="m", provider="openai")
+        assert baseline.mode == "benchmark"
+
+        # Preamble-only: inject_preamble=True, no wrapper
+        preamble_only = RunConfig(model="m", provider="openai", inject_preamble=True)
+        assert preamble_only.mode == "preamble-only"
+
+        # Enforce-only: wrapper on, preamble off
+        enforce_only = RunConfig(model="m", provider="openai", wrapper_enabled=True, wrapper_preamble=False)
+        assert enforce_only.mode == "enforce-only"
+
+        # Full wrapper: wrapper on, preamble on (default)
+        full = RunConfig(model="m", provider="openai", wrapper_enabled=True, wrapper_preamble=True)
+        assert full.mode == "wrapper"
 
     async def test_wrapper_metadata_in_build(self):
         """wrapper_enabled appears in metadata."""

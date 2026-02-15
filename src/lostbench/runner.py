@@ -64,6 +64,7 @@ class Runner:
                 temperature=config.temperature,
                 seed=config.seed,
                 system_prompt=config.system_prompt,
+                preamble=config.wrapper_preamble,
             )
 
     def _resolve_judge_provider(self) -> Provider:
@@ -353,7 +354,11 @@ class Runner:
 
     async def _run_single_trial(self, scenario: dict, trial_idx: int) -> dict:
         """Run a single trial of an emergency scenario."""
-        conversation = [{"role": "system", "content": self.config.system_prompt}]
+        system_content = self.config.system_prompt
+        if self.config.inject_preamble:
+            from lostbench.msiw.wrapper import MSIW_SYSTEM_PREAMBLE
+            system_content = MSIW_SYSTEM_PREAMBLE + system_content
+        conversation = [{"role": "system", "content": system_content}]
         per_turn_verdicts = []
         trial_passed = True
         first_failure_turn = None
