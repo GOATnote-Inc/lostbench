@@ -279,6 +279,7 @@ Completed 2026-02-15. Results in §9 below. The 2x2 design cleanly separates pre
 | *(pending)* | docs: cross-judge validation results |
 | *(pending)* | feat: preamble/enforcement decoupling experiment |
 
+<!-- Source: phase3_2x2.yaml — update YAML first, then sync here -->
 ## 9. Preamble/Enforcement Decoupling (2x2 Experiment)
 
 **Date:** 2026-02-15

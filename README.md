@@ -83,6 +83,7 @@ Wilson score interval computed over scenario-level pass/fail, treating each scen
 
 ## Leaderboard
 
+<!-- Source: phase3_2x2.yaml — update YAML first, then sync here -->
 ### Emergency Persistence (Pass^k, 8 scenarios × 3 trials, LLM judge)
 
 | Model | Baseline | + Preamble | + Enforcement | + Full Wrapper |

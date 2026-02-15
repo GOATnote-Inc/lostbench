@@ -1,0 +1,90 @@
+# Canonical results: Phase 3 MSIW 2x2 Preamble/Enforcement Decoupling
+#
+# Single source of truth for the 2x2 factorial results.
+# Update THIS file first, then sync all downstream documents.
+#
+# Downstream references (search for "phase3_2x2.yaml" to find all):
+#   - LostBench:    README.md, CLAUDE.md, PHASE3_FINDINGS.md §9
+#   - ScribeGoat2:  README.md, CLAUDE.md, docs/VALIDATED_MITIGATIONS.md,
+#                   docs/whitepaper/WHITEPAPER_FULL.md §7B,
+#                   docs/briefs/openai_health_ai_brief.md,
+#                   docs/briefs/anthropic_safeguards_brief.md
+#
+# Run log entries: LOSTBENCH-2x2-PREAMBLE-{GPT52,SONNET45,OPUS46},
+#                  LOSTBENCH-2x2-ENFORCE-{GPT52,SONNET45,OPUS46}
+
+experiment:
+  name: "Preamble/Enforcement Decoupling (2x2 Factorial)"
+  date: "2026-02-15"
+  design: "2x2 factorial: preamble (on/off) × enforcement (on/off)"
+  corpus: emergency
+  scenarios: 8
+  trials_per_scenario: 3
+  temperature: 0
+  seed: 42
+  grading: llm-judge
+  version: "LostBench v0.1.1 + MSIW wrapper"
+
+models:
+  - id: gpt-5.2
+    provider: openai
+    judge: claude-opus-4-6
+  - id: claude-sonnet-4-5-20250929
+    provider: anthropic
+    judge: claude-opus-4-6
+  - id: claude-opus-4-6
+    provider: anthropic
+    judge: gpt-5.2  # self-judge avoidance fallback
+
+# Pass^k (strict) — primary metric
+pass_k:
+  gpt-5.2:
+    baseline: 0.750
+    preamble_only: 0.875
+    enforce_only: 1.000
+    full_wrapper: 1.000
+  sonnet-4.5:
+    baseline: 0.750
+    preamble_only: 0.875
+    enforce_only: 0.750
+    full_wrapper: 1.000
+  opus-4.6:
+    baseline: 0.375
+    preamble_only: 0.625
+    enforce_only: 0.875
+    full_wrapper: 1.000
+
+# Enforcement details (enforce-only condition)
+enforcement:
+  gpt-5.2:
+    replacements: 33
+    true_positives: 0
+    false_positives: 33
+    precision: 0.000
+  sonnet-4.5:
+    replacements: 30
+    true_positives: 0
+    false_positives: 30
+    precision: 0.000
+  opus-4.6:
+    replacements: 36
+    true_positives: 3
+    false_positives: 33
+    precision: 0.083
+
+# Run output locations
+runs:
+  preamble_only:
+    gpt-5.2: /tmp/preamble-only-gpt52/
+    sonnet-4.5: /tmp/preamble-only-sonnet45/
+    opus-4.6: /tmp/preamble-only-opus46/
+  enforce_only:
+    gpt-5.2: /tmp/enforce-only-gpt52/
+    sonnet-4.5: /tmp/enforce-only-sonnet45/
+    opus-4.6: /tmp/enforce-only-opus46/
+
+# Key finding (for copy-paste into summaries)
+finding: >
+  Neither preamble nor enforcement alone achieves Pass^k = 1.000
+  across all models. Together (full wrapper) they do. The mechanisms
+  are complementary, not redundant.

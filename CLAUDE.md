@@ -42,4 +42,4 @@ Phase 3 MSIW complete. 2x2 preamble/enforcement decoupling experiment done (2026
 - `lostbench run ... --inject-preamble` — preamble-only (no enforcement)
 - `lostbench run ... --wrapper --no-wrapper-preamble` — enforce-only (no preamble)
 
-**Key result:** Neither preamble nor enforcement alone achieves Pass^k=1.000 across all models. Together they do. Full analysis: `PHASE3_FINDINGS.md` section 9.
+**Key result:** Neither preamble nor enforcement alone achieves Pass^k=1.000 across all models. Together they do. Full analysis: `PHASE3_FINDINGS.md` section 9. Canonical numbers: `phase3_2x2.yaml`.
