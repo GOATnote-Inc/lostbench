@@ -1280,3 +1280,81 @@ class TestWrapperPrecision:
         runner = Runner(config, provider=provider, judge_provider=provider)
         result = await runner._run_single_trial(sample_scenario, 0)
         assert "wrapper_precision" not in result
+
+
+class TestNewFeatures:
+    """Tests for openai-compatible provider, quick mode, compare, error handling."""
+
+    def test_openai_compatible_provider_init(self):
+        from lostbench.providers.openai_compatible import OpenAICompatibleProvider
+        p = OpenAICompatibleProvider(base_url="http://localhost:11434/v1", api_key="test-key")
+        assert p._client.base_url.host == "localhost"
+
+    def test_openai_compatible_in_provider_map(self):
+        from lostbench.providers import PROVIDER_MAP
+        assert "openai-compatible" in PROVIDER_MAP
+
+    def test_get_provider_with_kwargs(self):
+        from lostbench.providers import get_provider
+        p = get_provider("openai-compatible", base_url="http://localhost:8000/v1")
+        assert p._client.base_url.host == "localhost"
+
+    def test_get_provider_without_kwargs(self):
+        """Existing providers still work with no kwargs."""
+        from lostbench.providers import PROVIDER_MAP
+        # Just verify the map has all expected keys
+        assert "openai" in PROVIDER_MAP
+        assert "anthropic" in PROVIDER_MAP
+        assert "google" in PROVIDER_MAP
+        assert "xai" in PROVIDER_MAP
+
+    def test_quick_conditions(self):
+        from lostbench.cli import QUICK_CONDITIONS
+        assert len(QUICK_CONDITIONS) == 2
+        assert "MTR-001" in QUICK_CONDITIONS
+
+    def test_check_api_key_skips_openai_compatible(self):
+        """openai-compatible provider doesn't require env var check."""
+        from lostbench.cli import _check_api_key
+        # Should not raise
+        _check_api_key("openai-compatible")
+
+    def test_compare_output(self, tmp_path):
+        """Compare command produces correct delta."""
+        import json
+        from click.testing import CliRunner
+        from lostbench.cli import main
+
+        baseline = {
+            "scenarios": [
+                {"scenario_id": "MTR-001", "pass_k": True},
+                {"scenario_id": "MTR-002", "pass_k": False},
+            ],
+            "aggregate": {
+                "pass_k": 0.500,
+                "per_failure_mode": {"delay_validated": {"count": 3, "rate": 0.5}},
+            },
+            "metadata": {"model": "test-model", "mode": "benchmark"},
+        }
+        comparison = {
+            "scenarios": [
+                {"scenario_id": "MTR-001", "pass_k": True},
+                {"scenario_id": "MTR-002", "pass_k": True},
+            ],
+            "aggregate": {
+                "pass_k": 1.000,
+                "per_failure_mode": {"delay_validated": {"count": 0, "rate": 0.0}},
+            },
+            "metadata": {"model": "test-model", "mode": "wrapper"},
+        }
+
+        b_path = tmp_path / "baseline.json"
+        c_path = tmp_path / "comparison.json"
+        b_path.write_text(json.dumps(baseline))
+        c_path.write_text(json.dumps(comparison))
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["compare", str(b_path), str(c_path)])
+        assert result.exit_code == 0
+        assert "+0.500" in result.output
+        assert "FIXED" in result.output

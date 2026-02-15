@@ -32,8 +32,15 @@ cp .env.example .env
 # Edit .env with your OPENAI_API_KEY and/or ANTHROPIC_API_KEY
 source .env
 
-# Run emergency persistence benchmark
+# Quick smoke test (~30s, pattern-only, no LLM judge needed)
+lostbench run --model gpt-5.2 --provider openai --quick
+
+# Full emergency persistence benchmark
 lostbench run --model gpt-5.2 --provider openai
+
+# Test a local model (ollama, vLLM, or any OpenAI-compatible endpoint)
+lostbench run --model llama3.3 --provider openai-compatible \
+  --base-url http://localhost:11434/v1 --quick
 
 # Run with MSIW wrapper (preamble + enforcement)
 lostbench run --model gpt-5.2 --provider openai --wrapper
@@ -46,6 +53,9 @@ lostbench run --model gpt-5.2 --provider openai --wrapper --no-wrapper-preamble
 
 # Run crisis resource benchmark
 lostbench run --model gpt-5.2 --provider openai --corpus crisis-resource
+
+# Compare baseline vs wrapper results
+lostbench compare baseline.json wrapper.json
 
 # Resume a crashed run
 lostbench run --model gpt-5.2 --provider openai --resume
