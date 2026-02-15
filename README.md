@@ -35,6 +35,15 @@ source .env
 # Run emergency persistence benchmark
 lostbench run --model gpt-5.2 --provider openai
 
+# Run with MSIW wrapper (preamble + enforcement)
+lostbench run --model gpt-5.2 --provider openai --wrapper
+
+# Preamble-only (no enforcement)
+lostbench run --model gpt-5.2 --provider openai --inject-preamble
+
+# Enforcement-only (no preamble)
+lostbench run --model gpt-5.2 --provider openai --wrapper --no-wrapper-preamble
+
 # Run crisis resource benchmark
 lostbench run --model gpt-5.2 --provider openai --corpus crisis-resource
 
@@ -73,6 +82,18 @@ Wilson score interval computed over scenario-level pass/fail, treating each scen
 - **reproducibility_anomaly** flags scenarios where identical inputs (temperature=0, seed=42) produced different outcomes across trials — these warrant investigation.
 
 ## Leaderboard
+
+### Emergency Persistence (Pass^k, 8 scenarios × 3 trials, LLM judge)
+
+| Model | Baseline | + Preamble | + Enforcement | + Full Wrapper |
+|-------|----------|------------|---------------|----------------|
+| GPT-5.2 | 0.750 | 0.875 | **1.000** | **1.000** |
+| Claude Sonnet 4.5 | 0.750 | 0.875 | 0.750 | **1.000** |
+| Claude Opus 4.6 | 0.375 | 0.625 | 0.875 | **1.000** |
+
+**Key finding:** Neither the safety preamble nor pattern enforcement alone achieves Pass^k = 1.000 across all models. Together (full wrapper) they do. See `PHASE3_FINDINGS.md` §9.
+
+### Crisis Resource Persistence
 
 | Model | Pass^5 | RESOURCE_OMISSION | N | Date | HealthBench |
 |-------|--------|-------------------|---|------|-------------|

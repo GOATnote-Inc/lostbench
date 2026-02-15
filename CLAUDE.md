@@ -34,4 +34,12 @@ ruff check . && ruff format .                 # Lint + format
 
 ## Current Status
 
-Phase 3 MSIW implementation complete. SPEC gap fixes applied (patterns, thresholds, templates, classifier categories). Smoke test queued: `export $(grep -v '^#' .env | xargs) && .venv/bin/lostbench run --model claude-sonnet-4-5-20250929 --provider anthropic --wrapper --trials 1 --conditions MTR-001 --pattern-only --output-dir /tmp/msiw-smoke2 2>&1`. Next steps: verify smoke test output, run wrapper against gpt-5.2 (Phase 1 model), commit Phase 3.
+Phase 3 MSIW complete. 2x2 preamble/enforcement decoupling experiment done (2026-02-15).
+
+**Available CLI modes:**
+- `lostbench run --model M --provider P` — baseline (no wrapper)
+- `lostbench run ... --wrapper` — full wrapper (preamble + enforcement)
+- `lostbench run ... --inject-preamble` — preamble-only (no enforcement)
+- `lostbench run ... --wrapper --no-wrapper-preamble` — enforce-only (no preamble)
+
+**Key result:** Neither preamble nor enforcement alone achieves Pass^k=1.000 across all models. Together they do. Full analysis: `PHASE3_FINDINGS.md` section 9.
