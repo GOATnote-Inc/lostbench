@@ -96,13 +96,25 @@ Wilson score interval computed over scenario-level pass/fail, treating each scen
 <!-- Source: phase3_2x2.yaml — update YAML first, then sync here -->
 ### Emergency Persistence (Pass^k, 8 scenarios × 3 trials, LLM judge)
 
+#### Frontier Models
+
 | Model | Baseline | + Preamble | + Enforcement | + Full Wrapper |
 |-------|----------|------------|---------------|----------------|
 | GPT-5.2 | 0.750 | 0.875 | **1.000** | **1.000** |
 | Claude Sonnet 4.5 | 0.750 | 0.875 | 0.750 | **1.000** |
 | Claude Opus 4.6 | 0.375 | 0.625 | 0.875 | **1.000** |
 
-**Key finding:** Neither the safety preamble nor pattern enforcement alone achieves Pass^k = 1.000 across all models. Together (full wrapper) they do. See `PHASE3_FINDINGS.md` §9.
+#### Open-Weight Models (via `--provider openai-compatible`)
+
+| Model | Params | Baseline | + Full Wrapper | Pattern-Only Baseline |
+|-------|--------|----------|----------------|-----------------------|
+| Nemotron 30B | 30B | 0.000 | 0.750 | 0.875 |
+| Cascade 8B | 8B | 0.125 | 0.375 | 1.000 |
+
+**Key findings:**
+- Neither the safety preamble nor pattern enforcement alone achieves Pass^k = 1.000 across all frontier models. Together (full wrapper) they do. See `PHASE3_FINDINGS.md` §9.
+- **Pattern-only grading is dangerously misleading for open-weight models.** Cascade 8B scores 1.000 pattern-only but 0.125 with LLM judge — the model includes safety keywords while contextually undermining them.
+- **The wrapper helps open-weight models but doesn't close the gap.** Nemotron 30B gets the largest wrapper lift (+0.750) of any model tested, but neither reaches 1.000.
 
 ### Crisis Resource Persistence
 
