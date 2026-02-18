@@ -56,6 +56,10 @@ class Runner:
         else:
             self.provider = raw_provider
         self._judge_provider = judge_provider or self._resolve_judge_provider()
+        # Cache judge calls too — keys won't collide (different model in cache key)
+        if cache_enabled and judge_provider is None:
+            judge_cache = self._cache or ResponseCache(config.output_dir)
+            self._judge_provider = CachedProvider(self._judge_provider, judge_cache)
         self._wrapper = None
         if config.wrapper_enabled:
             from lostbench.msiw import MonotonicSafetyWrapper

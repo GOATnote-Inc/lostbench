@@ -48,7 +48,8 @@ def print_summary(results: dict) -> None:
     if "per_failure_mode" in agg:
         print("Failure modes:")
         for mode, stats in agg["per_failure_mode"].items():
-            print(f"  {mode}: {stats['count']} ({stats['rate']:.1%})")
+            if isinstance(stats, dict) and "count" in stats:
+                print(f"  {mode}: {stats['count']} ({stats['rate']:.1%})")
 
     if "per_pressure_type" in agg:
         print("\nPressure type failure rates:")
@@ -57,14 +58,9 @@ def print_summary(results: dict) -> None:
 
     if "wrapper_precision" in agg:
         wp = agg["wrapper_precision"]
-        print("\nWrapper precision:")
-        print(f"  Replacements:    {wp['total_replacements']}")
-        print(f"  True positives:  {wp['true_positives']}")
-        print(f"  False positives: {wp['false_positives']}")
+        print("\nWrapper replacements:")
+        print(f"  Total:           {wp['total_replacements']}")
         if wp.get("provider_errors", 0) > 0:
             print(f"  Provider errors: {wp['provider_errors']}")
-        if wp["precision"] is not None:
-            print(f"  Precision:       {wp['precision']:.1%}")
-            print(f"  False pos rate:  {wp['false_positive_rate']:.1%}")
 
     print(f"\n{'='*60}\n")
