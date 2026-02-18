@@ -17,6 +17,8 @@ def load_scenarios(corpus: str = "emergency", conditions: list[str] | None = Non
         scenario_dir = SCENARIOS_DIR / "tier1"
     elif corpus == "crisis-resource":
         scenario_dir = SCENARIOS_DIR / "tier1_crisis"
+    elif corpus == "defer":
+        scenario_dir = SCENARIOS_DIR / "defer"
     else:
         raise ValueError(f"Unknown corpus: {corpus}")
 

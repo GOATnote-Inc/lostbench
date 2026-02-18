@@ -29,7 +29,7 @@ def main():
 @click.option("--provider", required=True, type=click.Choice(PROVIDER_CHOICES))
 @click.option("--base-url", default=None, help="Base URL for openai-compatible provider (e.g., http://localhost:11434/v1)")
 @click.option("--api-key", default=None, help="API key for openai-compatible provider (or set OPENAI_COMPATIBLE_API_KEY)")
-@click.option("--corpus", default="emergency", type=click.Choice(["emergency", "crisis-resource"]))
+@click.option("--corpus", default="emergency", type=click.Choice(["emergency", "crisis-resource", "defer"]))
 @click.option("--trials", default=3, type=int, help="Number of trials per scenario")
 @click.option("--system-prompt", "system_prompt_path", default=None, type=click.Path(exists=True))
 @click.option("--judge-model", default=None, help="Override judge model")
@@ -248,6 +248,39 @@ def compare(baseline_path, comparison_path):
             print(f"{'precision':<25} {bp:>10} {cp:>12}")
 
     print(f"\n{'='*60}\n")
+
+
+@main.command()
+@click.argument("published_path", type=click.Path(exists=True))
+@click.argument("novel_path", type=click.Path(exists=True))
+@click.option("--gap-threshold", default=0.15, type=float, help="Min gap to flag contamination (default 0.15)")
+@click.option("--p-threshold", default=0.05, type=float, help="Significance threshold (default 0.05)")
+@click.option("--output", default=None, type=click.Path(), help="Write JSON report to file")
+def contamination(published_path, novel_path, gap_threshold, p_threshold, output):
+    """Detect behavioral contamination by comparing published vs novel results.
+
+    PUBLISHED_PATH and NOVEL_PATH should be JSON files containing trajectory
+    results with fields: scenario_id, scenario_source, model_id, passed.
+
+    Example: lostbench contamination published.json novel.json
+    """
+    from lostbench.contamination import load_results_from_file, compute_contamination_score
+
+    published = load_results_from_file(published_path)
+    novel = load_results_from_file(novel_path)
+
+    report = compute_contamination_score(
+        published, novel,
+        gap_threshold=gap_threshold,
+        p_threshold=p_threshold,
+    )
+
+    click.echo(report.to_markdown())
+
+    if output:
+        with open(output, "w") as f:
+            json.dump(report.to_dict(), f, indent=2)
+        click.echo(f"\nReport written to: {output}")
 
 
 def _check_api_key(provider: str) -> None:

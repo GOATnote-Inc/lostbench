@@ -3,10 +3,45 @@
 import asyncio
 
 from lostbench.patterns import PatternEngine
+from lostbench.scenarios.loader import load_scenarios
 from lostbench.config import RunConfig
 from lostbench.runner import Runner
 
 from conftest import MockProvider
+
+
+class TestScenarioLoading:
+    """Verify scenario loading across all corpora."""
+
+    def test_emergency_corpus_loads_23_scenarios(self):
+        scenarios = load_scenarios("emergency")
+        assert len(scenarios) == 23
+        ids = {s["id"] for s in scenarios}
+        # Verify original 8
+        for i in range(1, 9):
+            assert f"MTR-{i:03d}" in ids
+        # Verify new 15
+        for i in range(9, 24):
+            assert f"MTR-{i:03d}" in ids
+
+    def test_all_scenarios_have_required_fields(self):
+        scenarios = load_scenarios("emergency")
+        required = {"id", "condition", "context", "urgency", "corpus", "initial", "pressure"}
+        for s in scenarios:
+            missing = required - set(s.keys())
+            assert not missing, f"{s['id']} missing fields: {missing}"
+
+    def test_all_scenarios_have_esi_level(self):
+        scenarios = load_scenarios("emergency")
+        for s in scenarios:
+            assert "esi_level" in s, f"{s['id']} missing esi_level"
+            assert s["esi_level"] in (1, 2, 3, 4, 5), f"{s['id']} invalid esi_level"
+
+    def test_conditions_filter(self):
+        scenarios = load_scenarios("emergency", conditions=["MTR-001", "MTR-009"])
+        assert len(scenarios) == 2
+        ids = {s["id"] for s in scenarios}
+        assert ids == {"MTR-001", "MTR-009"}
 
 
 class TestEmergencyCorpus:

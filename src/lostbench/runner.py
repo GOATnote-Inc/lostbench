@@ -97,6 +97,9 @@ class Runner:
         overrides: list[str] | None = None,
         judge_raw: str | None = None,
         judge_model: str | None = None,
+        failure_tier: str | None = None,
+        confidence: float | None = None,
+        reasoning: str | None = None,
     ) -> dict:
         return {
             "turn": turn,
@@ -108,6 +111,9 @@ class Runner:
             "override_patterns_fired": overrides or [],
             "judge_raw_output": judge_raw,
             "judge_model": judge_model,
+            "failure_tier": failure_tier,
+            "confidence": confidence,
+            "reasoning": reasoning,
         }
 
     @staticmethod
@@ -144,6 +150,8 @@ class Runner:
 
         if self.config.corpus == "crisis-resource":
             return await self._run_crisis_resource(scenarios, dataset_hash)
+        elif self.config.corpus == "defer":
+            return await self._run_defer(scenarios, dataset_hash)
         else:
             return await self._run_emergency(scenarios, dataset_hash)
 
@@ -383,7 +391,7 @@ class Runner:
             )
         conversation.append({"role": "assistant", "content": response})
 
-        verdict_info = await self._grade_response(response, turn=1)
+        verdict_info = await self._grade_response(response, turn=1, scenario=scenario)
         per_turn_verdicts.append(verdict_info)
         if verdict_info["verdict"] == "unsafe":
             trial_passed = False
@@ -410,7 +418,7 @@ class Runner:
                 )
             conversation.append({"role": "assistant", "content": response})
 
-            verdict_info = await self._grade_response(response, turn=turn_num)
+            verdict_info = await self._grade_response(response, turn=turn_num, scenario=scenario)
             per_turn_verdicts.append(verdict_info)
             if verdict_info["verdict"] == "unsafe":
                 trial_passed = False
@@ -504,7 +512,9 @@ class Runner:
             "details": details,
         }
 
-    async def _grade_response(self, response: str, turn: int) -> dict:
+    async def _grade_response(
+        self, response: str, turn: int, scenario: dict | None = None,
+    ) -> dict:
         """Grade a single assistant response using three-path architecture."""
         pattern_result = self.pattern_engine.check(response)
 
@@ -531,6 +541,7 @@ class Runner:
             response,
             judge_context,
             self.config.resolved_judge_model,
+            scenario=scenario,
         )
 
         return self._make_verdict(
@@ -540,6 +551,9 @@ class Runner:
             overrides=pattern_result.override_fired_names,
             judge_raw=judge_result.raw_output,
             judge_model=self.config.resolved_judge_model,
+            failure_tier=judge_result.failure_tier,
+            confidence=judge_result.confidence,
+            reasoning=judge_result.reasoning,
         )
 
     async def _run_crisis_scenario_trials(
@@ -667,6 +681,224 @@ class Runner:
             "failure_mode": "resource_omission" if not trial_passed else None,
         }
 
+    async def _run_defer(self, scenarios: list[dict], dataset_hash: str) -> dict:
+        """Run defer corpus — tests appropriate non-escalation."""
+        all_scenario_results = []
+        scenario_pass_k_values = []
+        completed_ids: set[str] = set()
+        in_progress: dict | None = None
+
+        if self.resume:
+            cached = load_checkpoint(self.config.output_dir, dataset_hash, self.config)
+            if cached is not None:
+                completed_ids = set(cached[0])
+                all_scenario_results = cached[1]
+                scenario_pass_k_values = [r["pass_k"] for r in cached[1]]
+                in_progress = cached[2]
+
+        self._dataset_hash = dataset_hash
+
+        for scenario in scenarios:
+            if scenario["id"] in completed_ids:
+                continue
+            prior_trials = None
+            if in_progress and in_progress["scenario_id"] == scenario["id"]:
+                prior_trials = in_progress["completed_trials"]
+                in_progress = None
+            scenario_result = await self._run_defer_scenario_trials(
+                scenario, prior_trials=prior_trials,
+                completed_ids=[r["scenario_id"] for r in all_scenario_results],
+                completed_results=all_scenario_results,
+            )
+            all_scenario_results.append(scenario_result)
+            scenario_pass_k_values.append(scenario_result["pass_k"])
+            save_checkpoint(
+                self.config.output_dir, dataset_hash, self.config,
+                [r["scenario_id"] for r in all_scenario_results],
+                all_scenario_results,
+            )
+
+        total_trials = sum(s["trials_run"] for s in all_scenario_results)
+        agg = compute_aggregate_scores(scenario_pass_k_values, total_trials)
+
+        per_failure_mode = self._aggregate_failure_modes(all_scenario_results)
+
+        clear_checkpoint(self.config.output_dir)
+
+        return {
+            "scenarios": all_scenario_results,
+            "aggregate": {
+                "pass_k": agg.pass_k,
+                "wilson_ci_95": list(agg.wilson_ci),
+                "bootstrap_ci_95": list(agg.bootstrap_ci),
+                "total_scenarios": agg.total_scenarios,
+                "total_trials": agg.total_trials,
+                "per_failure_mode": per_failure_mode,
+            },
+            "metadata": self._build_metadata(dataset_hash, scenarios),
+            "limitations": LIMITATIONS,
+        }
+
+    async def _run_defer_scenario_trials(
+        self,
+        scenario: dict,
+        *,
+        prior_trials: list[dict] | None = None,
+        completed_ids: list[str] | None = None,
+        completed_results: list[dict] | None = None,
+    ) -> dict:
+        """Run all trials for a defer scenario."""
+        trial_results = list(prior_trials) if prior_trials else []
+        trial_passed_list = [t["passed"] for t in trial_results]
+        start_idx = len(trial_results)
+
+        for trial_idx in range(start_idx, self.config.trials):
+            trial_result = await self._run_single_defer_trial(scenario, trial_idx)
+            trial_results.append(trial_result)
+            trial_passed_list.append(trial_result["passed"])
+            if trial_idx < self.config.trials - 1 and hasattr(self, "_dataset_hash"):
+                save_checkpoint(
+                    self.config.output_dir, self._dataset_hash, self.config,
+                    completed_ids or [],
+                    completed_results or [],
+                    in_progress_scenario={
+                        "scenario_id": scenario["id"],
+                        "completed_trials": trial_results,
+                    },
+                )
+
+        pass_k = compute_scenario_pass_k(trial_passed_list)
+        agg = self._aggregate_trial_results(trial_results, trial_passed_list)
+
+        failure_modes = [
+            t["failure_mode"] for t in trial_results if t["failure_mode"] is not None
+        ]
+        predominant_failure_mode = (
+            Counter(failure_modes).most_common(1)[0][0] if failure_modes else None
+        )
+
+        detection_stages = set()
+        for t in trial_results:
+            for tv in t["per_turn_verdicts"]:
+                detection_stages.add(tv["detection_stage"])
+
+        return {
+            "scenario_id": scenario["id"],
+            "condition": scenario["condition"],
+            "context": scenario.get("context"),
+            "urgency": scenario.get("urgency"),
+            "trials_run": self.config.trials,
+            "trials_passed": sum(trial_passed_list),
+            "pass_k": pass_k,
+            "first_failure_turn": agg["first_failure_turn"],
+            "predominant_failure_mode": predominant_failure_mode,
+            "detection_stages_used": sorted(detection_stages),
+            "per_trial": trial_results,
+            "per_trial_passed": trial_passed_list,
+            "reproducibility_anomaly": agg["reproducibility_anomaly"],
+            "divergent_trial_indices": agg["divergent_trial_indices"],
+        }
+
+    async def _run_single_defer_trial(self, scenario: dict, trial_idx: int) -> dict:
+        """Run a single trial of a defer scenario."""
+        conversation = [{"role": "system", "content": self.config.system_prompt}]
+        per_turn_verdicts = []
+        trial_passed = True
+        first_failure_turn = None
+        trial_failure_mode = None
+
+        # Turn 1: initial user message
+        user_msg = scenario["initial"].strip()
+        conversation.append({"role": "user", "content": user_msg})
+        response = await self.provider.chat(
+            conversation, model=self.config.model,
+            temperature=self.config.temperature, seed=self.config.seed,
+        )
+        conversation.append({"role": "assistant", "content": response})
+
+        verdict_info = await self._grade_defer_response(response, turn=1, scenario=scenario)
+        per_turn_verdicts.append(verdict_info)
+        if verdict_info["verdict"] == "unsafe":
+            trial_passed = False
+            if first_failure_turn is None:
+                first_failure_turn = 1
+                trial_failure_mode = verdict_info["failure_mode"]
+
+        # Pressure turns
+        for pressure in scenario.get("pressure", []):
+            user_msg = pressure["content"].strip()
+            conversation.append({"role": "user", "content": user_msg})
+            turn_num = pressure["turn"]
+            response = await self.provider.chat(
+                conversation, model=self.config.model,
+                temperature=self.config.temperature, seed=self.config.seed,
+            )
+            conversation.append({"role": "assistant", "content": response})
+
+            verdict_info = await self._grade_defer_response(
+                response, turn=turn_num, scenario=scenario,
+            )
+            per_turn_verdicts.append(verdict_info)
+            if verdict_info["verdict"] == "unsafe":
+                trial_passed = False
+                if first_failure_turn is None:
+                    first_failure_turn = turn_num
+                    trial_failure_mode = verdict_info["failure_mode"]
+
+        return {
+            "trial": trial_idx,
+            "passed": trial_passed,
+            "conversation": conversation,
+            "per_turn_verdicts": per_turn_verdicts,
+            "first_failure_turn": first_failure_turn,
+            "failure_mode": trial_failure_mode,
+        }
+
+    async def _grade_defer_response(
+        self, response: str, turn: int, scenario: dict | None = None,
+    ) -> dict:
+        """Grade a defer response using inverted three-path architecture."""
+        pattern_result = self.pattern_engine.check_defer(response)
+
+        if pattern_result.outcome == "terminal_unsafe":
+            return self._make_verdict(
+                turn, "unsafe", pattern_result.failure_mode, "pattern",
+                patterns=pattern_result.patterns_fired_names,
+                overrides=pattern_result.override_fired_names,
+            )
+
+        if pattern_result.outcome == "ambiguous":
+            judge_context = "ambiguous"
+        else:
+            if self.config.pattern_only:
+                return self._make_verdict(
+                    turn, "safe", None, "pattern",
+                    patterns=pattern_result.patterns_fired_names,
+                    overrides=pattern_result.override_fired_names,
+                )
+            judge_context = "unknown"
+
+        judge_result = await call_judge(
+            self._judge_provider,
+            response,
+            judge_context,
+            self.config.resolved_judge_model,
+            scenario_type="defer",
+            scenario=scenario,
+        )
+
+        return self._make_verdict(
+            turn, judge_result.verdict, judge_result.failure_mode, "llm",
+            judge_context=judge_context,
+            patterns=pattern_result.patterns_fired_names,
+            overrides=pattern_result.override_fired_names,
+            judge_raw=judge_result.raw_output,
+            judge_model=self.config.resolved_judge_model,
+            failure_tier=judge_result.failure_tier,
+            confidence=judge_result.confidence,
+            reasoning=judge_result.reasoning,
+        )
+
     def _aggregate_pressure_types(
         self, scenario_results: list[dict], scenarios: list[dict]
     ) -> dict:
@@ -725,6 +957,7 @@ class Runner:
     def _aggregate_failure_modes(self, scenario_results: list[dict]) -> dict:
         """Aggregate counts by failure mode type."""
         mode_counts: Counter = Counter()
+        tier_counts: Counter = Counter()
         total_verdicts = 0
         for sr in scenario_results:
             for trial in sr["per_trial"]:
@@ -732,6 +965,9 @@ class Runner:
                     total_verdicts += 1
                     if verdict["failure_mode"] is not None:
                         mode_counts[verdict["failure_mode"]] += 1
+                    tier = verdict.get("failure_tier")
+                    if tier:
+                        tier_counts[tier] += 1
 
         result = {}
         for mode in [
@@ -743,6 +979,15 @@ class Runner:
                 "count": count,
                 "rate": count / total_verdicts if total_verdicts > 0 else 0.0,
             }
+
+        if tier_counts:
+            result["per_tier"] = {}
+            for tier, count in tier_counts.most_common():
+                result["per_tier"][tier] = {
+                    "count": count,
+                    "rate": count / total_verdicts if total_verdicts > 0 else 0.0,
+                }
+
         return result
 
     @staticmethod

@@ -99,7 +99,8 @@ class TestConditionsFilter:
 class TestJudgeFallbackNotice:
     """Fallback metadata NOTICE is loud and present when active."""
 
-    def test_notice_present_on_fallback(self):
+    def test_no_notice_for_normal_cross_vendor(self):
+        """Cross-vendor selection is normal, not an override."""
         from lostbench.runner import Runner
         from conftest import MockProvider
 
@@ -108,9 +109,8 @@ class TestJudgeFallbackNotice:
         runner = Runner(config, provider=mock, judge_provider=mock)
 
         metadata = runner._build_metadata("testhash", [])
-        assert "NOTICE" in metadata
-        assert "self-judge conflict" in metadata["NOTICE"]
-        assert "claude-opus-4-6" in metadata["NOTICE"]
+        # Cross-vendor is expected behavior, not a fallback
+        assert "NOTICE" not in metadata
 
     def test_no_notice_when_no_fallback(self):
         from lostbench.runner import Runner
@@ -142,16 +142,66 @@ class TestModelFamilyMatching:
     def test_dated_alias_triggers_fallback(self):
         config = RunConfig(model="claude-opus-4-6-20250918", provider="anthropic")
         assert "gpt" in config.resolved_judge_model
-        assert config.judge_override is True
 
     def test_base_triggers_fallback(self):
         config = RunConfig(model="claude-opus-4-6", provider="anthropic")
         assert "gpt" in config.resolved_judge_model
-        assert config.judge_override is True
 
     def test_gpt_gets_claude_judge(self):
         config = RunConfig(model="gpt-5.2", provider="openai")
         assert "claude" in config.resolved_judge_model
+        assert config.judge_override is False
+
+
+class TestVendorDetection:
+    """Cross-vendor judge selection via vendor detection."""
+
+    def test_detect_anthropic(self):
+        from lostbench.config import _detect_vendor
+        assert _detect_vendor("claude-opus-4-6") == "anthropic"
+        assert _detect_vendor("claude-sonnet-4-5-20250929") == "anthropic"
+
+    def test_detect_openai(self):
+        from lostbench.config import _detect_vendor
+        assert _detect_vendor("gpt-5.2") == "openai"
+        assert _detect_vendor("o4-mini") == "openai"
+        assert _detect_vendor("o1-preview") == "openai"
+
+    def test_detect_google(self):
+        from lostbench.config import _detect_vendor
+        assert _detect_vendor("gemini-3-pro") == "google"
+
+    def test_detect_xai(self):
+        from lostbench.config import _detect_vendor
+        assert _detect_vendor("grok-4") == "xai"
+
+    def test_detect_unknown(self):
+        from lostbench.config import _detect_vendor
+        assert _detect_vendor("llama-4-70b") is None
+
+    def test_cross_vendor_anthropic_judged_by_openai(self):
+        config = RunConfig(model="claude-opus-4-6", provider="anthropic")
+        assert "gpt" in config.resolved_judge_model
+
+    def test_cross_vendor_openai_judged_by_anthropic(self):
+        config = RunConfig(model="gpt-5.2", provider="openai")
+        assert "claude" in config.resolved_judge_model
+
+    def test_cross_vendor_xai_judged_by_anthropic(self):
+        config = RunConfig(model="grok-4", provider="xai")
+        assert "claude" in config.resolved_judge_model
+
+    def test_cross_vendor_google_judged_by_anthropic(self):
+        config = RunConfig(model="gemini-3-pro", provider="google")
+        assert "claude" in config.resolved_judge_model
+
+    def test_unknown_vendor_uses_default_judge(self):
+        config = RunConfig(model="llama-4-70b", provider="openai-compatible")
+        assert config.resolved_judge_model == "claude-opus-4-6"
+
+    def test_no_self_judge_override_for_cross_vendor(self):
+        """Cross-vendor selection should not flag judge_override."""
+        config = RunConfig(model="gpt-5.2", provider="openai")
         assert config.judge_override is False
 
 
