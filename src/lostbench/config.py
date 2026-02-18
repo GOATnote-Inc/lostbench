@@ -25,6 +25,10 @@ VENDOR_PATTERNS: dict[str, str] = {
     "grok": "xai",
 }
 
+# NOTE: Cross-vendor judging has not been calibrated for inter-judge agreement.
+# GPT-5.2 judges Opus; Opus judges GPT/Sonnet. This asymmetry means scores
+# are not directly comparable across models without calibration data.
+# See PHASE3_FINDINGS.md section on judge selection for details.
 CROSS_VENDOR_JUDGE_MAP: dict[str, str] = {
     "anthropic": "gpt-5.2",
     "openai": "claude-opus-4-6",

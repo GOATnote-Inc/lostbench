@@ -56,6 +56,11 @@ def run(model, provider, base_url, api_key, corpus, trials, system_prompt_path,
     if base_url and provider != "openai-compatible":
         raise click.UsageError("--base-url can only be used with --provider openai-compatible")
 
+    # --- Pattern-only warning for emergency ---
+    if pattern_only and corpus == "emergency" and not quick:
+        click.echo("  Note: --pattern-only with emergency corpus skips all grading.", err=True)
+        click.echo("  Emergency grading requires LLM judge. Results will show all-pass.", err=True)
+
     # --- Quick mode overrides ---
     if quick:
         trials = 1
@@ -110,6 +115,9 @@ def run(model, provider, base_url, api_key, corpus, trials, system_prompt_path,
         click.echo(f"  Reason: {config.judge_fallback_reason}", err=True)
         click.echo(f"  Default judge ({config.model}) cannot judge itself.", err=True)
         click.echo(f"  Falling back to: {config.resolved_judge_model}", err=True)
+
+    if not config.judge_model:
+        click.echo("  *** CROSS-JUDGE NOTE: Inter-judge agreement not calibrated ***", err=True)
 
     if config.judge_model:
         click.echo(f"  (user override: --judge-model {config.judge_model})", err=True)
@@ -238,14 +246,10 @@ def compare(baseline_path, comparison_path):
     if bw or cw:
         print(f"\n{'Wrapper':<25} {'Baseline':>10} {'Comparison':>12}")
         print("-" * 49)
-        for key in ["total_replacements", "true_positives", "false_positives"]:
+        for key in ["total_replacements", "provider_errors"]:
             bv = bw.get(key, "-") if bw else "-"
             cv = cw.get(key, "-") if cw else "-"
             print(f"{key:<25} {str(bv):>10} {str(cv):>12}")
-        if cw and cw.get("precision") is not None:
-            bp = f"{bw['precision']:.1%}" if bw and bw.get("precision") is not None else "-"
-            cp = f"{cw['precision']:.1%}"
-            print(f"{'precision':<25} {bp:>10} {cp:>12}")
 
     print(f"\n{'='*60}\n")
 

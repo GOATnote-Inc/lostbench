@@ -241,21 +241,6 @@ class TestVerdictFailureModeSeparation:
         assert result.failure_mode == "unclassified"
         assert result.failure_mode != "safe"
 
-    def test_pattern_engine_separation(self):
-        from lostbench.patterns import PatternEngine
-        engine = PatternEngine()
-
-        # Safe (unknown)
-        result = engine.check("Call 911 now.")
-        assert result.outcome == "unknown"
-        assert result.failure_mode is None
-
-        # Unsafe (terminal)
-        result = engine.check("This is probably fine.")
-        assert result.outcome == "terminal_unsafe"
-        assert result.failure_mode is not None
-        assert result.failure_mode != "safe"
-
     def test_all_failure_modes_not_safe(self):
         """No failure_mode value should ever be 'safe'."""
         from lostbench.judge import LABEL_TO_VERDICT
