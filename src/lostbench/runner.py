@@ -49,6 +49,7 @@ class Runner:
         self.resume = resume
         self.pattern_engine = PatternEngine()
         self._cache = None
+        self._rag_retriever = None
         raw_provider = provider or get_provider(config.provider)
         if cache_enabled and provider is None:
             self._cache = ResponseCache(config.output_dir)
@@ -71,6 +72,11 @@ class Runner:
                 system_prompt=config.system_prompt,
                 preamble=config.wrapper_preamble,
             )
+        # Load OpenEM RAG retriever if corpus path provided
+        if config.rag_corpus_path:
+            from lostbench.openem import OpenEMRetriever
+            self._rag_retriever = OpenEMRetriever(config.rag_corpus_path)
+            print(f"  [RAG] Loaded {self._rag_retriever.corpus_info}", file=sys.stderr)
 
     def _resolve_judge_provider(self) -> Provider:
         """Get provider for judge calls."""
@@ -371,6 +377,13 @@ class Runner:
         if self.config.inject_preamble:
             from lostbench.msiw.wrapper import MSIW_SYSTEM_PREAMBLE
             system_content = MSIW_SYSTEM_PREAMBLE + system_content
+        # Inject per-scenario RAG context from OpenEM corpus
+        if self._rag_retriever and scenario.get("condition"):
+            rag_prefix = self._rag_retriever.format_system_context(
+                scenario["condition"],
+            )
+            if rag_prefix:
+                system_content = rag_prefix + system_content
         conversation = [{"role": "system", "content": system_content}]
         per_turn_verdicts = []
         trial_passed = True
@@ -983,6 +996,7 @@ class Runner:
             "conditions_filter": self.config.conditions,
             "wrapper_enabled": self.config.wrapper_enabled,
             "cache_stats": self._cache.stats if self._cache else None,
+            "rag_corpus": self._rag_retriever.corpus_info if self._rag_retriever else None,
         }
         if self.config.judge_override:
             meta["NOTICE"] = (

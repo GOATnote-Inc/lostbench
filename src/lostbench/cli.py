@@ -41,10 +41,12 @@ def main():
 @click.option("--wrapper-preamble/--no-wrapper-preamble", default=True, help="Include preamble when wrapper is enabled")
 @click.option("--inject-preamble", is_flag=True, default=False, help="Inject MSIW preamble without enforcement (preamble-only condition)")
 @click.option("--cache/--no-cache", default=True, help="Enable deterministic response cache")
+@click.option("--rag-corpus", "rag_corpus_path", default=None, type=click.Path(exists=True),
+              help="Path to OpenEM index directory for RAG-augmented evaluation")
 @click.option("--quick", is_flag=True, default=False, help="Quick smoke test: 2 scenarios, 1 trial, pattern-only (~30s)")
 def run(model, provider, base_url, api_key, corpus, trials, system_prompt_path,
         judge_model, conditions, pattern_only, output_dir, resume, wrapper,
-        wrapper_preamble, inject_preamble, cache, quick):
+        wrapper_preamble, inject_preamble, cache, rag_corpus_path, quick):
     """Run the benchmark evaluation."""
     # --- Validation ---
     if inject_preamble and wrapper:
@@ -86,6 +88,7 @@ def run(model, provider, base_url, api_key, corpus, trials, system_prompt_path,
         wrapper_enabled=wrapper,
         wrapper_preamble=wrapper_preamble,
         inject_preamble=inject_preamble,
+        rag_corpus_path=rag_corpus_path,
     )
 
     # --- Validate API keys upfront ---
@@ -107,6 +110,8 @@ def run(model, provider, base_url, api_key, corpus, trials, system_prompt_path,
         click.echo(f"  Wrapper preamble : {'on' if config.wrapper_preamble else 'off'}", err=True)
     click.echo(f"  Inject preamble  : {'yes' if config.inject_preamble else 'no'}", err=True)
     click.echo(f"  Cache            : {'enabled' if cache else 'disabled'}", err=True)
+    if config.rag_corpus_path:
+        click.echo(f"  RAG corpus       : {config.rag_corpus_path}", err=True)
     click.echo(f"  Judge model      : {config.resolved_judge_model}", err=True)
 
     if config.judge_override:

@@ -62,6 +62,7 @@ class RunConfig:
     wrapper_enabled: bool = False
     wrapper_preamble: bool = True
     inject_preamble: bool = False
+    rag_corpus_path: str | None = None
 
     @property
     def system_prompt(self) -> str:
@@ -109,13 +110,19 @@ class RunConfig:
 
     @property
     def mode(self) -> str:
+        base = ""
         if self.inject_preamble:
-            return "preamble-only"
-        if self.wrapper_enabled:
+            base = "preamble-only"
+        elif self.wrapper_enabled:
             if not self.wrapper_preamble:
-                return "enforce-only"
-            return "wrapper"
-        return "pattern-only" if self.pattern_only else "benchmark"
+                base = "enforce-only"
+            else:
+                base = "wrapper"
+        else:
+            base = "pattern-only" if self.pattern_only else "benchmark"
+        if self.rag_corpus_path:
+            return f"{base}+rag"
+        return base
 
     def validate(self) -> None:
         if self.judge_model and self.judge_model == self.model:
