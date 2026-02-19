@@ -8,7 +8,7 @@ from lostbench.retry import retry_with_backoff
 
 class AnthropicProvider(Provider):
     def __init__(self) -> None:
-        self._client = anthropic.AsyncAnthropic()
+        self._client = anthropic.AsyncAnthropic(timeout=60.0)
 
     async def chat(self, messages: list[dict], model: str | None = None,
                    temperature: float = 0.0, seed: int = 42) -> str:
@@ -35,4 +35,7 @@ class AnthropicProvider(Provider):
         response = await retry_with_backoff(_call)
         if not response.content or not hasattr(response.content[0], "text"):
             raise ValueError(f"Empty response from Anthropic API (model={model})")
-        return response.content[0].text
+        text = (response.content[0].text or "").strip()
+        if not text:
+            raise ValueError(f"Empty response from Anthropic API (model={model})")
+        return text

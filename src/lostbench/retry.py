@@ -16,6 +16,7 @@ RETRYABLE_EXCEPTIONS = (
     anthropic.InternalServerError,
     anthropic.APIConnectionError,
     anthropic.APITimeoutError,
+    asyncio.TimeoutError,
 )
 
 MAX_RETRIES = 3

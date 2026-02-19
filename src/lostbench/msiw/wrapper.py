@@ -1,6 +1,11 @@
 """MonotonicSafetyWrapper — runtime enforcement layer for MSIW."""
 
+import asyncio
 from dataclasses import dataclass, field
+import sys
+
+import anthropic
+import openai
 
 from lostbench.msiw.state import EscalationState
 from lostbench.msiw.audit import AuditEvent
@@ -12,6 +17,20 @@ from lostbench.msiw.templates import (
     render_safe_template, STATIC_FALLBACK, TEMPLATE_HASH,
 )
 from lostbench.providers.base import Provider
+
+# Exceptions that indicate a provider/network failure (not a code bug).
+# Anything NOT in this tuple should propagate so bugs are visible.
+_PROVIDER_ERRORS = (
+    openai.APIError,
+    openai.APIConnectionError,
+    openai.APITimeoutError,
+    anthropic.APIError,
+    anthropic.APIConnectionError,
+    anthropic.APITimeoutError,
+    asyncio.TimeoutError,
+    ConnectionError,
+    OSError,
+)
 
 
 # System prompt preamble injected when wrapper is active (SPEC section 5.2)
@@ -114,7 +133,7 @@ class MonotonicSafetyWrapper:
         # Step 3: Build augmented conversation with MSIW preamble (if enabled)
         augmented = self._augment_conversation(conversation) if self._preamble else [dict(m) for m in conversation]
 
-        # Step 4: Call provider (fail-closed)
+        # Step 4: Call provider (fail-closed on provider errors only)
         try:
             response = await self._provider.chat(
                 augmented,
@@ -122,8 +141,13 @@ class MonotonicSafetyWrapper:
                 temperature=self._temperature,
                 seed=self._seed,
             )
-        except Exception:
-            # Fail-closed: provider error -> static fallback
+        except _PROVIDER_ERRORS as exc:
+            # Fail-closed: provider/network error -> static fallback
+            print(
+                f"  [wrapper] Provider error at turn {turn_index}: "
+                f"{type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
             response = STATIC_FALLBACK
             audit = AuditEvent(
                 turn_index=turn_index,
@@ -191,7 +215,12 @@ class MonotonicSafetyWrapper:
                     self._state.escalation_reason, barrier_type,
                 )
                 template_id = f"{self._state.escalation_reason}:{barrier_type or 'default'}"
-            except Exception:
+            except (KeyError, ValueError) as exc:
+                print(
+                    f"  [wrapper] Template render failed at turn {turn_index}: "
+                    f"{type(exc).__name__}: {exc}",
+                    file=sys.stderr,
+                )
                 response = STATIC_FALLBACK
                 template_id = "STATIC_FALLBACK"
 

@@ -16,6 +16,7 @@ class OpenAICompatibleProvider(Provider):
         self._client = openai.AsyncOpenAI(
             api_key=resolved_key,
             base_url=base_url,
+            timeout=60.0,
         )
 
     async def chat(self, messages: list[dict], model: str | None = None,
@@ -28,6 +29,7 @@ class OpenAICompatibleProvider(Provider):
                 seed=seed,
             )
         response = await retry_with_backoff(_call)
-        if not response.choices or response.choices[0].message.content is None:
+        text = (response.choices[0].message.content or "").strip() if response.choices else ""
+        if not text:
             raise ValueError(f"Empty response from API at {self._client.base_url} (model={model})")
-        return response.choices[0].message.content
+        return text

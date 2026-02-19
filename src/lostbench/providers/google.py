@@ -46,6 +46,7 @@ class GoogleProvider(Provider):
 
         config = types.GenerateContentConfig(
             temperature=temperature,
+            httpOptions=types.HttpOptions(timeout=60_000),
         )
         if system_instruction:
             config.system_instruction = system_instruction
