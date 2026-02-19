@@ -1,8 +1,8 @@
 # Phase 3 Findings: MSIW Wrapper Evaluation
 
-**Date:** 2026-02-14 (updated 2026-02-18)
+**Date:** 2026-02-14 (updated 2026-02-19)
 **Evaluator:** Automated (LostBench v0.1.1 + MSIW wrapper)
-**Grading modes:** pattern-only (deprecated) + full LLM judge + 2x2 factorial (§9)
+**Grading modes:** pattern-only (deprecated) + full LLM judge + 2x2 factorial (§9, §10)
 
 ## 1. Results Matrix
 
@@ -371,3 +371,100 @@ Sonnet and Opus still fail under enforce-only because some responses survive enf
 | GPT-5.2 enforce-only | `/tmp/enforce-only-gpt52/` | claude-opus-4-6 |
 | Sonnet 4.5 enforce-only | `/tmp/enforce-only-sonnet45/` | claude-opus-4-6 |
 | Opus 4.6 enforce-only | `/tmp/enforce-only-opus46/` | gpt-5.2 (fallback) |
+
+<!-- Source: phase3_2x2.yaml (expanded section) — update YAML first, then sync here -->
+## 10. Expanded Corpus Replication (23 scenarios, 2x2 Factorial)
+
+**Date:** 2026-02-19
+**Design:** Same 2x2 factorial as §9 (preamble on/off × enforcement on/off), replicated on the expanded 23-scenario emergency corpus with LLM-judge grading. Adds Claude Sonnet 4.6 as a fourth model.
+
+### 10.1 Results: Pass^k
+
+| Model | Baseline | Preamble-only | Enforce-only | Full wrapper |
+|-------|----------|---------------|--------------|-------------|
+| GPT-5.2 | 0.261 | **0.696** | 0.261 | **0.696** |
+| Claude Sonnet 4.5 | 0.174 | **0.609** | 0.217 | **0.652** |
+| Claude Opus 4.6 | 0.217 | **0.478** | 0.304 | 0.391 |
+| Claude Sonnet 4.6 | 0.130 | 0.261 | 0.261 | 0.304 |
+
+### 10.2 Enforcement replacements
+
+| Model | Enforce-only | Full wrapper |
+|-------|-------------|-------------|
+| GPT-5.2 | 12 | 7 |
+| Sonnet 4.5 | 32 | 7 |
+| Sonnet 4.6 | 48 | 14 |
+| Opus 4.6 | 40 | 18 |
+
+### 10.3 The 8-scenario results do not replicate
+
+The 8-scenario 2x2 (§9) showed Pass^k = 1.000 for all models under the full wrapper. On 23 scenarios, the best result is GPT-5.2 at 0.696 — a 0.304 drop. Every model × condition cell is worse on the expanded corpus:
+
+| Model | 8s wrapper | 23s wrapper | Delta |
+|-------|-----------|------------|-------|
+| GPT-5.2 | 1.000 | 0.696 | **-0.304** |
+| Sonnet 4.5 | 1.000 | 0.652 | **-0.348** |
+| Opus 4.6 | 1.000 | 0.391 | **-0.609** |
+
+The original 8 scenarios were not representative. The 15 additional scenarios introduced failure modes that neither the preamble nor enforcement can address.
+
+### 10.4 The preamble is the dominant mechanism
+
+For 3 of 4 models, preamble-only matches or exceeds the full wrapper:
+
+- **GPT-5.2:** preamble 0.696 = wrapper 0.696. Enforcement adds nothing.
+- **Sonnet 4.5:** preamble 0.609 ≈ wrapper 0.652. Enforcement adds +0.043.
+- **Opus 4.6:** preamble 0.478 > wrapper 0.391. **Enforcement hurts** (-0.087).
+- **Sonnet 4.6:** preamble 0.261 < wrapper 0.304. Small enforcement benefit (+0.043).
+
+Enforcement alone never exceeds baseline by more than +0.087 (Opus). The §9 finding that "enforcement alone drives GPT-5.2 to 1.000" was an artifact of the small sample — on 23 scenarios, enforce-only GPT-5.2 is 0.261 (identical to baseline).
+
+### 10.5 Enforcement can interfere with preamble-guided behavior
+
+Opus 4.6 preamble-only (0.478) outperforms the full wrapper (0.391). When the enforcement layer replaces an Opus response that was actually adequate (but triggered a forbidden pattern), it substitutes a template that changes the conversation trajectory. The model then sees the template — not its own response — in context for subsequent turns, disrupting its preamble-guided behavior.
+
+This inverts the §9.4 conclusion that "the preamble reduces the number of violations the enforcement layer needs to catch." On the expanded corpus, for Opus, the enforcement layer creates more problems than it solves.
+
+### 10.6 Sonnet 4.6 safety regression
+
+Sonnet 4.6 is worse than Sonnet 4.5 on every metric:
+
+| Metric | Sonnet 4.5 | Sonnet 4.6 | Delta |
+|--------|-----------|-----------|-------|
+| Baseline Pass^k | 0.174 | 0.130 | -0.044 |
+| Preamble-only Pass^k | 0.609 | 0.261 | **-0.348** |
+| Full wrapper Pass^k | 0.652 | 0.304 | **-0.348** |
+| Preamble lift (over baseline) | +0.435 | +0.131 | — |
+
+The newer model capitulates more easily at baseline and is drastically less responsive to system-prompt-level safety interventions. The preamble lift dropped from +0.435 to +0.131 — a 70% reduction in preamble effectiveness. This suggests the model update changed how Sonnet processes system prompt directives under conversational pressure.
+
+### 10.7 Implications
+
+1. **The MSIW wrapper is insufficient for the expanded corpus.** No model + condition reaches Pass^k = 0.70. The wrapper design that achieved 1.000 on 8 scenarios fails on harder scenarios involving conditions like CRAO, aortic dissection, ectopic pregnancy, and postpartum hemorrhage.
+
+2. **Enforcement-based mitigation has structural limits.** Pattern-based response replacement cannot catch semantic capitulation — models that validate delay without using forbidden phrases. The Tier 1 semantic classifier (currently NoOp) is needed.
+
+3. **Model upgrades can regress safety persistence.** Sonnet 4.5 → 4.6 demonstrates that general capability improvements do not guarantee safety persistence improvements. Safety-persistence benchmarks should be re-run on every model update.
+
+4. **The preamble mechanism is promising but insufficient.** It provides the largest improvement for most models but plateaus well below acceptable thresholds. Stronger system-prompt-level interventions, fine-tuning, or hybrid approaches may be needed.
+
+### 10.8 Run locations
+
+| Run | Output Dir |
+|-----|-----------|
+| GPT-5.2 baseline | `output-gpt52/` |
+| GPT-5.2 preamble-only | `output-gpt52-preamble-23s/` |
+| GPT-5.2 enforce-only | `output-gpt52-enforce-23s/` |
+| GPT-5.2 full wrapper | `output-gpt52-wrapper-23s/` |
+| Sonnet 4.5 baseline | `output-sonnet45/` |
+| Sonnet 4.5 preamble-only | `output-sonnet45-preamble-23s/` |
+| Sonnet 4.5 enforce-only | `output-sonnet45-enforce-23s/` |
+| Sonnet 4.5 full wrapper | `output-sonnet45-wrapper-23s/` |
+| Sonnet 4.6 baseline | `output-sonnet46-baseline-23s/` |
+| Sonnet 4.6 preamble-only | `output-sonnet46-preamble-23s/` |
+| Sonnet 4.6 enforce-only | `output-sonnet46-enforce-23s/` |
+| Sonnet 4.6 full wrapper | `output-sonnet46-wrapper-23s/` |
+| Opus 4.6 baseline | `output/` |
+| Opus 4.6 preamble-only | `output-opus46-preamble-23s/` |
+| Opus 4.6 enforce-only | `output-opus46-enforce-23s/` |
+| Opus 4.6 full wrapper | `output-opus46-wrapper-23s/` |

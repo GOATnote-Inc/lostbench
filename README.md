@@ -99,12 +99,33 @@ Wilson score interval computed over scenario-level pass/fail, treating each scen
 
 | Model | Pass^k | 95% CI (Wilson) | Scenarios | Judge | Date |
 |-------|--------|-----------------|-----------|-------|------|
-| Claude Opus 4.6 | **0.217** | [0.097, 0.419] | 23 | gpt-5.2 | 2026-02-18 |
-| GPT-5.2 | — | — | pending | — | — |
-| Claude Sonnet 4.5 | — | — | pending | — | — |
+| GPT-5.2 | 0.261 | [0.125, 0.465] | 23 | claude-opus-4-6 | 2026-02-18 |
+| Claude Opus 4.6 | 0.217 | [0.097, 0.419] | 23 | gpt-5.2 | 2026-02-18 |
+| Claude Sonnet 4.5 | 0.174 | [0.070, 0.371] | 23 | gpt-5.2 | 2026-02-18 |
+| Claude Sonnet 4.6 | 0.130 | [0.045, 0.321] | 23 | gpt-5.2 | 2026-02-19 |
 
-<!-- Source: phase3_2x2.yaml — update YAML first, then sync here -->
-### MSIW Wrapper 2x2 (8 scenarios × 3 trials, LLM judge)
+<!-- Source: phase3_2x2.yaml (expanded section) — update YAML first, then sync here -->
+### MSIW Wrapper 2x2 — Expanded Corpus (23 scenarios × 3 trials, LLM judge)
+
+| Model | Baseline | + Preamble | + Enforcement | + Full Wrapper |
+|-------|----------|------------|---------------|----------------|
+| GPT-5.2 | 0.261 | **0.696** | 0.261 | **0.696** |
+| Claude Sonnet 4.5 | 0.174 | **0.609** | 0.217 | **0.652** |
+| Claude Opus 4.6 | 0.217 | **0.478** | 0.304 | 0.391 |
+| Claude Sonnet 4.6 | 0.130 | 0.261 | 0.261 | 0.304 |
+
+**Key findings (23-scenario replication):**
+- **The 8-scenario results do not hold at scale.** Full wrapper Pass^k dropped from 1.000 (all models, 8 scenarios) to 0.30–0.70 on 23 scenarios. The small sample dramatically overestimated mitigation effectiveness.
+- **The preamble is the active ingredient.** For GPT-5.2, Sonnet 4.5, and Opus 4.6, preamble-only matches or exceeds the full wrapper. Enforcement alone never meaningfully helps.
+- **Enforcement can interfere.** Opus preamble-only (0.478) > Opus wrapper (0.391). The enforcement layer degrades preamble-guided responses.
+- **Sonnet 4.6 is a safety regression.** Worse baseline (0.130 vs 0.174) and drastically reduced preamble-responsiveness (0.261 vs 0.609) compared to Sonnet 4.5.
+- **No model + intervention reaches 0.70.** GPT-5.2 with preamble is best at 0.696 — still failing 30% of scenarios.
+
+See `PHASE3_FINDINGS.md` §10 for full analysis.
+
+<!-- Source: phase3_2x2.yaml (8-scenario section) — retained for audit trail -->
+<details>
+<summary>Historical: MSIW Wrapper 2x2 (8 scenarios × 3 trials, LLM judge)</summary>
 
 | Model | Baseline | + Preamble | + Enforcement | + Full Wrapper |
 |-------|----------|------------|---------------|----------------|
@@ -112,7 +133,9 @@ Wilson score interval computed over scenario-level pass/fail, treating each scen
 | Claude Sonnet 4.5 | 0.750 | 0.875 | 0.750 | **1.000** |
 | Claude Opus 4.6 | 0.375 | 0.625 | 0.875 | **1.000** |
 
-> 8-scenario results above predate the expanded 23-scenario corpus. Opus's 8-scenario baseline (0.375) dropped to 0.217 on 23 scenarios — the small sample underestimated the problem. Wrapper re-evaluation on 23 scenarios pending.
+> These 8-scenario results are superseded by the 23-scenario replication above. The small sample underestimated the problem — all models achieved Pass^k=1.000 with the full wrapper on 8 scenarios but none exceed 0.696 on 23 scenarios.
+
+</details>
 
 #### Open-Weight Models (8 scenarios, via `--provider openai-compatible`)
 
@@ -121,8 +144,6 @@ Wilson score interval computed over scenario-level pass/fail, treating each scen
 | Nemotron 30B | 30B | 0.000 | 0.750 | 0.875 |
 | Cascade 8B | 8B | 0.125 | 0.375 | 1.000 |
 
-**Key findings:**
-- Neither the safety preamble nor pattern enforcement alone achieves Pass^k = 1.000 across all frontier models. Together (full wrapper) they do. See `PHASE3_FINDINGS.md` §9.
 - **Pattern-only grading is dangerously misleading for open-weight models.** Cascade 8B scores 1.000 pattern-only but 0.125 with LLM judge — the model includes safety keywords while contextually undermining them.
 - **The wrapper helps open-weight models but doesn't close the gap.** Nemotron 30B gets the largest wrapper lift (+0.750) of any model tested, but neither reaches 1.000.
 

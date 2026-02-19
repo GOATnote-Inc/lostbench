@@ -81,7 +81,105 @@ runs:
     opus-4.6: /tmp/enforce-only-opus46/
 
 # Key finding (for copy-paste into summaries)
-finding: >
+finding_8s: >
   Neither preamble nor enforcement alone achieves Pass^k = 1.000
   across all models. Together (full wrapper) they do. The mechanisms
   are complementary, not redundant.
+
+# ======================================================================
+# 23-scenario expanded corpus replication (2026-02-19)
+# ======================================================================
+
+expanded:
+  name: "2x2 Factorial Replication — Expanded Corpus"
+  date: "2026-02-19"
+  design: "2x2 factorial: preamble (on/off) × enforcement (on/off)"
+  corpus: emergency
+  scenarios: 23
+  trials_per_scenario: 3
+  temperature: 0
+  seed: 42
+  grading: llm-judge
+  version: "LostBench v0.1.1 + MSIW wrapper"
+
+  models:
+    - id: gpt-5.2
+      provider: openai
+      judge: claude-opus-4-6
+    - id: claude-sonnet-4-5-20250929
+      provider: anthropic
+      judge: gpt-5.2
+    - id: claude-sonnet-4-6
+      provider: anthropic
+      judge: gpt-5.2
+    - id: claude-opus-4-6
+      provider: anthropic
+      judge: gpt-5.2
+
+  pass_k:
+    gpt-5.2:
+      baseline: 0.261
+      preamble_only: 0.696
+      enforce_only: 0.261
+      full_wrapper: 0.696
+    sonnet-4.5:
+      baseline: 0.174
+      preamble_only: 0.609
+      enforce_only: 0.217
+      full_wrapper: 0.652
+    sonnet-4.6:
+      baseline: 0.130
+      preamble_only: 0.261
+      enforce_only: 0.261
+      full_wrapper: 0.304
+    opus-4.6:
+      baseline: 0.217
+      preamble_only: 0.478
+      enforce_only: 0.304
+      full_wrapper: 0.391
+
+  enforcement:
+    gpt-5.2:
+      enforce_only_replacements: 12
+      wrapper_replacements: 7
+    sonnet-4.5:
+      enforce_only_replacements: 32
+      wrapper_replacements: 7
+    sonnet-4.6:
+      enforce_only_replacements: 48
+      wrapper_replacements: 14
+    opus-4.6:
+      enforce_only_replacements: 40
+      wrapper_replacements: 18
+
+  runs:
+    baseline:
+      gpt-5.2: output-gpt52/
+      sonnet-4.5: output-sonnet45/
+      sonnet-4.6: output-sonnet46-baseline-23s/
+      opus-4.6: output/
+    preamble_only:
+      gpt-5.2: output-gpt52-preamble-23s/
+      sonnet-4.5: output-sonnet45-preamble-23s/
+      sonnet-4.6: output-sonnet46-preamble-23s/
+      opus-4.6: output-opus46-preamble-23s/
+    enforce_only:
+      gpt-5.2: output-gpt52-enforce-23s/
+      sonnet-4.5: output-sonnet45-enforce-23s/
+      sonnet-4.6: output-sonnet46-enforce-23s/
+      opus-4.6: output-opus46-enforce-23s/
+    full_wrapper:
+      gpt-5.2: output-gpt52-wrapper-23s/
+      sonnet-4.5: output-sonnet45-wrapper-23s/
+      sonnet-4.6: output-sonnet46-wrapper-23s/
+      opus-4.6: output-opus46-wrapper-23s/
+
+  finding: >
+    The 8-scenario 2x2 results do not replicate on the expanded 23-scenario
+    corpus. Full wrapper Pass^k drops from 1.000 (all models, 8 scenarios) to
+    0.30-0.70 (23 scenarios). The preamble is the dominant mechanism — it
+    accounts for nearly all improvement over baseline for GPT-5.2, Sonnet 4.5,
+    and Opus 4.6. Enforcement alone never meaningfully helps and can interfere
+    (Opus preamble-only 0.478 > wrapper 0.391). Sonnet 4.6 shows a safety
+    regression vs 4.5: worse baseline (0.130 vs 0.174) and drastically reduced
+    preamble-responsiveness (0.261 vs 0.609).
