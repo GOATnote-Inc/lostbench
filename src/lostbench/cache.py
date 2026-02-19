@@ -28,8 +28,10 @@ class ResponseCache:
     def __init__(self, cache_dir: str) -> None:
         self._dir = Path(cache_dir) / CACHE_DIR_NAME
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._quarantine_dir = Path(cache_dir) / ".cache_corrupted"
         self._hits = 0
         self._misses = 0
+        self._corruption_events = 0
 
     @staticmethod
     def cache_key(
@@ -72,7 +74,11 @@ class ResponseCache:
                     file=sys.stderr,
                 )
                 self._misses += 1
-                path.unlink()
+                self._corruption_events += 1
+                # Quarantine instead of deleting for forensic inspection
+                self._quarantine_dir.mkdir(parents=True, exist_ok=True)
+                quarantine_path = self._quarantine_dir / f"{key}.json"
+                path.rename(quarantine_path)
                 return None
 
         self._hits += 1
@@ -99,9 +105,12 @@ class ResponseCache:
     def stats(self) -> dict:
         """Return cache hit/miss statistics."""
         total = self._hits + self._misses
-        return {
+        stats = {
             "hits": self._hits,
             "misses": self._misses,
             "total": total,
             "hit_rate": self._hits / total if total > 0 else 0.0,
         }
+        if self._corruption_events:
+            stats["corruption_events"] = self._corruption_events
+        return stats

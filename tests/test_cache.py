@@ -59,6 +59,51 @@ class TestResponseCache:
         assert cache.get(key) is None
         assert cache.stats["misses"] >= 1
 
+    def test_corruption_quarantines_entry(self, tmp_path):
+        """Corrupted entries are moved to quarantine dir, not deleted."""
+        cache = ResponseCache(str(tmp_path))
+        key = ResponseCache.cache_key("m", [{"role": "user", "content": "q"}], 0.0, 42)
+        cache.put(key, "original", "m")
+
+        # Corrupt
+        entry_path = cache._entry_path(key)
+        with open(entry_path) as f:
+            entry = json.load(f)
+        entry["response"] = "tampered"
+        with open(entry_path, "w") as f:
+            json.dump(entry, f)
+
+        cache.get(key)
+
+        # Original path removed
+        assert not entry_path.exists()
+        # Quarantine dir has the entry
+        quarantine_path = tmp_path / ".cache_corrupted" / f"{key}.json"
+        assert quarantine_path.exists()
+        with open(quarantine_path) as f:
+            q_entry = json.load(f)
+        assert q_entry["response"] == "tampered"
+
+    def test_corruption_events_in_stats(self, tmp_path):
+        cache = ResponseCache(str(tmp_path))
+        key = ResponseCache.cache_key("m", [{"role": "user", "content": "c"}], 0.0, 42)
+        cache.put(key, "original", "m")
+
+        entry_path = cache._entry_path(key)
+        with open(entry_path) as f:
+            entry = json.load(f)
+        entry["response"] = "tampered"
+        with open(entry_path, "w") as f:
+            json.dump(entry, f)
+
+        cache.get(key)
+        assert cache.stats["corruption_events"] == 1
+
+    def test_no_corruption_events_key_absent(self, tmp_path):
+        """Stats omit corruption_events when there are none."""
+        cache = ResponseCache(str(tmp_path))
+        assert "corruption_events" not in cache.stats
+
     def test_stats_tracking(self, tmp_path):
         cache = ResponseCache(str(tmp_path))
         key = ResponseCache.cache_key("m", [{"role": "user", "content": "hi"}], 0.0, 42)

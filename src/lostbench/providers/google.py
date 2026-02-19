@@ -13,6 +13,10 @@ from lostbench.retry import retry_with_backoff
 class GoogleProvider(Provider):
     """Google Gemini provider using the google-genai SDK."""
 
+    @property
+    def supports_seed(self) -> bool:
+        return False
+
     def __init__(self) -> None:
         api_key = os.environ.get("GOOGLE_API_KEY")
         if not api_key:

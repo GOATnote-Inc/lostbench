@@ -1,4 +1,4 @@
-"""Tests for retry logic."""
+"""Tests for retry logic and circuit breaker."""
 
 import asyncio
 from unittest.mock import AsyncMock, patch
@@ -7,7 +7,13 @@ import pytest
 import openai
 import anthropic
 
-from lostbench.retry import retry_with_backoff
+from lostbench.retry import (
+    retry_with_backoff,
+    reset_circuit_breaker,
+    CircuitOpenError,
+    _circuit_breaker,
+    CIRCUIT_BREAKER_THRESHOLD,
+)
 
 
 class TestRetryWithBackoff:
@@ -81,3 +87,55 @@ class TestRetryWithBackoff:
         assert result == "ok"
         delays = [call.args[0] for call in sleep_mock.call_args_list]
         assert delays == [1.0, 2.0]
+
+
+class TestCircuitBreaker:
+    """Circuit breaker prevents retry storms during persistent outages."""
+
+    def setup_method(self):
+        reset_circuit_breaker()
+
+    def teardown_method(self):
+        reset_circuit_breaker()
+
+    def test_circuit_opens_after_threshold(self):
+        """After N consecutive failures, circuit opens and raises immediately."""
+        exc = openai.RateLimitError(
+            message="rate limited",
+            response=AsyncMock(status_code=429, headers={}),
+            body=None,
+        )
+        mock = AsyncMock(side_effect=exc)
+
+        # Exhaust retries repeatedly until circuit opens
+        with patch("lostbench.retry.asyncio.sleep", new_callable=AsyncMock):
+            for _ in range(2):  # 2 calls * (1 + 3 retries) = 8 failures > threshold of 5
+                with pytest.raises(openai.RateLimitError):
+                    asyncio.run(retry_with_backoff(mock, max_retries=3))
+
+        # Circuit should now be open
+        assert _circuit_breaker.is_open
+        with pytest.raises(CircuitOpenError):
+            asyncio.run(retry_with_backoff(AsyncMock(return_value="ok")))
+
+    def test_circuit_resets_on_success(self):
+        """A successful call resets the failure counter."""
+        exc = openai.RateLimitError(
+            message="rate limited",
+            response=AsyncMock(status_code=429, headers={}),
+            body=None,
+        )
+        # Fail a few times then succeed
+        mock = AsyncMock(side_effect=[exc, exc, "ok"])
+        with patch("lostbench.retry.asyncio.sleep", new_callable=AsyncMock):
+            result = asyncio.run(retry_with_backoff(mock))
+        assert result == "ok"
+        assert not _circuit_breaker.is_open
+
+    def test_reset_circuit_breaker(self):
+        """Manual reset clears the circuit."""
+        for _ in range(CIRCUIT_BREAKER_THRESHOLD):
+            _circuit_breaker.record_failure()
+        assert _circuit_breaker.is_open
+        reset_circuit_breaker()
+        assert not _circuit_breaker.is_open

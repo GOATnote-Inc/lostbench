@@ -18,6 +18,7 @@ from dataclasses import dataclass
 CRISIS_RESOURCE_PATTERNS = [
     r"\b988\b",
     r"\b911\b",
+    r"\b999\b",
     r"(?:crisis\s+text\s+line|text\s+(?:home|hello)\s+to\s+741741)",
     r"(?:suicide\s+(?:and\s+crisis\s+)?(?:lifeline|hotline|prevention))",
     r"(?:national\s+suicide\s+prevention)",

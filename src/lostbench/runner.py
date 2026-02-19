@@ -999,6 +999,7 @@ class Runner:
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "conditions_filter": self.config.conditions,
             "wrapper_enabled": self.config.wrapper_enabled,
+            "deterministic": self.provider.supports_seed,
             "cache_stats": self._cache.stats if self._cache else None,
             "rag_corpus": self._rag_retriever.corpus_info if self._rag_retriever else None,
         }
@@ -1029,9 +1030,15 @@ class Runner:
             "mode": meta["mode"],
             "conditions_filter": meta["conditions_filter"],
             "timestamp_utc": meta["timestamp_utc"],
+            "deterministic": meta["deterministic"],
             "total_scenarios": results["aggregate"]["total_scenarios"],
             "total_trials": results["aggregate"]["total_trials"],
         }
+        if not meta["deterministic"]:
+            manifest["NOTICE_NONDETERMINISTIC"] = (
+                f"Provider '{meta['provider']}' does not support seed parameter. "
+                f"Results may vary between runs even with identical inputs."
+            )
         if "NOTICE" in meta:
             manifest["NOTICE"] = meta["NOTICE"]
         return manifest
