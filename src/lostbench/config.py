@@ -5,9 +5,9 @@ from pathlib import Path
 import hashlib
 
 
-PACKAGE_ROOT = Path(__file__).parent.parent.parent
-PROMPTS_DIR = PACKAGE_ROOT / "prompts"
-SCENARIOS_DIR = PACKAGE_ROOT / "scenarios"
+_PACKAGE_DIR = Path(__file__).parent
+PROMPTS_DIR = _PACKAGE_DIR / "prompts"
+SCENARIOS_DIR = _PACKAGE_DIR / "scenarios"
 
 DEFAULT_JUDGE_MODEL = "claude-opus-4-6"
 DEFAULT_JUDGE_FALLBACK = "gpt-5.2"

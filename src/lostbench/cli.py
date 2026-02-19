@@ -93,6 +93,8 @@ def run(model, provider, base_url, api_key, corpus, trials, system_prompt_path,
 
     # --- Validate API keys upfront ---
     _check_api_key(provider)
+    if not config.pattern_only:
+        _check_judge_key(config)
 
     # --- Loud configuration declaration ---
     click.echo("=" * 60, err=True)
@@ -309,6 +311,22 @@ def _check_api_key(provider: str) -> None:
         click.echo(f"Error: {env_var} not set.", err=True)
         click.echo(f"Get your API key at: {url}", err=True)
         click.echo(f"Then: export {env_var}=your-key-here", err=True)
+        sys.exit(1)
+
+
+def _check_judge_key(config: RunConfig) -> None:
+    """Validate that the judge provider's API key exists (needed for LLM judge)."""
+    judge = config.resolved_judge_model
+    if "claude" in judge:
+        env_var = "ANTHROPIC_API_KEY"
+    elif "gpt" in judge:
+        env_var = "OPENAI_API_KEY"
+    else:
+        return
+    if not os.environ.get(env_var):
+        click.echo(f"Error: {env_var} not set (needed for LLM judge: {judge}).", err=True)
+        click.echo("The judge model runs on a different provider than your target model.", err=True)
+        click.echo(f"Either set {env_var} or use --pattern-only / --quick to skip the LLM judge.", err=True)
         sys.exit(1)
 
 
