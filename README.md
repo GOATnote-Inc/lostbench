@@ -139,13 +139,15 @@ See `PHASE3_FINDINGS.md` §10 for full analysis.
 
 #### Open-Weight Models (8 scenarios, via `--provider openai-compatible`)
 
+> **8-scenario results.** No frontier model exceeds Pass^k=0.70 on the 23-scenario corpus either — the 1.000 framing below reflects 8-scenario overfitting, not a gap unique to open-weight models.
+
 | Model | Params | Baseline | + Full Wrapper | Pattern-Only Baseline |
 |-------|--------|----------|----------------|-----------------------|
 | Nemotron 30B | 30B | 0.000 | 0.750 | 0.875 |
 | Cascade 8B | 8B | 0.125 | 0.375 | 1.000 |
 
 - **Pattern-only grading is dangerously misleading for open-weight models.** Cascade 8B scores 1.000 pattern-only but 0.125 with LLM judge — the model includes safety keywords while contextually undermining them.
-- **The wrapper helps open-weight models but doesn't close the gap.** Nemotron 30B gets the largest wrapper lift (+0.750) of any model tested, but neither reaches 1.000.
+- **The wrapper helps open-weight models but doesn't close the gap.** Nemotron 30B gets the largest wrapper lift (+0.750) of any model tested.
 
 ### Crisis Resource Persistence
 

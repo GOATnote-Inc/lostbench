@@ -73,9 +73,11 @@ All judge-baseline failures are 100% deterministic across trials. All failures c
 
 ## 2. What's Real
 
-### 2.1 The wrapper achieves Pass^k = 1.000 for all three models
+### ~~2.1 The wrapper achieves Pass^k = 1.000 for all three models~~ INVALIDATED — see §10.3
 
-This is the core claim and it holds. Once the MSIW triggers fire (crisis or acute medical pattern in user message), the escalation state locks and every subsequent model response is checked against Tier 0 forbidden/required patterns. Violations cause total response replacement with clinically safe templates. The guarantee is structural, not probabilistic.
+~~This is the core claim and it holds.~~ **This claim was true only on the 8-scenario corpus. On 23 scenarios, the best wrapper result is GPT-5.2 at 0.696. No model exceeds Pass^k = 0.70. See §10.3 for the replication failure and §10.4–10.5 for updated interpretation.** The mechanism described below is correct — enforcement *does* replace pattern-level violations — but semantic failures that pass through enforcement are far more common at scale than the 8-scenario corpus suggested.
+
+Once the MSIW triggers fire (crisis or acute medical pattern in user message), the escalation state locks and every subsequent model response is checked against Tier 0 forbidden/required patterns. Violations cause total response replacement with clinically safe templates. The guarantee is structural for pattern-level violations, but not for semantic failures invisible to regex.
 
 ### 2.2 Sonnet and Opus have genuine baseline vulnerabilities
 
@@ -244,11 +246,11 @@ Completed 2026-02-15. Ran Sonnet baseline with GPT-5.2 as judge (GPT-5.2 self-ju
 
 ### 5.2 ~~Decouple system prompt injection from enforcement~~ (DONE)
 
-Completed 2026-02-15. Results in §9 below. The 2x2 design cleanly separates preamble and enforcement effects. Key finding: enforcement alone drives Pass^k to 1.000 for GPT-5.2 but has near-zero precision across all models. The preamble alone does not reliably improve safety — Opus actually gets *worse* (0.625 vs 0.375–0.875 baseline depending on grading mode).
+Completed 2026-02-15. Results in §9 below **(superseded by §10 on the 23-scenario corpus)**. The 2x2 design cleanly separates preamble and enforcement effects. ~~Key finding: enforcement alone drives Pass^k to 1.000 for GPT-5.2~~ — this was an artifact of the small sample (§10.4). At 23-scenario scale, the preamble is the dominant mechanism, enforcement alone never helps meaningfully, and enforcement can actively interfere (Opus, §10.5).
 
 ## 6. Limitations
 
-- **8 scenarios, 3 trials** — small sample. Wilson CIs reflect this (0.676-1.000 for perfect scores). Results are directional, not definitive.
+- **8 scenarios, 3 trials** — small sample. Wilson CIs reflect this (0.676-1.000 for perfect scores). Results are directional, not definitive. **Confirmed: the 8-scenario results did not replicate at 23-scenario scale (§10.3).**
 - **Pattern-only vs full judge gap** — pattern-only grading underestimates failures by 0.000–0.500 Pass^k. Full judge results now available (§1) but introduce LLM judge subjectivity.
 - **Single temperature/seed** — deterministic evaluation confirms reproducibility but doesn't capture stochastic variation. Higher-temperature runs would reveal the tail distribution of failures.
 - **Emergency corpus only** — crisis-resource corpus not evaluated with wrapper in this run.
@@ -349,17 +351,19 @@ All conditions use full LLM judge grading for comparability. 8 scenarios, 3 tria
 
 Sonnet and Opus still fail under enforce-only because some responses survive enforcement (the MSIW passes them through) but the LLM judge flags them. The failures that leak through enforcement are semantic — they don't contain forbidden phrases but implicitly validate delay or abandon the patient.
 
-### 9.4 Interpretation
+### ~~9.4 Interpretation~~ INVALIDATED — see §10.4–10.5
 
-**The preamble and enforcement are complementary, not redundant.** Neither alone achieves the full wrapper's Pass^k = 1.000 across all models:
+> **The below interpretation was based on 8 scenarios and does not hold at scale.** On 23 scenarios: the preamble is the dominant mechanism, enforcement alone never helps meaningfully, enforcement can actively interfere (Opus), and no model + intervention exceeds Pass^k = 0.70. See §10.4–10.5 for the corrected interpretation.
 
-1. **Preamble alone** improves model behavior (fewer unsafe responses) but can't guarantee safety — the model can still capitulate under sustained pressure. Effect size: +0.125 to +0.250 Pass^k over baseline.
+~~**The preamble and enforcement are complementary, not redundant.** Neither alone achieves the full wrapper's Pass^k = 1.000 across all models:~~
 
-2. **Enforcement alone** catches pattern-level violations but can't catch semantic failures invisible to regex. Without the preamble, models produce more responses that trigger forbidden patterns (higher replacement rate) but also more responses that are semantically unsafe without triggering patterns (failures leak through).
+1. ~~**Preamble alone** improves model behavior (fewer unsafe responses) but can't guarantee safety — the model can still capitulate under sustained pressure. Effect size: +0.125 to +0.250 Pass^k over baseline.~~
 
-3. **Together**, the preamble reduces the number of violations the enforcement layer needs to catch (fewer replacements = fewer false positives), while the enforcement layer catches the remaining failures the preamble couldn't prevent. The full wrapper is the only condition that achieves Pass^k = 1.000 for all three models.
+2. ~~**Enforcement alone** catches pattern-level violations but can't catch semantic failures invisible to regex. Without the preamble, models produce more responses that trigger forbidden patterns (higher replacement rate) but also more responses that are semantically unsafe without triggering patterns (failures leak through).~~
 
-**The preamble is doing real work:** Compare enforce-only vs full wrapper replacement counts and precision. The preamble changes model behavior enough that the enforcement layer has to intervene less, and when it does intervene, it's more likely to be warranted.
+3. ~~**Together**, the preamble reduces the number of violations the enforcement layer needs to catch (fewer replacements = fewer false positives), while the enforcement layer catches the remaining failures the preamble couldn't prevent. The full wrapper is the only condition that achieves Pass^k = 1.000 for all three models.~~
+
+~~**The preamble is doing real work:**~~ This observation survived replication — the preamble *is* the dominant mechanism. But "complementary" was wrong: enforcement adds nothing for GPT-5.2 (0.696 = 0.696), marginally helps Sonnet 4.5 (+0.043), and actively *hurts* Opus 4.6 (-0.087). See §10.5.
 
 ### 9.5 Run locations
 

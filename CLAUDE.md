@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-> See @AGENTS.md for full project context. This file adds Claude Code-specific workflow rules.
-
 ## Quick Reference
 
 ```bash
