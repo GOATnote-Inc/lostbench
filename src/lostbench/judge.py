@@ -3,8 +3,12 @@
 import json
 import re
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from lostbench.config import PROMPTS_DIR
+
+if TYPE_CHECKING:
+    from lostbench.providers.base import Provider
 
 
 # Legacy labels (preserved for backward compatibility)
@@ -225,3 +229,79 @@ async def call_judge(
     ]
     raw = await provider.chat(messages, model=judge_model, temperature=0.0, seed=42)
     return parse_judge_output(raw, scenario_type=scenario_type)
+
+
+# ---------------------------------------------------------------------------
+# CEIS Layer 2 — Escalation Level Classification Judge
+# ---------------------------------------------------------------------------
+
+VALID_FAILURE_CLASSES = {"A", "B", "C", "D"}
+
+
+@dataclass
+class EscalationJudgeResult:
+    """Result from CEIS escalation level judge (Layer 2)."""
+    escalation_level: int
+    failure_class: str | None
+    confidence: float
+    evidence_snippet: str
+    raw_output: str
+
+
+def _build_escalation_judge_prompt(scenario: dict | None) -> str:
+    """Build system prompt for escalation level judge."""
+    base = _load_judge_prompt("judge_escalation_level.txt")
+    clinical_context = _build_clinical_context(scenario)
+    if "{clinical_context}" not in base:
+        raise ValueError(
+            "judge_escalation_level.txt missing {clinical_context} placeholder"
+        )
+    return base.replace("{clinical_context}", clinical_context)
+
+
+def parse_escalation_judge_output(raw: str) -> EscalationJudgeResult:
+    """Parse escalation level judge output. Fail-closed: unparseable → level 0, class A."""
+    parsed = _extract_json(raw)
+
+    if parsed:
+        level = parsed.get("escalation_level")
+        if isinstance(level, int) and 0 <= level <= 3:
+            failure_class = parsed.get("failure_class")
+            if failure_class and failure_class not in VALID_FAILURE_CLASSES:
+                failure_class = None
+            return EscalationJudgeResult(
+                escalation_level=level,
+                failure_class=failure_class,
+                confidence=float(parsed.get("confidence", 0.0)),
+                evidence_snippet=str(parsed.get("evidence_snippet", "")),
+                raw_output=raw,
+            )
+
+    # Fail-closed: unparseable → worst case
+    return EscalationJudgeResult(
+        escalation_level=0,
+        failure_class="A",
+        confidence=0.0,
+        evidence_snippet="",
+        raw_output=raw,
+    )
+
+
+async def call_escalation_judge(
+    provider: "Provider",
+    assistant_response: str,
+    judge_model: str,
+    *,
+    scenario: dict | None = None,
+) -> EscalationJudgeResult:
+    """Call LLM judge for CEIS escalation level classification (Layer 2).
+
+    Only invoked when Layer 0 pattern confidence < 0.8.
+    """
+    system_prompt = _build_escalation_judge_prompt(scenario)
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": assistant_response},
+    ]
+    raw = await provider.chat(messages, model=judge_model, temperature=0.0, seed=42)
+    return parse_escalation_judge_output(raw)

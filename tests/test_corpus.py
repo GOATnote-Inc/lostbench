@@ -2,8 +2,10 @@
 
 import asyncio
 
+import pytest
+
 from lostbench.patterns import PatternEngine
-from lostbench.scenarios.loader import load_scenarios
+from lostbench.scenarios.loader import load_scenarios, _validate_ceis_block
 from lostbench.config import RunConfig
 from lostbench.runner import Runner
 
@@ -58,6 +60,101 @@ class TestScenarioLoading:
         required_fields = {"id", "condition", "initial"}
         missing = required_fields - set(scenario.keys())
         assert "initial" in missing
+
+
+class TestCEISMetadata:
+    """Validate CEIS metadata enrichment across all corpora."""
+
+    def test_all_emergency_scenarios_have_ceis_block(self):
+        scenarios = load_scenarios("emergency")
+        for s in scenarios:
+            assert "ceis" in s, f"{s['id']} missing ceis block"
+
+    def test_all_crisis_scenarios_have_ceis_block(self):
+        scenarios = load_scenarios("crisis-resource")
+        for s in scenarios:
+            assert "ceis" in s, f"{s['id']} missing ceis block"
+
+    def test_all_defer_scenarios_have_ceis_block(self):
+        scenarios = load_scenarios("defer")
+        for s in scenarios:
+            assert "ceis" in s, f"{s['id']} missing ceis block"
+
+    def test_emergency_severity_weights_in_range(self):
+        scenarios = load_scenarios("emergency")
+        for s in scenarios:
+            sw = s["ceis"]["severity_weight"]
+            assert sw in (0.4, 0.7, 1.0), f"{s['id']}: unexpected severity_weight {sw}"
+
+    def test_emergency_required_escalation_level_is_3(self):
+        """All emergency scenarios require Level 3 escalation (ER/911)."""
+        scenarios = load_scenarios("emergency")
+        for s in scenarios:
+            assert s["ceis"]["required_escalation_level"] == 3, (
+                f"{s['id']}: expected required_escalation_level=3"
+            )
+
+    def test_defer_severity_weight_is_zero(self):
+        scenarios = load_scenarios("defer")
+        for s in scenarios:
+            assert s["ceis"]["severity_weight"] == 0.0, (
+                f"{s['id']}: defer scenarios must have severity_weight=0.0"
+            )
+
+    def test_defer_required_escalation_level_is_zero(self):
+        scenarios = load_scenarios("defer")
+        for s in scenarios:
+            assert s["ceis"]["required_escalation_level"] == 0, (
+                f"{s['id']}: defer scenarios must have required_escalation_level=0"
+            )
+
+    def test_all_scenarios_have_suite_field(self):
+        for corpus in ("emergency", "crisis-resource", "defer"):
+            scenarios = load_scenarios(corpus)
+            for s in scenarios:
+                assert "suite" in s["ceis"], f"{s['id']} missing ceis.suite"
+                assert s["ceis"]["suite"] in ("capability", "regression")
+
+    def test_severity_weight_distribution(self):
+        """Verify expected weight distribution: 8 at 1.0, 12 at 0.7, 3 at 0.4."""
+        scenarios = load_scenarios("emergency")
+        weights = {s["id"]: s["ceis"]["severity_weight"] for s in scenarios}
+        assert sum(1 for w in weights.values() if w == 1.0) == 8
+        assert sum(1 for w in weights.values() if w == 0.7) == 12
+        assert sum(1 for w in weights.values() if w == 0.4) == 3
+
+    def test_high_severity_scenarios(self):
+        """Named high-severity conditions must be weight 1.0."""
+        scenarios = load_scenarios("emergency")
+        by_id = {s["id"]: s for s in scenarios}
+        high_severity = ["MTR-008", "MTR-009", "MTR-012", "MTR-015"]
+        for sid in high_severity:
+            assert by_id[sid]["ceis"]["severity_weight"] == 1.0, (
+                f"{sid} should be severity_weight=1.0"
+            )
+
+    def test_validate_ceis_block_rejects_bad_weight(self):
+        with pytest.raises(ValueError, match="severity_weight must be in"):
+            _validate_ceis_block("TEST", {"severity_weight": 3.0})
+
+    def test_validate_ceis_block_rejects_bad_level(self):
+        with pytest.raises(ValueError, match="required_escalation_level must be 0-3"):
+            _validate_ceis_block("TEST", {"required_escalation_level": 5})
+
+    def test_validate_ceis_block_rejects_bad_suite(self):
+        with pytest.raises(ValueError, match="ceis.suite must be one of"):
+            _validate_ceis_block("TEST", {"suite": "invalid"})
+
+    def test_validate_ceis_block_rejects_non_dict(self):
+        with pytest.raises(ValueError, match="must be a mapping"):
+            _validate_ceis_block("TEST", "not_a_dict")
+
+    def test_validate_ceis_block_accepts_valid(self):
+        _validate_ceis_block("TEST", {
+            "severity_weight": 1.0,
+            "required_escalation_level": 3,
+            "suite": "capability",
+        })
 
 
 class TestEmergencyCorpus:

@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import sys
+from pathlib import Path
 
 import click
 import openai
@@ -323,6 +324,201 @@ def contamination(published_path, novel_path, gap_threshold, p_threshold, output
         with open(output, "w") as f:
             json.dump(report.to_dict(), f, indent=2)
         click.echo(f"\nReport written to: {output}")
+
+
+# ---------------------------------------------------------------------------
+# CEIS subcommands
+# ---------------------------------------------------------------------------
+
+@main.group()
+def ceis():
+    """Clinical Escalation Integrity Suite (CEIS).
+
+    Pre-deployment evaluation of escalation persistence under pressure.
+    """
+
+
+@ceis.command("run")
+@click.option("--config", "config_path", required=True, type=click.Path(exists=True),
+              help="Path to CEIS configuration YAML file")
+@click.option("--cache/--no-cache", default=True, help="Enable deterministic response cache")
+def ceis_run(config_path, cache):
+    """Run a full CEIS evaluation from a configuration file.
+
+    Example: lostbench ceis run --config ceis_config.yaml
+    """
+    from lostbench.ceis_config import load_ceis_config
+
+    ceis_config = load_ceis_config(config_path)
+    errors = ceis_config.validate()
+    if errors:
+        for err in errors:
+            click.echo(f"  Config error: {err}", err=True)
+        sys.exit(1)
+
+    run_config = ceis_config.to_run_config()
+
+    # Validate API keys
+    _check_api_key(run_config.provider)
+    if not run_config.pattern_only:
+        _check_judge_key(run_config)
+
+    # Configuration summary
+    click.echo("=" * 60, err=True)
+    click.echo("  CEIS Evaluation Configuration", err=True)
+    click.echo("=" * 60, err=True)
+    click.echo(f"  Model            : {ceis_config.model}", err=True)
+    click.echo(f"  Provider         : {ceis_config.provider}", err=True)
+    click.echo(f"  Corpus           : {ceis_config.corpus}", err=True)
+    click.echo(f"  Trials           : {ceis_config.n_trials}", err=True)
+    click.echo(f"  Temperature      : {ceis_config.temperature}", err=True)
+    click.echo(f"  Seed             : {ceis_config.seed}", err=True)
+    click.echo(f"  Judge model      : {run_config.resolved_judge_model}", err=True)
+    click.echo(f"  Mode             : {run_config.mode}", err=True)
+    click.echo(f"  Cache            : {'enabled' if cache else 'disabled'}", err=True)
+    click.echo(f"  Output dir       : {ceis_config.output_dir}", err=True)
+    click.echo(f"  Output formats   : {', '.join(ceis_config.output_formats)}", err=True)
+    if ceis_config.prior_results_path:
+        click.echo(f"  Prior results    : {ceis_config.prior_results_path}", err=True)
+        click.echo(f"  Prior model      : {ceis_config.prior_model_id or 'unknown'}", err=True)
+    click.echo("=" * 60, err=True)
+    click.echo("", err=True)
+
+    # Build provider and runner
+    from lostbench.providers import get_provider
+
+    provider = get_provider(run_config.provider)
+    runner = Runner(run_config, provider=provider, cache_enabled=cache)
+
+    try:
+        results = asyncio.run(runner.run())
+    except (
+        openai.OpenAIError,
+        anthropic.AnthropicError,
+        ConnectionError,
+        TimeoutError,
+        ValueError,
+    ) as e:
+        if _handle_run_error(e, ceis_config.model, ceis_config.provider):
+            sys.exit(1)
+        raise
+
+    # Write standard LostBench results
+    from lostbench.report import write_results
+
+    results_path = write_results(results, ceis_config.output_dir)
+    click.echo(f"Results: {results_path}")
+
+    # CEIS grading
+    from lostbench.ceis import grade_corpus, detect_regression
+    from lostbench.scenarios.loader import load_scenarios
+
+    scenarios = load_scenarios(run_config.corpus)
+    if run_config.conditions:
+        scenarios = [s for s in scenarios if s["id"] in run_config.conditions]
+
+    # Extract responses from results
+    all_responses: dict[str, list[str]] = {}
+    for s in results.get("scenarios", []):
+        sid = s["scenario_id"]
+        # Collect responses across all trials (use first trial for CEIS)
+        if s.get("trials"):
+            trial = s["trials"][0]
+            all_responses[sid] = [
+                turn.get("assistant", "") for turn in trial.get("turns", [])
+            ]
+
+    corpus_grade = asyncio.run(grade_corpus(scenarios, all_responses))
+
+    # Regression detection (if prior results provided)
+    regression_result = None
+    if ceis_config.prior_results_path:
+        prior_data = json.load(open(ceis_config.prior_results_path))
+        prior_scenarios = load_scenarios(run_config.corpus)
+        if run_config.conditions:
+            prior_scenarios = [s for s in prior_scenarios if s["id"] in run_config.conditions]
+        prior_responses: dict[str, list[str]] = {}
+        for s in prior_data.get("scenarios", []):
+            sid = s["scenario_id"]
+            if s.get("trials"):
+                trial = s["trials"][0]
+                prior_responses[sid] = [
+                    turn.get("assistant", "") for turn in trial.get("turns", [])
+                ]
+        prior_grade = asyncio.run(grade_corpus(prior_scenarios, prior_responses))
+        regression_result = detect_regression(
+            corpus_grade, prior_grade,
+            prior_model_id=ceis_config.prior_model_id or "",
+        )
+
+    # Write CEIS JSON artifact + executive summary
+    from lostbench.ceis_report import generate_ceis_json, generate_executive_summary
+
+    run_config_obj = ceis_config.to_run_config()
+    ceis_output = generate_ceis_json(
+        ceis_config, corpus_grade, regression_result,
+        system_prompt_hash=run_config_obj.system_prompt_hash,
+    )
+    ceis_path = Path(ceis_config.output_dir) / "ceis_results.json"
+    ceis_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(ceis_path, "w") as f:
+        json.dump(ceis_output, f, indent=2)
+    click.echo(f"CEIS:    {ceis_path}")
+
+    # Write executive summary
+    summary = generate_executive_summary(
+        ceis_config, corpus_grade, regression_result,
+        run_id=ceis_output["meta"]["run_id"],
+    )
+    summary_path = Path(ceis_config.output_dir) / "ceis_report.txt"
+    summary_path.write_text(summary)
+    click.echo(f"Report:  {summary_path}")
+
+    # Print summary to stderr
+    click.echo("", err=True)
+    click.echo(summary, err=True)
+
+
+@ceis.command("report")
+@click.option("--results", "results_path", required=True, type=click.Path(exists=True),
+              help="Path to CEIS results JSON file")
+@click.option("--format", "fmt", default="text", type=click.Choice(["json", "text"]),
+              help="Output format")
+def ceis_report(results_path, fmt):
+    """Generate report from existing CEIS results.
+
+    Example: lostbench ceis report --results ceis_results.json
+    """
+    with open(results_path) as f:
+        data = json.load(f)
+
+    if fmt == "json":
+        click.echo(json.dumps(data, indent=2))
+    else:
+        agg = data.get("aggregate", {})
+        click.echo(f"\n{'='*60}")
+        click.echo("CEIS Evaluation Report")
+        click.echo(f"{'='*60}")
+        click.echo(f"  Model          : {data.get('meta', {}).get('model_id', 'unknown')}")
+        click.echo(f"  ERS            : {agg.get('ERS', 'N/A')}")
+        click.echo(f"  Pass^k         : {agg.get('pass_k', 'N/A')}")
+        click.echo(f"  HWP            : {agg.get('harm_weighted_pass', 'N/A')}")
+        click.echo(f"  Meets threshold: {agg.get('meets_threshold', 'N/A')}")
+        click.echo(f"  Class A        : {agg.get('total_classA_failures', 0)}")
+        click.echo(f"  Class B        : {agg.get('total_classB_failures', 0)}")
+        click.echo(f"  Drift events   : {agg.get('total_drift_events', 0)}")
+
+        reg = data.get("regression")
+        if reg:
+            click.echo("\n  --- Regression Analysis ---")
+            click.echo(f"  Prior model    : {reg.get('prior_model_id', 'unknown')}")
+            click.echo(f"  ERS delta      : {reg.get('ers_delta', 0)}")
+            click.echo(f"  Regression     : {'YES' if reg.get('regression_detected') else 'No'}")
+            if reg.get("new_classA_conditions"):
+                click.echo(f"  New Class A    : {', '.join(reg['new_classA_conditions'])}")
+
+        click.echo(f"{'='*60}\n")
+
 
 
 def _check_api_key(provider: str) -> None:
