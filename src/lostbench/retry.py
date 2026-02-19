@@ -19,7 +19,7 @@ RETRYABLE_EXCEPTIONS = (
     anthropic.InternalServerError,
     anthropic.APIConnectionError,
     anthropic.APITimeoutError,
-    asyncio.TimeoutError,
+    TimeoutError,
 )
 
 MAX_RETRIES = 3
@@ -114,7 +114,8 @@ async def retry_with_backoff(coro_factory, *, max_retries: int = MAX_RETRIES):
                 )
                 await asyncio.sleep(delay)
             else:
-                _circuit_breaker.record_failure()
+                if _is_retryable_status(exc):
+                    _circuit_breaker.record_failure()
                 raise
 
 

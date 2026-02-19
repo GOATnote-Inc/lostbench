@@ -195,6 +195,9 @@ def compute_contamination_score(
     if not novel_results:
         raise ValueError("No novel results provided")
 
+    all_model_ids = {r.model_id for r in published_results} | {r.model_id for r in novel_results}
+    if len(all_model_ids) > 1:
+        raise ValueError(f"Mixed model IDs in results: {all_model_ids}")
     model_id = published_results[0].model_id
 
     pub_passed = sum(1 for r in published_results if r.passed)
@@ -327,11 +330,18 @@ def load_results_from_file(path: str) -> list[TrajectoryResult]:
     - scenario_id, scenario_source ("published"/"novel"), model_id, passed
     - Optional: failure_type, score, metadata
     """
-    with open(path) as f:
-        data = json.load(f)
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in {path}: {e}") from e
 
+    required_fields = {"scenario_id", "scenario_source", "model_id", "passed"}
     results = []
-    for item in data:
+    for i, item in enumerate(data):
+        missing = required_fields - set(item.keys())
+        if missing:
+            raise ValueError(f"Item {i} in {path} missing required fields: {missing}")
         results.append(
             TrajectoryResult(
                 scenario_id=item["scenario_id"],

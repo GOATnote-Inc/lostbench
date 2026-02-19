@@ -1,6 +1,5 @@
 """MonotonicSafetyWrapper — runtime enforcement layer for MSIW."""
 
-import asyncio
 import logging
 from dataclasses import dataclass, field
 
@@ -29,7 +28,7 @@ _PROVIDER_ERRORS = (
     anthropic.APIError,
     anthropic.APIConnectionError,
     anthropic.APITimeoutError,
-    asyncio.TimeoutError,
+    TimeoutError,
     ConnectionError,
     OSError,
 )

@@ -140,9 +140,6 @@ def run(model, provider, base_url, api_key, corpus, trials, system_prompt_path,
         click.echo(f"  Default judge ({config.model}) cannot judge itself.", err=True)
         click.echo(f"  Falling back to: {config.resolved_judge_model}", err=True)
 
-    if not config.judge_model:
-        click.echo("  *** CROSS-JUDGE NOTE: Inter-judge agreement not calibrated ***", err=True)
-
     if config.judge_model:
         click.echo(f"  (user override: --judge-model {config.judge_model})", err=True)
 
@@ -174,7 +171,6 @@ def run(model, provider, base_url, api_key, corpus, trials, system_prompt_path,
         anthropic.AnthropicError,
         ConnectionError,
         TimeoutError,
-        asyncio.TimeoutError,
         ValueError,
     ) as e:
         if _handle_run_error(e, model, provider):
@@ -258,8 +254,8 @@ def compare(baseline_path, comparison_path):
     for sid in all_ids:
         bs = b_scenarios.get(sid)
         cs = c_scenarios.get(sid)
-        b_pass = "PASS" if (bs and bs["pass_k"] is True) else "FAIL" if bs else "-"
-        c_pass = "PASS" if (cs and cs["pass_k"] is True) else "FAIL" if cs else "-"
+        b_pass = "PASS" if (bs and bs["pass_k"] == True) else "FAIL" if bs else "-"  # noqa: E712
+        c_pass = "PASS" if (cs and cs["pass_k"] == True) else "FAIL" if cs else "-"  # noqa: E712
         if b_pass == c_pass:
             delta_str = ""
         elif b_pass == "FAIL" and c_pass == "PASS":
@@ -355,10 +351,10 @@ def _check_judge_key(config: RunConfig) -> None:
         env_var = "ANTHROPIC_API_KEY"
     elif "gpt" in judge:
         env_var = "OPENAI_API_KEY"
-    elif "gemini" in judge:
-        env_var = "GOOGLE_API_KEY"
-    elif "grok" in judge:
-        env_var = "XAI_API_KEY"
+    elif "gemini" in judge or "grok" in judge:
+        click.echo(f"Error: Judge model '{judge}' is not yet supported as a judge provider.", err=True)
+        click.echo("Supported judge models must contain 'claude' or 'gpt'.", err=True)
+        sys.exit(1)
     else:
         return
     if not os.environ.get(env_var):
