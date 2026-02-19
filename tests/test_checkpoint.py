@@ -45,10 +45,25 @@ class TestConfigHash:
         cfg2 = RunConfig(model="gpt-5.2", provider="openai", trials=5)
         assert config_hash(cfg1) != config_hash(cfg2)
 
+    def test_differs_on_wrapper_change(self):
+        cfg1 = RunConfig(model="gpt-5.2", provider="openai", wrapper_enabled=False)
+        cfg2 = RunConfig(model="gpt-5.2", provider="openai", wrapper_enabled=True)
+        assert config_hash(cfg1) != config_hash(cfg2)
+
+    def test_differs_on_inject_preamble_change(self):
+        cfg1 = RunConfig(model="gpt-5.2", provider="openai", inject_preamble=False)
+        cfg2 = RunConfig(model="gpt-5.2", provider="openai", inject_preamble=True)
+        assert config_hash(cfg1) != config_hash(cfg2)
+
+    def test_differs_on_wrapper_preamble_change(self):
+        cfg1 = RunConfig(model="gpt-5.2", provider="openai", wrapper_enabled=True, wrapper_preamble=True)
+        cfg2 = RunConfig(model="gpt-5.2", provider="openai", wrapper_enabled=True, wrapper_preamble=False)
+        assert config_hash(cfg1) != config_hash(cfg2)
+
 
 class TestSaveLoadCheckpoint:
     def test_roundtrip(self, tmp_path, cfg, dataset_hash, sample_results):
-        cfg.output_dir = str(tmp_path)
+
         save_checkpoint(
             str(tmp_path), dataset_hash, cfg,
             ["MTR-001"], sample_results,
@@ -62,25 +77,24 @@ class TestSaveLoadCheckpoint:
         assert in_progress is None
 
     def test_returns_none_when_no_file(self, tmp_path, cfg, dataset_hash):
-        cfg.output_dir = str(tmp_path)
+
         assert load_checkpoint(str(tmp_path), dataset_hash, cfg) is None
 
     def test_rejects_dataset_hash_mismatch(self, tmp_path, cfg, dataset_hash, sample_results):
-        cfg.output_dir = str(tmp_path)
+
         save_checkpoint(str(tmp_path), dataset_hash, cfg, ["MTR-001"], sample_results)
         result = load_checkpoint(str(tmp_path), "wrong_hash", cfg)
         assert result is None
 
     def test_rejects_config_hash_mismatch(self, tmp_path, cfg, dataset_hash, sample_results):
-        cfg.output_dir = str(tmp_path)
+
         save_checkpoint(str(tmp_path), dataset_hash, cfg, ["MTR-001"], sample_results)
         cfg2 = RunConfig(model="different-model", provider="openai")
-        cfg2.output_dir = str(tmp_path)
         result = load_checkpoint(str(tmp_path), dataset_hash, cfg2)
         assert result is None
 
     def test_clear_removes_file(self, tmp_path, cfg, dataset_hash, sample_results):
-        cfg.output_dir = str(tmp_path)
+
         save_checkpoint(str(tmp_path), dataset_hash, cfg, ["MTR-001"], sample_results)
         assert checkpoint_path(str(tmp_path)).exists()
         clear_checkpoint(str(tmp_path))
@@ -90,7 +104,7 @@ class TestSaveLoadCheckpoint:
         clear_checkpoint(str(tmp_path))  # should not raise
 
     def test_checkpoint_file_is_valid_json(self, tmp_path, cfg, dataset_hash, sample_results):
-        cfg.output_dir = str(tmp_path)
+
         save_checkpoint(str(tmp_path), dataset_hash, cfg, ["MTR-001"], sample_results)
         with open(checkpoint_path(str(tmp_path))) as f:
             data = json.load(f)
@@ -99,7 +113,7 @@ class TestSaveLoadCheckpoint:
 
     def test_trial_level_checkpoint_roundtrip(self, tmp_path, cfg, dataset_hash):
         """Trial-level checkpoint saves and restores in-progress scenario."""
-        cfg.output_dir = str(tmp_path)
+
         partial_trials = [
             {"trial": 0, "passed": True, "conversation": [], "per_turn_verdicts": []},
             {"trial": 1, "passed": False, "conversation": [], "per_turn_verdicts": []},
@@ -127,7 +141,7 @@ class TestSaveLoadCheckpoint:
         self, tmp_path, cfg, dataset_hash, sample_results,
     ):
         """When scenario completes, in_progress is cleared."""
-        cfg.output_dir = str(tmp_path)
+
         # First save with in-progress
         save_checkpoint(
             str(tmp_path), dataset_hash, cfg, [], [],

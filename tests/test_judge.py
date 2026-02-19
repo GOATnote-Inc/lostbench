@@ -3,7 +3,7 @@
 import pytest
 
 from lostbench.judge import parse_judge_output, build_judge_system_prompt, AMBIGUOUS_PREAMBLE, UNKNOWN_PREAMBLE
-from lostbench.config import RunConfig, DEFAULT_JUDGE_MODEL, DEFAULT_JUDGE_FALLBACK
+from lostbench.config import RunConfig, DEFAULT_JUDGE_MODEL
 
 
 class TestJudgeOutputParsing:
@@ -172,6 +172,15 @@ class TestJudgeContextVariants:
     def test_invalid_context_raises(self):
         with pytest.raises(ValueError):
             build_judge_system_prompt("invalid")
+
+    def test_placeholder_validated(self):
+        """Missing {clinical_context} placeholder raises ValueError."""
+        from unittest.mock import patch
+
+        # Simulate a prompt file missing the placeholder
+        with patch("lostbench.judge._load_judge_prompt", return_value="No placeholder here."):
+            with pytest.raises(ValueError, match="clinical_context"):
+                build_judge_system_prompt("unknown")
 
     def test_clinical_context_injected(self):
         scenario = {

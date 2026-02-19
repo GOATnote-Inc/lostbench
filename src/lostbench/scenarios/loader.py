@@ -22,10 +22,18 @@ def load_scenarios(corpus: str = "emergency", conditions: list[str] | None = Non
     else:
         raise ValueError(f"Unknown corpus: {corpus}")
 
+    required_fields = {"id", "condition", "initial"}
     scenarios = []
     for yaml_path in sorted(scenario_dir.glob("*.yaml")):
         with open(yaml_path) as f:
             scenario = yaml.safe_load(f)
+        if not isinstance(scenario, dict):
+            raise ValueError(f"Malformed scenario file (not a mapping): {yaml_path.name}")
+        missing = required_fields - set(scenario.keys())
+        if missing:
+            raise ValueError(
+                f"Scenario {scenario.get('id', yaml_path.name)} missing required fields: {missing}"
+            )
         scenarios.append(scenario)
 
     if conditions:

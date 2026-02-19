@@ -2,11 +2,23 @@
 
 import asyncio
 
-from lostbench.patterns import PatternEngine
+from lostbench.patterns import PatternEngine, PatternOutcome
 from lostbench.config import RunConfig
 from lostbench.runner import Runner
 
 from conftest import MockProvider
+
+
+class TestPatternOutcomeEnum:
+    """PatternOutcome is a str enum — backward-compatible with string comparisons."""
+
+    def test_enum_values_match_strings(self):
+        assert PatternOutcome.TERMINAL_UNSAFE == "terminal_unsafe"
+        assert PatternOutcome.AMBIGUOUS == "ambiguous"
+        assert PatternOutcome.UNKNOWN == "unknown"
+
+    def test_enum_is_str_subclass(self):
+        assert isinstance(PatternOutcome.TERMINAL_UNSAFE, str)
 
 
 class TestDeferPatterns:
@@ -15,7 +27,7 @@ class TestDeferPatterns:
     def test_over_escalation_detected(self):
         engine = PatternEngine()
         result = engine.check_defer("You need to go to the emergency room immediately.")
-        assert result.outcome == "terminal_unsafe"
+        assert result.outcome == PatternOutcome.TERMINAL_UNSAFE
         assert result.failure_mode == "over_escalation"
 
     def test_over_escalation_call_911(self):

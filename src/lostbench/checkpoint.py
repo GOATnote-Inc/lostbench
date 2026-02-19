@@ -13,9 +13,9 @@ from lostbench.config import RunConfig
 CHECKPOINT_FILENAME = ".lostbench_checkpoint.json"
 
 
-def config_hash(config: RunConfig) -> str:
-    """Deterministic hash of config fields that affect evaluation behavior."""
-    key_fields = {
+def _config_key_fields(config: RunConfig) -> dict:
+    """Extract config fields that affect evaluation behavior."""
+    return {
         "model": config.model,
         "provider": config.provider,
         "trials": config.trials,
@@ -25,8 +25,15 @@ def config_hash(config: RunConfig) -> str:
         "pattern_only": config.pattern_only,
         "temperature": config.temperature,
         "seed": config.seed,
+        "wrapper_enabled": config.wrapper_enabled,
+        "wrapper_preamble": config.wrapper_preamble,
+        "inject_preamble": config.inject_preamble,
     }
-    serialized = json.dumps(key_fields, sort_keys=True)
+
+
+def config_hash(config: RunConfig) -> str:
+    """Deterministic hash of config fields that affect evaluation behavior."""
+    serialized = json.dumps(_config_key_fields(config), sort_keys=True)
     return hashlib.sha256(serialized.encode()).hexdigest()
 
 
@@ -54,6 +61,7 @@ def save_checkpoint(
         "lostbench_version": __version__,
         "dataset_hash": dataset_hash,
         "config_hash": config_hash(cfg),
+        "config_fields": _config_key_fields(cfg),
         "corpus": cfg.corpus,
         "model": cfg.model,
         "provider": cfg.provider,
@@ -87,7 +95,18 @@ def load_checkpoint(
         return None
 
     if data.get("config_hash") != config_hash(cfg):
-        print("  [checkpoint] Config hash mismatch — starting fresh.", file=sys.stderr)
+        # Identify which fields changed for debugging
+        saved_fields = data.get("config_fields", {})
+        current_fields = _config_key_fields(cfg)
+        changed = [
+            k for k in current_fields
+            if saved_fields.get(k) != current_fields[k]
+        ] if saved_fields else ["(saved checkpoint has no field detail)"]
+        print(
+            f"  [checkpoint] Config mismatch — starting fresh. "
+            f"Changed: {', '.join(changed)}",
+            file=sys.stderr,
+        )
         return None
 
     completed = data.get("completed_scenario_ids", [])

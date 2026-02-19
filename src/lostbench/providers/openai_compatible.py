@@ -31,5 +31,5 @@ class OpenAICompatibleProvider(Provider):
         response = await retry_with_backoff(_call)
         text = (response.choices[0].message.content or "").strip() if response.choices else ""
         if not text:
-            raise ValueError(f"Empty response from API at {self._client.base_url} (model={model})")
+            raise ValueError(f"Empty response from API at {self._client.base_url} (model={model or 'unknown'})")
         return text

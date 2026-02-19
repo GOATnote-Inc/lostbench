@@ -46,7 +46,7 @@ def _detect_vendor(model_id: str) -> str | None:
     return None
 
 
-@dataclass
+@dataclass(frozen=True)
 class RunConfig:
     model: str
     provider: str

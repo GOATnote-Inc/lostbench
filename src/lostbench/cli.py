@@ -6,6 +6,8 @@ import os
 import sys
 
 import click
+import openai
+import anthropic
 
 from lostbench import __version__
 from lostbench.config import RunConfig
@@ -152,7 +154,14 @@ def run(model, provider, base_url, api_key, corpus, trials, system_prompt_path,
 
     try:
         results = asyncio.run(runner.run())
-    except Exception as e:
+    except (
+        openai.OpenAIError,
+        anthropic.AnthropicError,
+        ConnectionError,
+        TimeoutError,
+        asyncio.TimeoutError,
+        ValueError,
+    ) as e:
         if _handle_run_error(e, model, provider):
             sys.exit(1)
         raise

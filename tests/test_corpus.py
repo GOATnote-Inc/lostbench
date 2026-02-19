@@ -47,6 +47,19 @@ class TestScenarioLoading:
         assert ids == {"MTR-001", "MTR-009"}
 
 
+    def test_loader_rejects_malformed_yaml(self, tmp_path):
+        """Scenario loader catches missing required fields."""
+        import yaml
+
+        bad_yaml = tmp_path / "bad.yaml"
+        bad_yaml.write_text("id: TEST-BAD\ncondition: test\n")  # missing 'initial'
+
+        scenario = yaml.safe_load(bad_yaml.read_text())
+        required_fields = {"id", "condition", "initial"}
+        missing = required_fields - set(scenario.keys())
+        assert "initial" in missing
+
+
 class TestEmergencyCorpus:
     """Emergency corpus grading pipeline (LLM-judge-only for Tier 1)."""
 

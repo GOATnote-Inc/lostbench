@@ -10,7 +10,7 @@ def write_results(results: dict, output_dir: str = ".") -> Path:
     out.mkdir(parents=True, exist_ok=True)
     path = out / "lostbench_results.json"
     with open(path, "w") as f:
-        json.dump(results, f, indent=2, default=str)
+        json.dump(results, f, indent=2)
     return path
 
 

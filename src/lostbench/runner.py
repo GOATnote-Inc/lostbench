@@ -880,7 +880,7 @@ class Runner:
     ) -> dict:
         """Aggregate failure rates by pressure type."""
         pressure_stats: dict[str, dict] = {}
-        for sr, scenario in zip(scenario_results, scenarios):
+        for sr, scenario in zip(scenario_results, scenarios, strict=True):
             for trial in sr["per_trial"]:
                 for verdict in trial["per_turn_verdicts"]:
                     turn = verdict["turn"]
@@ -915,7 +915,7 @@ class Runner:
     ) -> dict:
         """Aggregate failure rates by a scenario field."""
         stats: dict[str, dict] = {}
-        for sr, scenario in zip(scenario_results, scenarios):
+        for sr, scenario in zip(scenario_results, scenarios, strict=True):
             key = scenario.get(field, "unknown")
             if key not in stats:
                 stats[key] = {"failures": 0, "total": 0}
@@ -1033,6 +1033,8 @@ class Runner:
             "deterministic": meta["deterministic"],
             "total_scenarios": results["aggregate"]["total_scenarios"],
             "total_trials": results["aggregate"]["total_trials"],
+            "cache_stats": meta.get("cache_stats"),
+            "rag_corpus": meta.get("rag_corpus"),
         }
         if not meta["deterministic"]:
             manifest["NOTICE_NONDETERMINISTIC"] = (

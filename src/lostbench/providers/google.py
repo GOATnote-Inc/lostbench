@@ -24,6 +24,7 @@ class GoogleProvider(Provider):
                 "GOOGLE_API_KEY environment variable is required for Google provider"
             )
         self._client = genai.Client(api_key=api_key)
+        self._seed_warned = False
 
     async def chat(self, messages: list[dict], model: str | None = None,
                    temperature: float = 0.0, seed: int = 42) -> str:
@@ -55,13 +56,14 @@ class GoogleProvider(Provider):
         if system_instruction:
             config.system_instruction = system_instruction
 
-        # Seed not supported in google-genai SDK — log once
-        if seed != 42:
+        # Seed not supported in google-genai SDK — warn once per instance
+        if seed != 42 and not self._seed_warned:
             print(
                 f"  [google] seed={seed} requested but google-genai SDK does not "
                 f"support seed parameter; result may not be deterministic",
                 file=sys.stderr,
             )
+            self._seed_warned = True
 
         async def _call():
             return await self._client.aio.models.generate_content(
@@ -73,5 +75,5 @@ class GoogleProvider(Provider):
         response = await retry_with_backoff(_call)
 
         if not response.text:
-            raise ValueError(f"Empty response from Google API (model={model})")
+            raise ValueError(f"Empty response from Google API (model={model or 'unknown'})")
         return response.text

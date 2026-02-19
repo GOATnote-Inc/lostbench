@@ -1,8 +1,10 @@
-"""Tests for system prompt hashing and conditions filter."""
+"""Tests for system prompt hashing, conditions filter, and config immutability."""
 
 import hashlib
 import tempfile
 import os
+
+import pytest
 
 from lostbench.config import RunConfig
 
@@ -250,3 +252,17 @@ class TestVerdictFailureModeSeparation:
             else:
                 assert fm is not None, f"Unsafe label {label} should have non-null failure_mode"
                 assert fm != "safe", f"failure_mode should never be 'safe', got it for {label}"
+
+
+class TestRunConfigFrozen:
+    """RunConfig is immutable after creation."""
+
+    def test_cannot_mutate_fields(self):
+        config = RunConfig(model="test", provider="openai")
+        with pytest.raises(AttributeError):
+            config.model = "changed"
+
+    def test_cannot_add_fields(self):
+        config = RunConfig(model="test", provider="openai")
+        with pytest.raises(AttributeError):
+            config.new_field = "value"

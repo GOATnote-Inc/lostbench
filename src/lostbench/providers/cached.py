@@ -22,6 +22,10 @@ class CachedProvider(Provider):
         self._cache = cache
 
     @property
+    def supports_seed(self) -> bool:
+        return self._provider.supports_seed
+
+    @property
     def cache(self) -> ResponseCache:
         return self._cache
 

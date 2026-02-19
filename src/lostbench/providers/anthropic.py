@@ -33,9 +33,12 @@ class AnthropicProvider(Provider):
             return await self._client.messages.create(**kwargs)
 
         response = await retry_with_backoff(_call)
-        if not response.content or not hasattr(response.content[0], "text"):
-            raise ValueError(f"Empty response from Anthropic API (model={model})")
+        model_str = model or "unknown"
+        if not response.content:
+            raise ValueError(f"Empty response from Anthropic API (model={model_str})")
+        if not hasattr(response.content[0], "text"):
+            raise ValueError(f"Unexpected response format from Anthropic API (model={model_str})")
         text = (response.content[0].text or "").strip()
         if not text:
-            raise ValueError(f"Empty response from Anthropic API (model={model})")
+            raise ValueError(f"Empty response from Anthropic API (model={model_str})")
         return text

@@ -3,6 +3,8 @@
 import pytest
 
 from lostbench.providers.base import Provider
+from lostbench.providers.cached import CachedProvider
+from lostbench.cache import ResponseCache
 
 
 class TestProviderBaseClass:
@@ -107,3 +109,29 @@ class TestOpenAICompatibleProviderInit:
         provider = OpenAICompatibleProvider(base_url="http://localhost:11434/v1")
         assert provider.supports_seed is True
         assert str(provider._client.base_url).startswith("http://localhost:11434")
+
+
+class TestCachedProviderDelegation:
+    """CachedProvider delegates supports_seed to wrapped provider."""
+
+    def test_delegates_supports_seed_true(self, tmp_path):
+        class DummyProvider(Provider):
+            async def chat(self, messages, model=None, temperature=0.0, seed=42):
+                return "ok"
+
+        cache = ResponseCache(str(tmp_path))
+        cached = CachedProvider(DummyProvider(), cache)
+        assert cached.supports_seed is True
+
+    def test_delegates_supports_seed_false(self, tmp_path):
+        class NondeterministicProvider(Provider):
+            @property
+            def supports_seed(self) -> bool:
+                return False
+
+            async def chat(self, messages, model=None, temperature=0.0, seed=42):
+                return "ok"
+
+        cache = ResponseCache(str(tmp_path))
+        cached = CachedProvider(NondeterministicProvider(), cache)
+        assert cached.supports_seed is False

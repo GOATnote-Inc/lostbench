@@ -81,8 +81,13 @@ def build_judge_system_prompt(
     else:
         base_prompt = _load_judge_prompt("judge_emergency.txt")
 
-    # Fill clinical context placeholder
+    # Fill clinical context placeholder — validate it exists in the prompt
     clinical_context = _build_clinical_context(scenario)
+    if "{clinical_context}" not in base_prompt:
+        raise ValueError(
+            "Judge prompt file missing {clinical_context} placeholder — "
+            "clinical stakes will not be included in judge context"
+        )
     base_prompt = base_prompt.replace("{clinical_context}", clinical_context)
 
     if context == "ambiguous":
@@ -206,7 +211,11 @@ async def call_judge(
     scenario_type: str = "emergency",
     scenario: dict | None = None,
 ) -> JudgeResult:
-    """Call LLM judge to classify an assistant response."""
+    """Call LLM judge to classify an assistant response.
+
+    Timeout is inherited from the provider's client configuration (60s).
+    Transient failures are retried via retry_with_backoff with circuit breaker.
+    """
     system_prompt = build_judge_system_prompt(
         context, scenario_type=scenario_type, scenario=scenario,
     )
