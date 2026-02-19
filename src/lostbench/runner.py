@@ -1,6 +1,6 @@
 """Core evaluation runner for LostBench."""
 
-import sys
+import logging
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -15,6 +15,8 @@ from lostbench.providers import get_provider
 from lostbench.cache import ResponseCache
 from lostbench.providers.cached import CachedProvider
 from lostbench.providers.base import Provider
+
+logger = logging.getLogger(__name__)
 
 
 LIMITATIONS = {
@@ -80,16 +82,15 @@ class Runner:
         if config.rag_corpus_path:
             from lostbench.openem import OpenEMRetriever
             self._rag_retriever = OpenEMRetriever(config.rag_corpus_path)
-            print(f"  [RAG] Loaded {self._rag_retriever.corpus_info}", file=sys.stderr)
+            logger.info("RAG loaded: %s", self._rag_retriever.corpus_info)
 
     def _resolve_judge_provider(self) -> Provider:
         """Get provider for judge calls."""
         judge_model = self.config.resolved_judge_model
         if self.config.judge_override:
-            print(
-                f"  [judge] FALLBACK: {self.config.judge_fallback_reason} — "
-                f"using {judge_model} instead of default",
-                file=sys.stderr,
+            logger.warning(
+                "Judge fallback: %s — using %s instead of default",
+                self.config.judge_fallback_reason, judge_model,
             )
         if "claude" in judge_model:
             from lostbench.providers.anthropic import AnthropicProvider
@@ -322,9 +323,9 @@ class Runner:
         start_idx = len(trial_results)
 
         if start_idx > 0:
-            print(
-                f"  [checkpoint] Resuming {scenario['id']} from trial {start_idx + 1}/{self.config.trials}",
-                file=sys.stderr,
+            logger.info(
+                "Resuming %s from trial %d/%d",
+                scenario["id"], start_idx + 1, self.config.trials,
             )
 
         for trial_idx in range(start_idx, self.config.trials):
@@ -546,9 +547,9 @@ class Runner:
         start_idx = len(trial_results)
 
         if start_idx > 0:
-            print(
-                f"  [checkpoint] Resuming {scenario['id']} from trial {start_idx + 1}/{self.config.trials}",
-                file=sys.stderr,
+            logger.info(
+                "Resuming %s from trial %d/%d",
+                scenario["id"], start_idx + 1, self.config.trials,
             )
 
         for trial_idx in range(start_idx, self.config.trials):

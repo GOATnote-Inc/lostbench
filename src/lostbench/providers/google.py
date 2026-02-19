@@ -1,13 +1,15 @@
 """Google Gemini provider adapter."""
 
+import logging
 import os
-import sys
 
 from google import genai
 from google.genai import types
 
 from lostbench.providers.base import Provider
 from lostbench.retry import retry_with_backoff
+
+logger = logging.getLogger(__name__)
 
 
 class GoogleProvider(Provider):
@@ -58,10 +60,10 @@ class GoogleProvider(Provider):
 
         # Seed not supported in google-genai SDK — warn once per instance
         if seed != 42 and not self._seed_warned:
-            print(
-                f"  [google] seed={seed} requested but google-genai SDK does not "
-                f"support seed parameter; result may not be deterministic",
-                file=sys.stderr,
+            logger.warning(
+                "seed=%d requested but google-genai SDK does not support "
+                "seed parameter; result may not be deterministic",
+                seed,
             )
             self._seed_warned = True
 

@@ -83,29 +83,36 @@ class PatternCheckResult:
         return [p["pattern"] for p in self.override_patterns_fired]
 
 
+def _validate_no_duplicates() -> None:
+    """Validate no duplicate patterns at import time."""
+    for name, plist in [
+        ("CRISIS_RESOURCE", CRISIS_RESOURCE_PATTERNS),
+        ("OVER_ESCALATION", OVER_ESCALATION_PATTERNS),
+        ("APPROPRIATE_DEFERRAL", APPROPRIATE_DEFERRAL_PATTERNS),
+    ]:
+        if len(plist) != len(set(plist)):
+            dups = [p for p in plist if plist.count(p) > 1]
+            raise ValueError(f"Duplicate patterns in {name}: {set(dups)}")
+
+
+_validate_no_duplicates()
+
+
 class PatternEngine:
-    """Deterministic pattern-based safety checker."""
+    """Deterministic pattern-based safety checker.
 
-    def __init__(self) -> None:
-        # Validate no duplicate patterns (catches copy-paste errors)
-        for name, plist in [
-            ("CRISIS_RESOURCE", CRISIS_RESOURCE_PATTERNS),
-            ("OVER_ESCALATION", OVER_ESCALATION_PATTERNS),
-            ("APPROPRIATE_DEFERRAL", APPROPRIATE_DEFERRAL_PATTERNS),
-        ]:
-            if len(plist) != len(set(plist)):
-                dups = [p for p in plist if plist.count(p) > 1]
-                raise ValueError(f"Duplicate patterns in {name}: {set(dups)}")
+    All patterns are compiled once at class definition time (not per-instance).
+    """
 
-        self._crisis_compiled = [
-            (p, re.compile(p, re.IGNORECASE)) for p in CRISIS_RESOURCE_PATTERNS
-        ]
-        self._over_escalation_compiled = [
-            (p, re.compile(p, re.IGNORECASE)) for p in OVER_ESCALATION_PATTERNS
-        ]
-        self._appropriate_deferral_compiled = [
-            (p, re.compile(p, re.IGNORECASE)) for p in APPROPRIATE_DEFERRAL_PATTERNS
-        ]
+    _crisis_compiled = [
+        (p, re.compile(p, re.IGNORECASE)) for p in CRISIS_RESOURCE_PATTERNS
+    ]
+    _over_escalation_compiled = [
+        (p, re.compile(p, re.IGNORECASE)) for p in OVER_ESCALATION_PATTERNS
+    ]
+    _appropriate_deferral_compiled = [
+        (p, re.compile(p, re.IGNORECASE)) for p in APPROPRIATE_DEFERRAL_PATTERNS
+    ]
 
     def check_crisis_resources(self, text: str) -> bool:
         """Check if text contains at least one crisis resource reference."""

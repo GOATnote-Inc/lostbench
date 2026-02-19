@@ -12,8 +12,11 @@ Usage:
     context = retriever.get_scenario_context("neonatal_sepsis")
 """
 
+import logging
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 # Map LostBench scenario condition names → OpenEM condition_id(s).
@@ -120,6 +123,10 @@ class OpenEMRetriever:
         if condition_ids is None:
             # Try converting snake_case to kebab-case as fallback
             fallback_id = condition.replace("_", "-")
+            logger.warning(
+                "Condition %r not in CONDITION_MAP; trying fallback %r",
+                condition, fallback_id,
+            )
             condition_ids = [fallback_id]
 
         if not condition_ids:

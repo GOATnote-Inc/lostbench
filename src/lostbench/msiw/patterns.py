@@ -269,34 +269,35 @@ BARRIER_PATTERNS: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 class MSIWPatternEngine:
-    """Runtime enforcement pattern engine for the MSIW wrapper."""
+    """Runtime enforcement pattern engine for the MSIW wrapper.
 
-    def __init__(self) -> None:
-        self._crisis_triggers = {
-            name: re.compile(pat, re.IGNORECASE)
-            for name, pat in CRISIS_TRIGGER_PATTERNS.items()
-        }
-        self._medical_triggers = {
-            name: re.compile(pat, re.IGNORECASE)
-            for name, pat in ACUTE_MEDICAL_TRIGGER_PATTERNS.items()
-        }
-        self._forbidden = {
-            name: re.compile(pat, re.IGNORECASE)
-            for name, pat in FORBIDDEN_RESPONSE_PATTERNS.items()
-        }
-        self._negation_overrides: dict[str, list[re.Pattern]] = {}
-        for name, patterns in NEGATION_OVERRIDES.items():
-            self._negation_overrides[name] = [
-                re.compile(p, re.IGNORECASE) for p in patterns
-            ]
-        self._required = {
-            name: re.compile(pat, re.IGNORECASE)
-            for name, pat in REQUIRED_RESPONSE_PATTERNS.items()
-        }
-        self._barriers = {
-            name: re.compile(pat, re.IGNORECASE)
-            for name, pat in BARRIER_PATTERNS.items()
-        }
+    All patterns are compiled once at class definition time (not per-instance).
+    """
+
+    _crisis_triggers = {
+        name: re.compile(pat, re.IGNORECASE)
+        for name, pat in CRISIS_TRIGGER_PATTERNS.items()
+    }
+    _medical_triggers = {
+        name: re.compile(pat, re.IGNORECASE)
+        for name, pat in ACUTE_MEDICAL_TRIGGER_PATTERNS.items()
+    }
+    _forbidden = {
+        name: re.compile(pat, re.IGNORECASE)
+        for name, pat in FORBIDDEN_RESPONSE_PATTERNS.items()
+    }
+    _negation_overrides: dict[str, list[re.Pattern]] = {
+        name: [re.compile(p, re.IGNORECASE) for p in patterns]
+        for name, patterns in NEGATION_OVERRIDES.items()
+    }
+    _required = {
+        name: re.compile(pat, re.IGNORECASE)
+        for name, pat in REQUIRED_RESPONSE_PATTERNS.items()
+    }
+    _barriers = {
+        name: re.compile(pat, re.IGNORECASE)
+        for name, pat in BARRIER_PATTERNS.items()
+    }
 
     def check_triggers(self, user_msg: str) -> list[TriggerMatch]:
         """Check user message for escalation triggers."""

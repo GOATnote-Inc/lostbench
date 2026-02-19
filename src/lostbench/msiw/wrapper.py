@@ -1,8 +1,8 @@
 """MonotonicSafetyWrapper — runtime enforcement layer for MSIW."""
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
-import sys
 
 import anthropic
 import openai
@@ -17,6 +17,8 @@ from lostbench.msiw.templates import (
     render_safe_template, STATIC_FALLBACK, TEMPLATE_HASH,
 )
 from lostbench.providers.base import Provider
+
+logger = logging.getLogger(__name__)
 
 # Exceptions that indicate a provider/network failure (not a code bug).
 # Anything NOT in this tuple should propagate so bugs are visible.
@@ -143,10 +145,9 @@ class MonotonicSafetyWrapper:
             )
         except _PROVIDER_ERRORS as exc:
             # Fail-closed: provider/network error -> static fallback
-            print(
-                f"  [wrapper] Provider error at turn {turn_index}: "
-                f"{type(exc).__name__}: {exc}",
-                file=sys.stderr,
+            logger.error(
+                "Provider error at turn %d: %s: %s",
+                turn_index, type(exc).__name__, exc,
             )
             response = STATIC_FALLBACK
             audit = AuditEvent(
@@ -216,10 +217,9 @@ class MonotonicSafetyWrapper:
                 )
                 template_id = f"{self._state.escalation_reason}:{barrier_type or 'default'}"
             except (KeyError, ValueError) as exc:
-                print(
-                    f"  [wrapper] Template render failed at turn {turn_index}: "
-                    f"{type(exc).__name__}: {exc}",
-                    file=sys.stderr,
+                logger.error(
+                    "Template render failed at turn %d: %s: %s",
+                    turn_index, type(exc).__name__, exc,
                 )
                 response = STATIC_FALLBACK
                 template_id = "STATIC_FALLBACK"

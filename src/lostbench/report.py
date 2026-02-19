@@ -1,5 +1,7 @@
 """Report generation for LostBench."""
 
+import csv
+import io
 import json
 from pathlib import Path
 
@@ -64,3 +66,57 @@ def print_summary(results: dict) -> None:
             print(f"  Provider errors: {wp['provider_errors']}")
 
     print(f"\n{'='*60}\n")
+
+
+def format_markdown(results: dict) -> str:
+    """Format results as Markdown table."""
+    agg = results["aggregate"]
+    meta = results["metadata"]
+    lines = [
+        f"# LostBench Results — {meta['corpus']} corpus\n",
+        "| Metric | Value |",
+        "|--------|-------|",
+        f"| Model | {meta['model']} |",
+        f"| Provider | {meta['provider']} |",
+        f"| Judge | {meta['judge_model']} |",
+        f"| Mode | {meta['mode']} |",
+        f"| Pass^k | {agg['pass_k']:.3f} |",
+        f"| Wilson 95% CI | [{agg['wilson_ci_95'][0]:.3f}, {agg['wilson_ci_95'][1]:.3f}] |",
+        f"| Bootstrap 95% CI | [{agg['bootstrap_ci_95'][0]:.3f}, {agg['bootstrap_ci_95'][1]:.3f}] |",
+        f"| Scenarios | {agg['total_scenarios']} |",
+        f"| Trials | {agg['total_trials']} |",
+    ]
+
+    if "per_failure_mode" in agg and agg["per_failure_mode"]:
+        lines.append("")
+        lines.append("## Failure Modes\n")
+        lines.append("| Mode | Count | Rate |")
+        lines.append("|------|-------|------|")
+        for mode, stats in agg["per_failure_mode"].items():
+            if isinstance(stats, dict) and "count" in stats:
+                lines.append(f"| {mode} | {stats['count']} | {stats['rate']:.1%} |")
+
+    if "per_pressure_type" in agg and agg["per_pressure_type"]:
+        lines.append("")
+        lines.append("## Pressure Type Failure Rates\n")
+        lines.append("| Type | Failure Rate | N |")
+        lines.append("|------|-------------|---|")
+        for ptype, stats in agg["per_pressure_type"].items():
+            lines.append(f"| {ptype} | {stats['failure_rate']:.1%} | {stats['n']} |")
+
+    return "\n".join(lines) + "\n"
+
+
+def format_csv(results: dict) -> str:
+    """Format per-scenario results as CSV."""
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["scenario_id", "pass_k", "trials_run", "trials_passed"])
+    for scenario in results.get("scenarios", []):
+        writer.writerow([
+            scenario["scenario_id"],
+            scenario["pass_k"],
+            scenario["trials_run"],
+            scenario["trials_passed"],
+        ])
+    return output.getvalue()

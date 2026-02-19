@@ -17,8 +17,6 @@ from lostbench.config import RunConfig
 from lostbench.runner import Runner
 from conftest import MockProvider
 
-pytestmark = pytest.mark.asyncio
-
 
 # ============================================================
 # TestEscalationState
@@ -780,6 +778,7 @@ class TestWrapper:
             system_prompt="You are a helpful assistant.",
         )
 
+    @pytest.mark.asyncio
     async def test_passthrough_when_monitoring(self):
         """Before escalation, responses pass through unchanged."""
         wrapper = self._make_wrapper(["This is a normal response."])
@@ -795,6 +794,7 @@ class TestWrapper:
         assert result.violations == []
         assert result.audit_event.escalated is False
 
+    @pytest.mark.asyncio
     async def test_replace_when_escalated_with_violation(self):
         """Post-escalation, unsafe response is replaced with template."""
         wrapper = self._make_wrapper([
@@ -813,6 +813,7 @@ class TestWrapper:
         # Template should contain emergency info
         assert "911" in result.response or "emergency" in result.response.lower()
 
+    @pytest.mark.asyncio
     async def test_passthrough_when_escalated_clean(self):
         """Post-escalation, safe response passes through."""
         wrapper = self._make_wrapper([
@@ -830,6 +831,7 @@ class TestWrapper:
         # Response has all required patterns, no forbidden — should pass through
         assert result.replaced is False
 
+    @pytest.mark.asyncio
     async def test_fail_closed_provider_error(self):
         """Provider exception triggers static fallback."""
         class ErrorProvider:
@@ -852,6 +854,7 @@ class TestWrapper:
         assert "provider_error" in result.audit_event.all_violations
         assert result.audit_event.original_response is None
 
+    @pytest.mark.asyncio
     async def test_multi_turn_escalation(self):
         """Multi-turn: escalation at turn 2, enforcement at turn 3."""
         provider = MockProvider([
@@ -894,6 +897,7 @@ class TestWrapper:
         assert wrapper.state.escalated
         assert r3.replaced is True
 
+    @pytest.mark.asyncio
     async def test_reset_creates_fresh_state(self):
         """reset() creates a new unlocked EscalationState."""
         wrapper = self._make_wrapper(["response"])
@@ -907,6 +911,7 @@ class TestWrapper:
         assert wrapper.state.escalated is False
         assert wrapper.state._frozen is False
 
+    @pytest.mark.asyncio
     async def test_barrier_aware_template_selection(self):
         """When barrier detected, template matches barrier type."""
         wrapper = self._make_wrapper([
@@ -923,6 +928,7 @@ class TestWrapper:
         # Should use financial barrier template
         assert "EMTALA" in result.response or "pay" in result.response.lower()
 
+    @pytest.mark.asyncio
     async def test_augmented_conversation_has_preamble(self):
         """Wrapper injects MSIW preamble into system prompt."""
         from lostbench.msiw.wrapper import MSIW_SYSTEM_PREAMBLE
@@ -950,6 +956,7 @@ class TestWrapper:
         assert system_msg.startswith(MSIW_SYSTEM_PREAMBLE)
         assert "original prompt" in system_msg
 
+    @pytest.mark.asyncio
     async def test_wrapper_preamble_false_no_augmentation(self):
         """When preamble=False, conversation is NOT augmented with MSIW preamble."""
         from lostbench.msiw.wrapper import MSIW_SYSTEM_PREAMBLE
@@ -978,6 +985,7 @@ class TestWrapper:
         assert not system_msg.startswith(MSIW_SYSTEM_PREAMBLE)
         assert system_msg == "original prompt"
 
+    @pytest.mark.asyncio
     async def test_wrapper_preamble_true_augments(self):
         """When preamble=True (default), conversation IS augmented with MSIW preamble."""
         from lostbench.msiw.wrapper import MSIW_SYSTEM_PREAMBLE
@@ -1024,6 +1032,7 @@ class TestRunnerIntegration:
             wrapper_enabled=wrapper_enabled,
         )
 
+    @pytest.mark.asyncio
     async def test_no_wrapper_unchanged(self, sample_scenario):
         """Without wrapper, behavior is unchanged."""
         config = self._make_config(wrapper_enabled=False)
@@ -1038,6 +1047,7 @@ class TestRunnerIntegration:
         result = await runner._run_single_trial(sample_scenario, 0)
         assert "wrapper_active" not in result
 
+    @pytest.mark.asyncio
     async def test_wrapper_adds_metadata(self, sample_scenario):
         """With wrapper, trial result includes wrapper metadata."""
         config = self._make_config(wrapper_enabled=True)
@@ -1055,6 +1065,7 @@ class TestRunnerIntegration:
         assert "wrapper_escalation_state" in result
         assert isinstance(result["wrapper_events"], list)
 
+    @pytest.mark.asyncio
     async def test_wrapper_reset_between_trials(self, sample_scenario):
         """Wrapper state is fresh for each trial."""
         config = self._make_config(wrapper_enabled=True)
@@ -1095,6 +1106,7 @@ class TestRunnerIntegration:
         full = RunConfig(model="m", provider="openai", wrapper_enabled=True, wrapper_preamble=True)
         assert full.mode == "wrapper"
 
+    @pytest.mark.asyncio
     async def test_wrapper_metadata_in_build(self):
         """wrapper_enabled appears in metadata."""
         config = self._make_config(wrapper_enabled=True)
@@ -1123,6 +1135,7 @@ class TestOriginalResponse:
             system_prompt="You are a helpful assistant.",
         )
 
+    @pytest.mark.asyncio
     async def test_original_response_stored_on_replacement(self):
         """When response is replaced, original_response is saved in audit event."""
         unsafe_response = "It's probably nothing serious, you should be fine."
@@ -1139,6 +1152,7 @@ class TestOriginalResponse:
         # Delivered response is different (template)
         assert result.response != unsafe_response
 
+    @pytest.mark.asyncio
     async def test_original_response_none_when_not_replaced(self):
         """When response passes through, original_response is None."""
         safe = "Call 911 immediately right now. This is a medical emergency. Call 988."
@@ -1151,6 +1165,7 @@ class TestOriginalResponse:
         assert result.replaced is False
         assert result.audit_event.original_response is None
 
+    @pytest.mark.asyncio
     async def test_original_response_none_when_not_escalated(self):
         """Pre-escalation passthrough has no original_response."""
         wrapper = self._make_wrapper(["Normal response."])
@@ -1162,6 +1177,7 @@ class TestOriginalResponse:
         assert result.replaced is False
         assert result.audit_event.original_response is None
 
+    @pytest.mark.asyncio
     async def test_original_response_in_serialized_events(self, sample_scenario):
         """Runner serializes original_response in wrapper_events."""
         config = RunConfig(
@@ -1195,6 +1211,7 @@ class TestOriginalResponse:
 class TestWrapperPrecision:
     """Tests for wrapper_precision metric computation (replacement counts only)."""
 
+    @pytest.mark.asyncio
     async def test_precision_counts_replacements(self, sample_scenario):
         """Replacements are counted (no true/false positive classification)."""
         config = RunConfig(
@@ -1222,6 +1239,7 @@ class TestWrapperPrecision:
         assert "false_positives" not in wp
         assert "precision" not in wp
 
+    @pytest.mark.asyncio
     async def test_no_replacements(self, sample_scenario):
         """No replacements → total_replacements = 0."""
         config = RunConfig(
@@ -1239,6 +1257,7 @@ class TestWrapperPrecision:
         assert wp["total_replacements"] == 0
         assert wp["provider_errors"] == 0
 
+    @pytest.mark.asyncio
     async def test_precision_not_present_without_wrapper(self, sample_scenario):
         """Without wrapper, no wrapper_precision in results."""
         config = RunConfig(

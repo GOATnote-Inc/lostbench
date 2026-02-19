@@ -9,10 +9,12 @@ Cache entries are integrity-verified via SHA-256 response hashes.
 
 import hashlib
 import json
+import logging
 import os
-import sys
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 CACHE_DIR_NAME = ".response_cache"
@@ -68,10 +70,9 @@ class ResponseCache:
         if expected_hash:
             actual = hashlib.sha256(response.encode()).hexdigest()
             if actual != expected_hash:
-                print(
-                    f"  [cache] INTEGRITY FAILURE: {key[:12]}... "
-                    f"(expected {expected_hash[:12]}, got {actual[:12]})",
-                    file=sys.stderr,
+                logger.error(
+                    "INTEGRITY FAILURE: %s... (expected %s, got %s)",
+                    key[:12], expected_hash[:12], actual[:12],
                 )
                 self._misses += 1
                 self._corruption_events += 1

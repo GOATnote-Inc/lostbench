@@ -2,12 +2,14 @@
 
 import hashlib
 import json
+import logging
 import os
-import sys
 from pathlib import Path
 
 from lostbench import __version__
 from lostbench.config import RunConfig
+
+logger = logging.getLogger(__name__)
 
 
 CHECKPOINT_FILENAME = ".lostbench_checkpoint.json"
@@ -91,7 +93,7 @@ def load_checkpoint(
         data = json.load(f)
 
     if data.get("dataset_hash") != dataset_hash:
-        print("  [checkpoint] Dataset hash mismatch — starting fresh.", file=sys.stderr)
+        logger.warning("Dataset hash mismatch — starting fresh.")
         return None
 
     if data.get("config_hash") != config_hash(cfg):
@@ -102,10 +104,9 @@ def load_checkpoint(
             k for k in current_fields
             if saved_fields.get(k) != current_fields[k]
         ] if saved_fields else ["(saved checkpoint has no field detail)"]
-        print(
-            f"  [checkpoint] Config mismatch — starting fresh. "
-            f"Changed: {', '.join(changed)}",
-            file=sys.stderr,
+        logger.warning(
+            "Config mismatch — starting fresh. Changed: %s",
+            ", ".join(changed),
         )
         return None
 
@@ -113,11 +114,10 @@ def load_checkpoint(
     results = data.get("scenario_results", [])
     in_progress = data.get("in_progress_scenario")
     trial_count = len(in_progress["completed_trials"]) if in_progress else 0
-    print(
-        f"  [checkpoint] Resuming — {len(completed)} scenarios completed"
-        + (f", 1 in-progress ({trial_count} trials done)" if in_progress else "")
-        + ".",
-        file=sys.stderr,
+    logger.info(
+        "Resuming — %d scenarios completed%s.",
+        len(completed),
+        f", 1 in-progress ({trial_count} trials done)" if in_progress else "",
     )
     return (completed, results, in_progress)
 

@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import os
 import sys
 
@@ -12,7 +13,7 @@ import anthropic
 from lostbench import __version__
 from lostbench.config import RunConfig
 from lostbench.runner import Runner
-from lostbench.report import write_results, write_manifest, print_summary
+from lostbench.report import write_results, write_manifest, print_summary, format_markdown, format_csv
 
 PROVIDER_CHOICES = ["openai", "anthropic", "xai", "google", "openai-compatible"]
 
@@ -21,9 +22,20 @@ QUICK_CONDITIONS = ["MTR-001", "MTR-004"]
 
 @click.group()
 @click.version_option(version=__version__)
-def main():
-    """LostBench -- AI safety benchmark for recommendation persistence."""
-    pass
+@click.option("-v", "--verbose", is_flag=True, default=False, help="Enable verbose logging (DEBUG level)")
+def main(verbose):
+    """LostBench -- AI safety benchmark for recommendation persistence.
+
+    Measures whether AI models maintain safety-critical recommendations
+    under conversational pressure. Pass^k requires ALL k trials per
+    scenario to pass (strict AND).
+    """
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="  [%(name)s] %(message)s",
+        stream=sys.stderr,
+    )
 
 
 @main.command()
@@ -185,11 +197,21 @@ def run(model, provider, base_url, api_key, corpus, trials, system_prompt_path,
 
 @main.command()
 @click.argument("results_path", type=click.Path(exists=True))
-def report(results_path):
+@click.option("--format", "fmt", default="text", type=click.Choice(["text", "markdown", "csv", "json"]),
+              help="Output format (default: text)")
+def report(results_path, fmt):
     """Print summary from existing results file."""
     with open(results_path) as f:
         results = json.load(f)
-    print_summary(results)
+
+    if fmt == "text":
+        print_summary(results)
+    elif fmt == "markdown":
+        click.echo(format_markdown(results))
+    elif fmt == "csv":
+        click.echo(format_csv(results), nl=False)
+    elif fmt == "json":
+        click.echo(json.dumps(results, indent=2))
 
 
 @main.command()
