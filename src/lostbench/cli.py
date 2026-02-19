@@ -151,7 +151,8 @@ def run(model, provider, base_url, api_key, corpus, trials, system_prompt_path,
     try:
         results = asyncio.run(runner.run())
     except Exception as e:
-        _handle_run_error(e, model, provider)
+        if _handle_run_error(e, model, provider):
+            sys.exit(1)
         raise
 
     manifest = runner.build_manifest(results)
@@ -311,12 +312,26 @@ def _check_api_key(provider: str) -> None:
         sys.exit(1)
 
 
-def _handle_run_error(e: Exception, model: str, provider: str) -> None:
-    """Provide helpful error messages for common API failures."""
+def _handle_run_error(e: Exception, model: str, provider: str) -> bool:
+    """Provide helpful error messages for common API failures.
+
+    Returns True if the error was handled (caller should sys.exit),
+    False if the error is unknown and should be re-raised.
+    """
     error_str = str(e)
     if "404" in error_str or "model_not_found" in error_str or "NotFoundError" in type(e).__name__:
         click.echo(f"\nError: Model '{model}' not found by {provider}.", err=True)
         click.echo("Check the model ID — it must match exactly (e.g., gpt-5.2, claude-opus-4-6).", err=True)
+        return True
     elif "401" in error_str or "AuthenticationError" in type(e).__name__:
         click.echo(f"\nError: Authentication failed for {provider}.", err=True)
         click.echo("Check that your API key is correct and not expired.", err=True)
+        return True
+    elif "Connection" in type(e).__name__ or "ConnectionError" in error_str:
+        click.echo(f"\nError: Could not connect to {provider}.", err=True)
+        if provider == "openai-compatible":
+            click.echo("Check that the server is running at the --base-url you specified.", err=True)
+        else:
+            click.echo("Check your internet connection and try again.", err=True)
+        return True
+    return False

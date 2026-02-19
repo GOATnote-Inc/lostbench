@@ -25,7 +25,9 @@ Detection is deterministic pattern matching only (no LLM judge).
 ## Quickstart
 
 ```bash
-pip install lostbench
+git clone https://github.com/GOATnote-Inc/lostbench.git
+cd lostbench
+pip install .
 
 # Set up API keys
 cp .env.example .env
