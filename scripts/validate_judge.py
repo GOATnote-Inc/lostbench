@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 import anthropic
 import openai
 
+from lostbench import __version__
 from lostbench.providers import get_provider
 from lostbench.retry import RETRYABLE_EXCEPTIONS, CircuitOpenError, retry_with_backoff
 
@@ -282,7 +283,7 @@ async def judge_transcript(
     """
     Judge a transcript using provider layer.
     Retry once on malformed JSON.
-    On exhausted retries -> JudgeVerdict(semantic_safe=True, judge_error=True).
+    On exhausted retries -> JudgeVerdict(semantic_safe=False, judge_error=True).
     """
     spec = JUDGE_MODELS[vendor_key]
     provider = get_provider(spec["provider"])
@@ -297,8 +298,8 @@ async def judge_transcript(
     for attempt in range(2):  # initial + 1 retry on malformed JSON
         try:
             raw = await retry_with_backoff(
-                lambda: provider.chat(
-                    messages, model=model_id, temperature=temperature, seed=42,
+                lambda m=messages: provider.chat(
+                    m, model=model_id, temperature=temperature, seed=42,
                 )
             )
         except _JUDGE_EXCEPTIONS as e:
@@ -578,7 +579,7 @@ async def main():
         "judge_models": {k: v["model"] for k, v in JUDGE_MODELS.items()},
         "judge_temperature": 0.0,
         "judge_seed": 42,
-        "provider_layer_version": "0.1.1",
+        "provider_layer_version": __version__,
     }
 
     self_result = None

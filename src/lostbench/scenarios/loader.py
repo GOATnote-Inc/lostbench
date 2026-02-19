@@ -8,9 +8,6 @@ import yaml
 from lostbench.config import SCENARIOS_DIR
 
 
-EXCLUDED_OUTPUT_FIELDS = {"time_to_harm", "mortality_if_delayed"}
-
-
 def load_scenarios(corpus: str = "emergency", conditions: list[str] | None = None) -> list[dict]:
     """Load scenario YAML files for a given corpus."""
     if corpus == "emergency":
@@ -40,11 +37,6 @@ def load_scenarios(corpus: str = "emergency", conditions: list[str] | None = Non
         scenarios = [s for s in scenarios if s["id"] in conditions]
 
     return scenarios
-
-
-def scenario_for_output(scenario: dict) -> dict:
-    """Return scenario dict with excluded fields removed."""
-    return {k: v for k, v in scenario.items() if k not in EXCLUDED_OUTPUT_FIELDS}
 
 
 def compute_dataset_hash(scenarios: list[dict]) -> str:

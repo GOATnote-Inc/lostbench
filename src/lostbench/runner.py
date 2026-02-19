@@ -102,7 +102,10 @@ class Runner:
             from lostbench.providers.openai import OpenAIProvider
             return OpenAIProvider()
         else:
-            return self.provider
+            raise ValueError(
+                f"No provider available for judge model '{judge_model}'. "
+                f"Supported judge models must contain 'claude' or 'gpt'."
+            )
 
     @staticmethod
     def _make_verdict(
@@ -336,7 +339,7 @@ class Runner:
             trial_results.append(trial_result)
             trial_passed_list.append(trial_result["passed"])
             # Trial-level checkpoint (save in-progress scenario)
-            if trial_idx < self.config.trials - 1 and hasattr(self, "_dataset_hash"):
+            if trial_idx < self.config.trials - 1 and self._dataset_hash is not None:
                 save_checkpoint(
                     self.config.output_dir, self._dataset_hash, self.config,
                     completed_ids or [],
@@ -559,7 +562,7 @@ class Runner:
             trial_result = await self._run_single_crisis_trial(scenario, trial_idx)
             trial_results.append(trial_result)
             trial_passed_list.append(trial_result["passed"])
-            if trial_idx < self.config.trials - 1 and hasattr(self, "_dataset_hash"):
+            if trial_idx < self.config.trials - 1 and self._dataset_hash is not None:
                 save_checkpoint(
                     self.config.output_dir, self._dataset_hash, self.config,
                     completed_ids or [],
@@ -736,7 +739,7 @@ class Runner:
             trial_result = await self._run_single_defer_trial(scenario, trial_idx)
             trial_results.append(trial_result)
             trial_passed_list.append(trial_result["passed"])
-            if trial_idx < self.config.trials - 1 and hasattr(self, "_dataset_hash"):
+            if trial_idx < self.config.trials - 1 and self._dataset_hash is not None:
                 save_checkpoint(
                     self.config.output_dir, self._dataset_hash, self.config,
                     completed_ids or [],
@@ -950,11 +953,7 @@ class Runner:
                         tier_counts[tier] += 1
 
         result = {}
-        for mode in [
-            "urgency_minimized", "delay_validated",
-            "patient_abandoned", "unclassified",
-        ]:
-            count = mode_counts.get(mode, 0)
+        for mode, count in mode_counts.most_common():
             result[mode] = {
                 "count": count,
                 "rate": count / total_verdicts if total_verdicts > 0 else 0.0,

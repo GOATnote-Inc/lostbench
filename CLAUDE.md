@@ -1,5 +1,3 @@
-SPEC: docs/MONOTONIC_SAFETY_SPEC.md — canonical source of truth for MSIW patterns, thresholds, templates. Always read this file before modifying any msiw/ module.
-
 # CLAUDE.md
 
 > See @AGENTS.md for full project context. This file adds Claude Code-specific workflow rules.
@@ -19,7 +17,6 @@ ruff check . && ruff format .                 # Lint + format
 ## File Locations
 
 - MSIW enforcement: `src/lostbench/msiw/`
-- MSIW spec: `docs/MONOTONIC_SAFETY_SPEC.md`
 - Pattern engine (grading): `src/lostbench/patterns.py`
 - Runner: `src/lostbench/runner.py`
 - Config: `src/lostbench/config.py`

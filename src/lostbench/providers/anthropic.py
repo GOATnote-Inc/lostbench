@@ -1,9 +1,13 @@
 """Anthropic provider adapter."""
 
+import logging
+
 import anthropic
 
 from lostbench.providers.base import Provider
 from lostbench.retry import retry_with_backoff
+
+logger = logging.getLogger(__name__)
 
 
 class AnthropicProvider(Provider):
@@ -13,6 +17,10 @@ class AnthropicProvider(Provider):
 
     def __init__(self) -> None:
         self._client = anthropic.AsyncAnthropic(timeout=60.0)
+        logger.info(
+            "Anthropic provider does not support seed parameter; "
+            "results will not be deterministic"
+        )
 
     async def chat(self, messages: list[dict], model: str | None = None,
                    temperature: float = 0.0, seed: int = 42) -> str:

@@ -5,6 +5,8 @@ import io
 import json
 from pathlib import Path
 
+import click
+
 
 def write_results(results: dict, output_dir: str = ".") -> Path:
     """Write results JSON to file."""
@@ -38,41 +40,41 @@ def print_summary(results: dict) -> None:
     """Print human-readable summary to stdout."""
     agg, meta = _require_keys(results)
 
-    print(f"\n{'='*60}")
-    print(f"LostBench Results \u2014 {meta['corpus']} corpus")
-    print(f"{'='*60}")
-    print(f"Model:   {meta['model']}")
-    print(f"Provider: {meta['provider']}")
-    print(f"Judge:   {meta['judge_model']}")
+    click.echo(f"\n{'='*60}")
+    click.echo(f"LostBench Results \u2014 {meta['corpus']} corpus")
+    click.echo(f"{'='*60}")
+    click.echo(f"Model:   {meta['model']}")
+    click.echo(f"Provider: {meta['provider']}")
+    click.echo(f"Judge:   {meta['judge_model']}")
     if meta.get("judge_override"):
-        print(f"  (judge override: {meta['judge_fallback_reason']})")
-    print(f"Mode:    {meta['mode']}")
-    print()
-    print(f"Pass^k:  {agg['pass_k']:.3f}")
-    print(f"Wilson 95% CI:    [{agg['wilson_ci_95'][0]:.3f}, {agg['wilson_ci_95'][1]:.3f}]")
-    print(f"Bootstrap 95% CI: [{agg['bootstrap_ci_95'][0]:.3f}, {agg['bootstrap_ci_95'][1]:.3f}]")
-    print(f"Scenarios: {agg['total_scenarios']}, Trials: {agg['total_trials']}")
-    print()
+        click.echo(f"  (judge override: {meta['judge_fallback_reason']})")
+    click.echo(f"Mode:    {meta['mode']}")
+    click.echo()
+    click.echo(f"Pass^k:  {agg['pass_k']:.3f}")
+    click.echo(f"Wilson 95% CI:    [{agg['wilson_ci_95'][0]:.3f}, {agg['wilson_ci_95'][1]:.3f}]")
+    click.echo(f"Bootstrap 95% CI: [{agg['bootstrap_ci_95'][0]:.3f}, {agg['bootstrap_ci_95'][1]:.3f}]")
+    click.echo(f"Scenarios: {agg['total_scenarios']}, Trials: {agg['total_trials']}")
+    click.echo()
 
     if "per_failure_mode" in agg:
-        print("Failure modes:")
+        click.echo("Failure modes:")
         for mode, stats in agg["per_failure_mode"].items():
             if isinstance(stats, dict) and "count" in stats:
-                print(f"  {mode}: {stats['count']} ({stats['rate']:.1%})")
+                click.echo(f"  {mode}: {stats['count']} ({stats['rate']:.1%})")
 
     if "per_pressure_type" in agg:
-        print("\nPressure type failure rates:")
+        click.echo("\nPressure type failure rates:")
         for ptype, stats in agg["per_pressure_type"].items():
-            print(f"  {ptype}: {stats['failure_rate']:.1%} (n={stats['n']})")
+            click.echo(f"  {ptype}: {stats['failure_rate']:.1%} (n={stats['n']})")
 
     if "wrapper_precision" in agg:
         wp = agg["wrapper_precision"]
-        print("\nWrapper replacements:")
-        print(f"  Total:           {wp['total_replacements']}")
+        click.echo("\nWrapper replacements:")
+        click.echo(f"  Total:           {wp['total_replacements']}")
         if wp.get("provider_errors", 0) > 0:
-            print(f"  Provider errors: {wp['provider_errors']}")
+            click.echo(f"  Provider errors: {wp['provider_errors']}")
 
-    print(f"\n{'='*60}\n")
+    click.echo(f"\n{'='*60}\n")
 
 
 def format_markdown(results: dict) -> str:

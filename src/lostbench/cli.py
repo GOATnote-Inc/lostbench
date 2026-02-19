@@ -66,6 +66,9 @@ def run(model, provider, base_url, api_key, corpus, trials, system_prompt_path,
     if inject_preamble and wrapper:
         raise click.UsageError("--inject-preamble requires --no-wrapper (they are mutually exclusive)")
 
+    if (wrapper or inject_preamble) and corpus != "emergency":
+        raise click.UsageError("--wrapper and --inject-preamble are only supported with --corpus emergency")
+
     if provider == "openai-compatible" and not base_url:
         raise click.UsageError("--base-url is required when using --provider openai-compatible")
 
@@ -255,8 +258,8 @@ def compare(baseline_path, comparison_path):
     for sid in all_ids:
         bs = b_scenarios.get(sid)
         cs = c_scenarios.get(sid)
-        b_pass = "PASS" if (bs and bs["pass_k"]) else "FAIL" if bs else "-"
-        c_pass = "PASS" if (cs and cs["pass_k"]) else "FAIL" if cs else "-"
+        b_pass = "PASS" if (bs and bs["pass_k"] is True) else "FAIL" if bs else "-"
+        c_pass = "PASS" if (cs and cs["pass_k"] is True) else "FAIL" if cs else "-"
         if b_pass == c_pass:
             delta_str = ""
         elif b_pass == "FAIL" and c_pass == "PASS":
@@ -352,6 +355,10 @@ def _check_judge_key(config: RunConfig) -> None:
         env_var = "ANTHROPIC_API_KEY"
     elif "gpt" in judge:
         env_var = "OPENAI_API_KEY"
+    elif "gemini" in judge:
+        env_var = "GOOGLE_API_KEY"
+    elif "grok" in judge:
+        env_var = "XAI_API_KEY"
     else:
         return
     if not os.environ.get(env_var):

@@ -1,11 +1,10 @@
 """Tests for output format: pressure type tagging, context aggregation, failure mode aggregation,
-transcript storage, limitations field, time_to_harm exclusion."""
+transcript storage, limitations field."""
 
 import asyncio
 
 from lostbench.config import RunConfig
 from lostbench.runner import Runner, LIMITATIONS
-from lostbench.scenarios.loader import scenario_for_output, EXCLUDED_OUTPUT_FIELDS
 
 from conftest import MockProvider
 
@@ -104,10 +103,11 @@ class TestPerFailureModeAggregation:
         fm = runner._aggregate_failure_modes([result])
 
         # pattern_only + emergency = no failure detection (LLM judge required)
-        assert fm["delay_validated"]["count"] == 0
-        assert fm["urgency_minimized"]["count"] == 0
-        assert fm["patient_abandoned"]["count"] == 0
-        assert fm["unclassified"]["count"] == 0
+        # With dynamic enumeration, zero-count modes are absent from the dict
+        assert fm.get("delay_validated", {}).get("count", 0) == 0
+        assert fm.get("urgency_minimized", {}).get("count", 0) == 0
+        assert fm.get("patient_abandoned", {}).get("count", 0) == 0
+        assert fm.get("unclassified", {}).get("count", 0) == 0
 
     def test_failure_mode_rates(self, sample_scenario):
         """With pattern_only, all rates are 0 (no grading signal)."""
@@ -123,8 +123,8 @@ class TestPerFailureModeAggregation:
         result = asyncio.run(runner._run_scenario_trials(sample_scenario))
         fm = runner._aggregate_failure_modes([result])
 
-        assert fm["delay_validated"]["count"] == 0
-        assert fm["delay_validated"]["rate"] == 0.0
+        assert fm.get("delay_validated", {}).get("count", 0) == 0
+        assert fm.get("delay_validated", {}).get("rate", 0.0) == 0.0
 
 
 class TestTranscriptStorage:
@@ -177,29 +177,6 @@ class TestLimitationsField:
         results = asyncio.run(runner._run_crisis_resource([sample_crisis_scenario], "testhash"))
         assert "limitations" in results
         assert results["limitations"]["evaluation_type"] == "controlled_synthetic"
-
-
-class TestTimeToHarmExcluded:
-    """time_to_harm and mortality_if_delayed do NOT appear in output JSON."""
-
-    def test_excluded_from_scenario_output(self):
-        scenario = {
-            "id": "MTR-001",
-            "condition": "neonatal_sepsis",
-            "context": "us_urban_insured",
-            "time_to_harm": "6-12 hours",
-            "mortality_if_delayed": "10-15%",
-            "urgency": "extreme_1h",
-        }
-        filtered = scenario_for_output(scenario)
-        assert "time_to_harm" not in filtered
-        assert "mortality_if_delayed" not in filtered
-        assert "id" in filtered
-        assert "condition" in filtered
-
-    def test_excluded_fields_constant(self):
-        assert "time_to_harm" in EXCLUDED_OUTPUT_FIELDS
-        assert "mortality_if_delayed" in EXCLUDED_OUTPUT_FIELDS
 
 
 class TestReproducibilityAnomaly:
