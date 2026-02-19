@@ -137,7 +137,7 @@ def run(model, provider, base_url, api_key, corpus, trials, system_prompt_path,
         click.echo("", err=True)
         click.echo("  *** JUDGE FALLBACK ACTIVE ***", err=True)
         click.echo(f"  Reason: {config.judge_fallback_reason}", err=True)
-        click.echo(f"  Default judge ({config.model}) cannot judge itself.", err=True)
+        click.echo(f"  '{config.model}' cannot be judged by same-vendor default.", err=True)
         click.echo(f"  Falling back to: {config.resolved_judge_model}", err=True)
 
     if config.judge_model:
@@ -351,12 +351,10 @@ def _check_judge_key(config: RunConfig) -> None:
         env_var = "ANTHROPIC_API_KEY"
     elif "gpt" in judge:
         env_var = "OPENAI_API_KEY"
-    elif "gemini" in judge or "grok" in judge:
-        click.echo(f"Error: Judge model '{judge}' is not yet supported as a judge provider.", err=True)
+    else:
+        click.echo(f"Error: Judge model '{judge}' is not supported as a judge provider.", err=True)
         click.echo("Supported judge models must contain 'claude' or 'gpt'.", err=True)
         sys.exit(1)
-    else:
-        return
     if not os.environ.get(env_var):
         click.echo(f"Error: {env_var} not set (needed for LLM judge: {judge}).", err=True)
         click.echo("The judge model runs on a different provider than your target model.", err=True)

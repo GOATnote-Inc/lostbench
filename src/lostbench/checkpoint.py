@@ -113,7 +113,7 @@ def load_checkpoint(
     completed = data.get("completed_scenario_ids", [])
     results = data.get("scenario_results", [])
     in_progress = data.get("in_progress_scenario")
-    trial_count = len(in_progress["completed_trials"]) if in_progress else 0
+    trial_count = len(in_progress.get("completed_trials", [])) if in_progress else 0
     logger.info(
         "Resuming — %d scenarios completed%s.",
         len(completed),

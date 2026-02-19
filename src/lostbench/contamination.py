@@ -284,45 +284,6 @@ def _compute_difficulty_metadata(
     }
 
 
-def detect_step_function(
-    model_versions: list[str],
-    pass_rates: list[float],
-    timestamps: list[str],
-) -> dict[str, Any] | None:
-    """Detect step-function improvements that suggest training contamination.
-
-    Genuine safety improvements are gradual. Contamination shows a
-    discontinuity where the model suddenly performs much better on
-    the benchmark, typically at a training cutoff.
-    """
-    if len(model_versions) < 3:
-        return None
-
-    max_jump = 0.0
-    max_jump_idx = 0
-
-    for i in range(1, len(pass_rates)):
-        jump = pass_rates[i] - pass_rates[i - 1]
-        if jump > max_jump:
-            max_jump = jump
-            max_jump_idx = i
-
-    step_function_detected = max_jump > 0.30
-
-    return {
-        "max_improvement_jump": round(max_jump, 4),
-        "jump_from_version": model_versions[max_jump_idx - 1],
-        "jump_to_version": model_versions[max_jump_idx],
-        "step_function_detected": step_function_detected,
-        "threshold": 0.30,
-        "note": (
-            "A >30pp improvement between consecutive model versions "
-            "suggests training contamination rather than genuine safety "
-            "improvement."
-        ),
-    }
-
-
 def load_results_from_file(path: str) -> list[TrajectoryResult]:
     """Load trajectory results from a JSON file.
 

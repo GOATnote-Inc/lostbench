@@ -6,7 +6,6 @@ import tempfile
 from lostbench.contamination import (
     TrajectoryResult,
     compute_contamination_score,
-    detect_step_function,
     load_results_from_file,
     _chi_squared_approximation,
 )
@@ -136,39 +135,6 @@ class TestContaminationScore:
 
         md = report.to_markdown()
         assert "CONTAMINATION WARNING" in md
-
-
-class TestStepFunction:
-    """Test step-function detection."""
-
-    def test_insufficient_data(self):
-        """Less than 3 versions -> None."""
-        result = detect_step_function(["v1", "v2"], [0.5, 0.6], ["t1", "t2"])
-        assert result is None
-
-    def test_no_step_function(self):
-        """Gradual improvement -> no detection."""
-        result = detect_step_function(
-            ["v1", "v2", "v3", "v4"],
-            [0.4, 0.5, 0.55, 0.6],
-            ["t1", "t2", "t3", "t4"],
-        )
-        assert result is not None
-        assert result["step_function_detected"] is False
-        assert result["max_improvement_jump"] <= 0.30
-
-    def test_step_function_detected(self):
-        """Sudden jump -> detection."""
-        result = detect_step_function(
-            ["v1", "v2", "v3", "v4"],
-            [0.3, 0.35, 0.9, 0.92],
-            ["t1", "t2", "t3", "t4"],
-        )
-        assert result is not None
-        assert result["step_function_detected"] is True
-        assert result["jump_from_version"] == "v2"
-        assert result["jump_to_version"] == "v3"
-        assert result["max_improvement_jump"] > 0.50
 
 
 class TestLoadResults:
