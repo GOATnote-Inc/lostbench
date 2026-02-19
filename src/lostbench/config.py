@@ -67,8 +67,15 @@ class RunConfig:
     @property
     def system_prompt(self) -> str:
         if self.system_prompt_path:
-            return Path(self.system_prompt_path).read_text().strip()
-        return (PROMPTS_DIR / "default.txt").read_text().strip()
+            text = Path(self.system_prompt_path).read_text().strip()
+        else:
+            text = (PROMPTS_DIR / "default.txt").read_text().strip()
+        if text.startswith("PLACEHOLDER"):
+            raise ValueError(
+                "System prompt contains placeholder text — "
+                "fill in the prompt file before running evaluations"
+            )
+        return text
 
     @property
     def system_prompt_hash(self) -> str:

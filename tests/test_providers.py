@@ -86,7 +86,7 @@ class TestAnthropicProviderInit:
         from lostbench.providers.anthropic import AnthropicProvider
 
         provider = AnthropicProvider()
-        assert provider.supports_seed is True
+        assert provider.supports_seed is False
 
 
 class TestXAIProviderInit:

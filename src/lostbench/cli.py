@@ -232,26 +232,26 @@ def compare(baseline_path, comparison_path):
     bm = baseline["metadata"]
     cm = comparison["metadata"]
 
-    print(f"\n{'='*60}")
-    print("LostBench Comparison")
-    print(f"{'='*60}")
-    print(f"  Baseline:    {bm['model']} ({bm['mode']})")
-    print(f"  Comparison:  {cm['model']} ({cm['mode']})")
-    print(f"{'='*60}\n")
+    click.echo(f"\n{'='*60}")
+    click.echo("LostBench Comparison")
+    click.echo(f"{'='*60}")
+    click.echo(f"  Baseline:    {bm['model']} ({bm['mode']})")
+    click.echo(f"  Comparison:  {cm['model']} ({cm['mode']})")
+    click.echo(f"{'='*60}\n")
 
     # Pass^k delta
     delta = ca["pass_k"] - ba["pass_k"]
     sign = "+" if delta >= 0 else ""
-    print(f"Pass^k:  {ba['pass_k']:.3f}  ->  {ca['pass_k']:.3f}  ({sign}{delta:.3f})")
-    print()
+    click.echo(f"Pass^k:  {ba['pass_k']:.3f}  ->  {ca['pass_k']:.3f}  ({sign}{delta:.3f})")
+    click.echo()
 
     # Per-scenario comparison
     b_scenarios = {s["scenario_id"]: s for s in baseline["scenarios"]}
     c_scenarios = {s["scenario_id"]: s for s in comparison["scenarios"]}
     all_ids = sorted(set(b_scenarios) | set(c_scenarios))
 
-    print(f"{'Scenario':<12} {'Baseline':>10} {'Comparison':>12} {'Delta':>8}")
-    print("-" * 44)
+    click.echo(f"{'Scenario':<12} {'Baseline':>10} {'Comparison':>12} {'Delta':>8}")
+    click.echo("-" * 44)
     for sid in all_ids:
         bs = b_scenarios.get(sid)
         cs = c_scenarios.get(sid)
@@ -265,32 +265,32 @@ def compare(baseline_path, comparison_path):
             delta_str = "REGRESSED"
         else:
             delta_str = "CHANGED"
-        print(f"{sid:<12} {b_pass:>10} {c_pass:>12} {delta_str:>8}")
+        click.echo(f"{sid:<12} {b_pass:>10} {c_pass:>12} {delta_str:>8}")
 
     # Failure mode comparison
     b_fm = ba.get("per_failure_mode", {})
     c_fm = ca.get("per_failure_mode", {})
     if b_fm or c_fm:
-        print(f"\n{'Failure Mode':<25} {'Baseline':>10} {'Comparison':>12}")
-        print("-" * 49)
+        click.echo(f"\n{'Failure Mode':<25} {'Baseline':>10} {'Comparison':>12}")
+        click.echo("-" * 49)
         all_modes = sorted(set(b_fm) | set(c_fm))
         for mode in all_modes:
             bc = b_fm.get(mode, {}).get("count", 0)
             cc = c_fm.get(mode, {}).get("count", 0)
-            print(f"{mode:<25} {bc:>10} {cc:>12}")
+            click.echo(f"{mode:<25} {bc:>10} {cc:>12}")
 
     # Wrapper precision (if either has it)
     bw = ba.get("wrapper_precision")
     cw = ca.get("wrapper_precision")
     if bw or cw:
-        print(f"\n{'Wrapper':<25} {'Baseline':>10} {'Comparison':>12}")
-        print("-" * 49)
+        click.echo(f"\n{'Wrapper':<25} {'Baseline':>10} {'Comparison':>12}")
+        click.echo("-" * 49)
         for key in ["total_replacements", "provider_errors"]:
             bv = bw.get(key, "-") if bw else "-"
             cv = cw.get(key, "-") if cw else "-"
-            print(f"{key:<25} {str(bv):>10} {str(cv):>12}")
+            click.echo(f"{key:<25} {str(bv):>10} {str(cv):>12}")
 
-    print(f"\n{'='*60}\n")
+    click.echo(f"\n{'='*60}\n")
 
 
 @main.command()

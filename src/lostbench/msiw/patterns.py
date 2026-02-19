@@ -336,7 +336,7 @@ class MSIWPatternEngine:
             violations.append(name)
         return violations
 
-    def check_required(self, response: str, resource_bundle: list[str] | None = None) -> list[str]:
+    def check_required(self, response: str) -> list[str]:
         """Check response for missing required patterns. Returns missing requirement names."""
         text = normalize(response)
         missing = []

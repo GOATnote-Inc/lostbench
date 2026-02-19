@@ -184,9 +184,7 @@ class MonotonicSafetyWrapper:
 
         # Step 6: Tier 0 enforcement (pattern-based)
         forbidden = self._pattern_engine.check_forbidden(response)
-        missing = self._pattern_engine.check_required(
-            response, self._state.resource_bundle,
-        )
+        missing = self._pattern_engine.check_required(response)
         tier0_violations = []
         if forbidden:
             tier0_violations.extend(f"forbidden:{v}" for v in forbidden)

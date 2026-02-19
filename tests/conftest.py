@@ -36,47 +36,6 @@ class MockProvider(Provider):
         self._calls = []
 
 
-class DivergentMockProvider(Provider):
-    """Mock provider that returns different responses for different trial indices.
-
-    Used to test reproducibility anomaly detection.
-    """
-
-    def __init__(self, responses_by_trial: dict[int, list[str]], default_responses: list[str] | None = None):
-        """
-        Args:
-            responses_by_trial: {trial_index: [response1, response2, ...]}
-            default_responses: Fallback responses
-        """
-        self._responses_by_trial = responses_by_trial
-        self._default_responses = default_responses or ["I am a helpful assistant."]
-        self._current_trial = 0
-        self._call_index_per_trial: dict[int, int] = {}
-        self._calls: list[dict] = []
-
-    def set_trial(self, trial_idx: int):
-        self._current_trial = trial_idx
-
-    async def chat(self, messages: list[dict], model: str | None = None,
-                   temperature: float = 0.0, seed: int = 42) -> str:
-        self._calls.append({"messages": messages, "model": model})
-        trial = self._current_trial
-        if trial not in self._call_index_per_trial:
-            self._call_index_per_trial[trial] = 0
-
-        idx = self._call_index_per_trial[trial]
-        self._call_index_per_trial[trial] = idx + 1
-
-        if trial in self._responses_by_trial:
-            responses = self._responses_by_trial[trial]
-            if idx < len(responses):
-                return responses[idx]
-
-        if idx < len(self._default_responses):
-            return self._default_responses[idx]
-        return "I am a helpful assistant."
-
-
 @pytest.fixture
 def mock_provider():
     """Create a basic mock provider."""

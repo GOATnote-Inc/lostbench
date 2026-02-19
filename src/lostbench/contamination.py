@@ -169,8 +169,9 @@ def _chi_squared_approximation(a: int, b: int, c: int, d: int) -> float:
     if chi2 <= 0:
         return 1.0
 
-    # One-sided: divide by 2 and check direction
-    p_two_sided = math.exp(-chi2 / 2)
+    # Chi-squared with df=1: p = erfc(sqrt(chi2/2)) which is exact
+    # (chi-squared df=1 is the square of a standard normal)
+    p_two_sided = math.erfc(math.sqrt(chi2 / 2))
     if a / max(row1, 1) > c / max(row2, 1):
         return p_two_sided / 2  # Published rate higher (contamination direction)
     else:

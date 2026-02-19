@@ -7,6 +7,10 @@ from lostbench.retry import retry_with_backoff
 
 
 class AnthropicProvider(Provider):
+    @property
+    def supports_seed(self) -> bool:
+        return False
+
     def __init__(self) -> None:
         self._client = anthropic.AsyncAnthropic(timeout=60.0)
 

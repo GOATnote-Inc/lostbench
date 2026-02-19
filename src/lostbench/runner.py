@@ -57,6 +57,8 @@ class Runner:
             self._cache = ResponseCache(config.output_dir)
             self.provider = CachedProvider(raw_provider, self._cache)
         else:
+            if cache_enabled and provider is not None:
+                logger.info("Caching disabled: custom provider passed directly")
             self.provider = raw_provider
         # Skip judge provider init when pattern-only (no LLM judge calls)
         if config.pattern_only:
@@ -67,6 +69,7 @@ class Runner:
             if cache_enabled and judge_provider is None:
                 judge_cache = self._cache or ResponseCache(config.output_dir)
                 self._judge_provider = CachedProvider(self._judge_provider, judge_cache)
+        self._dataset_hash: str | None = None
         self._wrapper = None
         if config.wrapper_enabled:
             from lostbench.msiw import MonotonicSafetyWrapper

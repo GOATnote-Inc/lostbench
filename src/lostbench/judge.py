@@ -223,5 +223,5 @@ async def call_judge(
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": assistant_response},
     ]
-    raw = await provider.chat(messages, model=judge_model)
+    raw = await provider.chat(messages, model=judge_model, temperature=0.0, seed=42)
     return parse_judge_output(raw, scenario_type=scenario_type)
