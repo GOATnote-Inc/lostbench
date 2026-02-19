@@ -2,6 +2,7 @@
 
 import json
 import math
+from pathlib import Path
 
 import pytest
 
@@ -268,3 +269,250 @@ class TestAnthropicSeedReporting:
 
         provider = AnthropicProvider()
         assert provider.supports_seed is False
+
+
+class TestConfigValidation:
+    """RunConfig.validate() checks constraints."""
+
+    def test_trials_less_than_1(self):
+        from lostbench.config import RunConfig
+
+        config = RunConfig(model="test-model", provider="openai", trials=0)
+        with pytest.raises(SystemExit, match="trials must be >= 1"):
+            config.validate()
+
+    def test_temperature_too_high(self):
+        from lostbench.config import RunConfig
+
+        config = RunConfig(model="test-model", provider="openai", temperature=3.0)
+        with pytest.raises(SystemExit, match="temperature must be in"):
+            config.validate()
+
+    def test_temperature_negative(self):
+        from lostbench.config import RunConfig
+
+        config = RunConfig(model="test-model", provider="openai", temperature=-0.1)
+        with pytest.raises(SystemExit, match="temperature must be in"):
+            config.validate()
+
+    def test_valid_config_passes(self):
+        from lostbench.config import RunConfig
+
+        config = RunConfig(model="test-model", provider="openai", trials=3, temperature=0.0)
+        config.validate()  # Should not raise
+
+
+class TestReportDefensiveKeys:
+    """Report functions handle missing keys gracefully."""
+
+    def test_missing_aggregate_key(self):
+        from lostbench.report import print_summary
+
+        with pytest.raises(ValueError, match="missing required key"):
+            print_summary({"metadata": {}})
+
+    def test_missing_metadata_key(self):
+        from lostbench.report import format_markdown
+
+        with pytest.raises(ValueError, match="missing required key"):
+            format_markdown({"aggregate": {}})
+
+
+class TestCLIContamination:
+    """CLI contamination command integration tests."""
+
+    def _make_results(self, tmp_path, filename, items):
+        path = tmp_path / filename
+        path.write_text(json.dumps(items))
+        return str(path)
+
+    def test_contamination_clean(self, tmp_path):
+        from click.testing import CliRunner
+        from lostbench.cli import main
+
+        # Similar pass rates → no contamination flag
+        published = [
+            {"scenario_id": f"PUB-{i:03d}", "scenario_source": "published",
+             "model_id": "test", "passed": i % 2 == 0}
+            for i in range(20)
+        ]
+        novel = [
+            {"scenario_id": f"NOV-{i:03d}", "scenario_source": "novel",
+             "model_id": "test", "passed": i % 2 == 0}
+            for i in range(20)
+        ]
+        pub_path = self._make_results(tmp_path, "published.json", published)
+        nov_path = self._make_results(tmp_path, "novel.json", novel)
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["contamination", pub_path, nov_path])
+        assert result.exit_code == 0
+        assert "Contamination" in result.output
+
+    def test_contamination_flagged(self, tmp_path):
+        from click.testing import CliRunner
+        from lostbench.cli import main
+
+        # Published all pass, novel all fail → contamination flagged
+        published = [
+            {"scenario_id": f"PUB-{i:03d}", "scenario_source": "published",
+             "model_id": "test", "passed": True}
+            for i in range(20)
+        ]
+        novel = [
+            {"scenario_id": f"NOV-{i:03d}", "scenario_source": "novel",
+             "model_id": "test", "passed": False}
+            for i in range(20)
+        ]
+        pub_path = self._make_results(tmp_path, "published.json", published)
+        nov_path = self._make_results(tmp_path, "novel.json", novel)
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["contamination", pub_path, nov_path])
+        assert result.exit_code == 0
+        assert "YES" in result.output
+
+    def test_contamination_with_output(self, tmp_path):
+        from click.testing import CliRunner
+        from lostbench.cli import main
+
+        published = [
+            {"scenario_id": f"PUB-{i:03d}", "scenario_source": "published",
+             "model_id": "test", "passed": True}
+            for i in range(10)
+        ]
+        novel = [
+            {"scenario_id": f"NOV-{i:03d}", "scenario_source": "novel",
+             "model_id": "test", "passed": True}
+            for i in range(10)
+        ]
+        pub_path = self._make_results(tmp_path, "published.json", published)
+        nov_path = self._make_results(tmp_path, "novel.json", novel)
+        out_path = str(tmp_path / "report.json")
+
+        runner = CliRunner()
+        result = runner.invoke(main, [
+            "contamination", pub_path, nov_path, "--output", out_path,
+        ])
+        assert result.exit_code == 0
+        with open(out_path) as f:
+            report_data = json.load(f)
+        assert "contamination_flag" in report_data
+
+
+class TestCLICompare:
+    """CLI compare command integration tests."""
+
+    def _make_results_file(self, tmp_path, filename, pass_k, mode="benchmark"):
+        results = {
+            "aggregate": {
+                "pass_k": pass_k,
+                "wilson_ci_95": [0.1, 0.9],
+                "bootstrap_ci_95": [0.1, 0.9],
+                "total_scenarios": 4,
+                "total_trials": 12,
+            },
+            "metadata": {
+                "model": "test-model",
+                "provider": "openai",
+                "judge_model": "claude-opus-4-6",
+                "corpus": "emergency",
+                "mode": mode,
+            },
+            "scenarios": [
+                {"scenario_id": "MTR-001", "pass_k": True, "trials_run": 3, "trials_passed": 3},
+                {"scenario_id": "MTR-002", "pass_k": False, "trials_run": 3, "trials_passed": 1},
+            ],
+        }
+        path = tmp_path / filename
+        path.write_text(json.dumps(results))
+        return str(path)
+
+    def test_compare_runs(self, tmp_path):
+        from click.testing import CliRunner
+        from lostbench.cli import main
+
+        base = self._make_results_file(tmp_path, "baseline.json", 0.5)
+        comp = self._make_results_file(tmp_path, "comparison.json", 0.75, mode="wrapper")
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["compare", base, comp])
+        assert result.exit_code == 0
+        assert "Pass^k" in result.output
+        assert "MTR-001" in result.output
+
+    def test_compare_shows_delta(self, tmp_path):
+        from click.testing import CliRunner
+        from lostbench.cli import main
+
+        base = self._make_results_file(tmp_path, "baseline.json", 0.5)
+        comp = self._make_results_file(tmp_path, "comparison.json", 0.75)
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["compare", base, comp])
+        assert result.exit_code == 0
+        assert "+0.250" in result.output
+
+
+class TestValidateJudgeFailClosed:
+    """validate_judge.py parse_verdict must be fail-closed."""
+
+    def test_no_json_returns_unsafe(self):
+        # Import from the script
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "validate_judge",
+            str(Path(__file__).resolve().parent.parent / "scripts" / "validate_judge.py"),
+            submodule_search_locations=[],
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        verdict = mod.parse_verdict("no json here at all")
+        assert verdict.semantic_safe is False
+        assert verdict.judge_error is True
+
+    def test_invalid_json_returns_unsafe(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "validate_judge",
+            str(Path(__file__).resolve().parent.parent / "scripts" / "validate_judge.py"),
+            submodule_search_locations=[],
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        verdict = mod.parse_verdict("{bad json")
+        assert verdict.semantic_safe is False
+        assert verdict.judge_error is True
+
+    def test_missing_semantic_safe_returns_unsafe(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "validate_judge",
+            str(Path(__file__).resolve().parent.parent / "scripts" / "validate_judge.py"),
+            submodule_search_locations=[],
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        verdict = mod.parse_verdict('{"confidence": 0.9}')
+        assert verdict.semantic_safe is False
+        assert verdict.judge_error is True
+
+    def test_valid_json_parses_correctly(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "validate_judge",
+            str(Path(__file__).resolve().parent.parent / "scripts" / "validate_judge.py"),
+            submodule_search_locations=[],
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        verdict = mod.parse_verdict(
+            '{"semantic_safe": true, "violation_turns": [], "violation_types": [], "confidence": 0.95}'
+        )
+        assert verdict.semantic_safe is True
+        assert verdict.judge_error is False
+        assert verdict.confidence == 0.95

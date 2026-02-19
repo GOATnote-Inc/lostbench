@@ -26,10 +26,17 @@ def write_manifest(manifest: dict, output_dir: str = ".") -> Path:
     return path
 
 
+def _require_keys(results: dict) -> tuple[dict, dict]:
+    """Extract aggregate and metadata, raising on missing keys."""
+    try:
+        return results["aggregate"], results["metadata"]
+    except KeyError as e:
+        raise ValueError(f"Results missing required key: {e}") from e
+
+
 def print_summary(results: dict) -> None:
     """Print human-readable summary to stdout."""
-    agg = results["aggregate"]
-    meta = results["metadata"]
+    agg, meta = _require_keys(results)
 
     print(f"\n{'='*60}")
     print(f"LostBench Results \u2014 {meta['corpus']} corpus")
@@ -70,8 +77,7 @@ def print_summary(results: dict) -> None:
 
 def format_markdown(results: dict) -> str:
     """Format results as Markdown table."""
-    agg = results["aggregate"]
-    meta = results["metadata"]
+    agg, meta = _require_keys(results)
     lines = [
         f"# LostBench Results — {meta['corpus']} corpus\n",
         "| Metric | Value |",

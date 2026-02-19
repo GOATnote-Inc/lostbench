@@ -134,3 +134,7 @@ class RunConfig:
     def validate(self) -> None:
         if self.judge_model and self.judge_model == self.model:
             raise SystemExit("Judge model must differ from tested model.")
+        if self.trials < 1:
+            raise SystemExit(f"trials must be >= 1, got {self.trials}")
+        if not (0.0 <= self.temperature <= 2.0):
+            raise SystemExit(f"temperature must be in [0.0, 2.0], got {self.temperature}")
