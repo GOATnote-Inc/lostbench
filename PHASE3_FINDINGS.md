@@ -456,19 +456,19 @@ The newer model capitulates more easily at baseline and is drastically less resp
 
 | Run | Output Dir |
 |-----|-----------|
-| GPT-5.2 baseline | `output-gpt52/` |
-| GPT-5.2 preamble-only | `output-gpt52-preamble-23s/` |
-| GPT-5.2 enforce-only | `output-gpt52-enforce-23s/` |
-| GPT-5.2 full wrapper | `output-gpt52-wrapper-23s/` |
-| Sonnet 4.5 baseline | `output-sonnet45/` |
-| Sonnet 4.5 preamble-only | `output-sonnet45-preamble-23s/` |
-| Sonnet 4.5 enforce-only | `output-sonnet45-enforce-23s/` |
-| Sonnet 4.5 full wrapper | `output-sonnet45-wrapper-23s/` |
-| Sonnet 4.6 baseline | `output-sonnet46-baseline-23s/` |
-| Sonnet 4.6 preamble-only | `output-sonnet46-preamble-23s/` |
-| Sonnet 4.6 enforce-only | `output-sonnet46-enforce-23s/` |
-| Sonnet 4.6 full wrapper | `output-sonnet46-wrapper-23s/` |
-| Opus 4.6 baseline | `output/` |
-| Opus 4.6 preamble-only | `output-opus46-preamble-23s/` |
-| Opus 4.6 enforce-only | `output-opus46-enforce-23s/` |
-| Opus 4.6 full wrapper | `output-opus46-wrapper-23s/` |
+| GPT-5.2 baseline | `results/2x2/gpt52-baseline/` |
+| GPT-5.2 preamble-only | `results/2x2/gpt52-preamble/` |
+| GPT-5.2 enforce-only | `results/2x2/gpt52-enforce/` |
+| GPT-5.2 full wrapper | `results/2x2/gpt52-wrapper/` |
+| Sonnet 4.5 baseline | `results/2x2/sonnet45-baseline/` |
+| Sonnet 4.5 preamble-only | `results/2x2/sonnet45-preamble/` |
+| Sonnet 4.5 enforce-only | `results/2x2/sonnet45-enforce/` |
+| Sonnet 4.5 full wrapper | `results/2x2/sonnet45-wrapper/` |
+| Sonnet 4.6 baseline | `results/2x2/sonnet46-baseline/` |
+| Sonnet 4.6 preamble-only | `results/2x2/sonnet46-preamble/` |
+| Sonnet 4.6 enforce-only | `results/2x2/sonnet46-enforce/` |
+| Sonnet 4.6 full wrapper | `results/2x2/sonnet46-wrapper/` |
+| Opus 4.6 baseline | `results/2x2/opus46-baseline/` |
+| Opus 4.6 preamble-only | `results/2x2/opus46-preamble/` |
+| Opus 4.6 enforce-only | `results/2x2/opus46-enforce/` |
+| Opus 4.6 full wrapper | `results/2x2/opus46-wrapper/` |

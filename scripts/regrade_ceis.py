@@ -6,7 +6,7 @@ the full CEIS scoring pipeline (ERS, CRS, bootstrap CI, threshold, etc.).
 
 Usage:
     python scripts/regrade_ceis.py
-    python scripts/regrade_ceis.py --output-dir ceis_regrade_output
+    python scripts/regrade_ceis.py --output-dir results/ceis-regrade/output
 """
 
 from __future__ import annotations
@@ -33,45 +33,45 @@ from lostbench.scenarios.loader import load_scenarios
 RESULT_FILES: list[dict] = [
     # GPT-5.2
     {"model": "gpt-5.2", "provider": "openai", "condition": "baseline",
-     "path": "output-gpt52/lostbench_results.json"},
+     "path": "results/2x2/gpt52-baseline/lostbench_results.json"},
     {"model": "gpt-5.2", "provider": "openai", "condition": "preamble_only",
-     "path": "output-gpt52-preamble-23s/lostbench_results.json"},
+     "path": "results/2x2/gpt52-preamble/lostbench_results.json"},
     {"model": "gpt-5.2", "provider": "openai", "condition": "enforce_only",
-     "path": "output-gpt52-enforce-23s/lostbench_results.json"},
+     "path": "results/2x2/gpt52-enforce/lostbench_results.json"},
     {"model": "gpt-5.2", "provider": "openai", "condition": "full_wrapper",
-     "path": "output-gpt52-wrapper-23s/lostbench_results.json"},
+     "path": "results/2x2/gpt52-wrapper/lostbench_results.json"},
     # Sonnet 4.5
     {"model": "claude-sonnet-4-5-20250929", "provider": "anthropic", "condition": "baseline",
-     "path": "output-sonnet45/lostbench_results.json"},
+     "path": "results/2x2/sonnet45-baseline/lostbench_results.json"},
     {"model": "claude-sonnet-4-5-20250929", "provider": "anthropic", "condition": "preamble_only",
-     "path": "output-sonnet45-preamble-23s/lostbench_results.json"},
+     "path": "results/2x2/sonnet45-preamble/lostbench_results.json"},
     {"model": "claude-sonnet-4-5-20250929", "provider": "anthropic", "condition": "enforce_only",
-     "path": "output-sonnet45-enforce-23s/lostbench_results.json"},
+     "path": "results/2x2/sonnet45-enforce/lostbench_results.json"},
     {"model": "claude-sonnet-4-5-20250929", "provider": "anthropic", "condition": "full_wrapper",
-     "path": "output-sonnet45-wrapper-23s/lostbench_results.json"},
+     "path": "results/2x2/sonnet45-wrapper/lostbench_results.json"},
     # Sonnet 4.6
     {"model": "claude-sonnet-4-6", "provider": "anthropic", "condition": "baseline",
-     "path": "output-sonnet46-baseline-23s/lostbench_results.json"},
+     "path": "results/2x2/sonnet46-baseline/lostbench_results.json"},
     {"model": "claude-sonnet-4-6", "provider": "anthropic", "condition": "preamble_only",
-     "path": "output-sonnet46-preamble-23s/lostbench_results.json"},
+     "path": "results/2x2/sonnet46-preamble/lostbench_results.json"},
     {"model": "claude-sonnet-4-6", "provider": "anthropic", "condition": "enforce_only",
-     "path": "output-sonnet46-enforce-23s/lostbench_results.json"},
+     "path": "results/2x2/sonnet46-enforce/lostbench_results.json"},
     {"model": "claude-sonnet-4-6", "provider": "anthropic", "condition": "full_wrapper",
-     "path": "output-sonnet46-wrapper-23s/lostbench_results.json"},
+     "path": "results/2x2/sonnet46-wrapper/lostbench_results.json"},
     # Opus 4.6
     {"model": "claude-opus-4-6", "provider": "anthropic", "condition": "baseline",
-     "path": "output/lostbench_results.json"},
+     "path": "results/2x2/opus46-baseline/lostbench_results.json"},
     {"model": "claude-opus-4-6", "provider": "anthropic", "condition": "preamble_only",
-     "path": "output-opus46-preamble-23s/lostbench_results.json"},
+     "path": "results/2x2/opus46-preamble/lostbench_results.json"},
     {"model": "claude-opus-4-6", "provider": "anthropic", "condition": "enforce_only",
-     "path": "output-opus46-enforce-23s/lostbench_results.json"},
+     "path": "results/2x2/opus46-enforce/lostbench_results.json"},
     {"model": "claude-opus-4-6", "provider": "anthropic", "condition": "full_wrapper",
-     "path": "output-opus46-wrapper-23s/lostbench_results.json"},
+     "path": "results/2x2/opus46-wrapper/lostbench_results.json"},
     # Opus 4.6 RAG
     {"model": "claude-opus-4-6", "provider": "anthropic", "condition": "rag",
-     "path": "output-opus-rag/lostbench_results.json"},
+     "path": "results/rag/opus46-baseline/lostbench_results.json"},
     {"model": "claude-opus-4-6", "provider": "anthropic", "condition": "rag_wrapper",
-     "path": "output-opus-rag-wrapper/lostbench_results.json"},
+     "path": "results/rag/opus46-wrapper/lostbench_results.json"},
 ]
 
 
@@ -330,7 +330,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Regrade existing 2x2 results through CEIS")
-    parser.add_argument("--output-dir", default="ceis_regrade_output",
+    parser.add_argument("--output-dir", default="results/ceis-regrade/output",
                         help="Output directory for CEIS artifacts")
     args = parser.parse_args()
 
