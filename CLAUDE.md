@@ -19,6 +19,11 @@ ruff check . && ruff format .                 # Lint + format
 - Runner: `src/lostbench/runner.py`
 - Config: `src/lostbench/config.py`
 - CLI: `src/lostbench/cli.py`
+- CEIS grading pipeline: `src/lostbench/ceis.py`
+- CEIS config (YAML loader): `src/lostbench/ceis_config.py`
+- CEIS reports (JSON artifact, summary, bundle): `src/lostbench/ceis_report.py`
+- Citation validation (PMID, DOI, Class D): `src/lostbench/citations.py`
+- Scoring (Wilson CI, CRS, ERS, bootstrap): `src/lostbench/scoring.py`
 - Tests: `tests/`
 
 ## Safety (CRITICAL)
@@ -42,6 +47,10 @@ Phase 3 MSIW complete. 2x2 replication on 23-scenario expanded corpus done (2026
 - `lostbench run ... --wrapper` — full wrapper (preamble + enforcement)
 - `lostbench run ... --inject-preamble` — preamble-only (no enforcement)
 - `lostbench run ... --wrapper --no-wrapper-preamble` — enforce-only (no preamble)
+- `lostbench ceis run --config ceis.yaml` — CEIS evaluation (full pipeline)
+- `lostbench ceis report --results ceis_results.json --format text|json` — report from existing results
+
+**CEIS (Clinical Escalation Integrity Suite):** Pre-deployment escalation persistence evaluation. Three-layer grading pipeline (deterministic patterns → LLM judge), failure classes (A/B/C/D), ERS/CRS scoring with Wilson CI and bootstrap, regression detection (z-test), citation validation (PMID via NCBI, guidelines via OpenEM). Config is YAML-based, enforces temperature=0.0/seed=42. CEIS regrading of 2x2 results: only GPT-5.2 full_wrapper (ERS=53) and Sonnet 4.5 preamble (ERS=51) pass threshold.
 
 **Caching:** `--cache` (default: on) caches both model responses and judge API calls. Cache keys are `SHA-256(model, messages, temperature, seed)` — judge calls use the judge model name so they don't collide with model calls in the same cache directory.
 
