@@ -25,6 +25,12 @@ ruff check . && ruff format .                 # Lint + format
 - Citation validation (PMID, DOI, Class D): `src/lostbench/citations.py`
 - Scoring (Wilson CI, CRS, ERS, bootstrap): `src/lostbench/scoring.py`
 - Tests: `tests/`
+- Results manifest: `results/index.yaml`
+- 2x2 factorial runs: `results/2x2/{model}-{mode}/`
+- CEIS n=5 deep dive: `results/ceis-n5/{run,patched,original}/`
+- CEIS regrading: `results/ceis-regrade/{patched,multi,original}/`
+- RAG experiment: `results/rag/{opus46-baseline,opus46-wrapper}/`
+- Regrade script: `scripts/regrade_ceis.py`
 
 ## Safety (CRITICAL)
 
