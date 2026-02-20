@@ -409,43 +409,71 @@ def ceis_run(config_path, cache):
     results_path = write_results(results, ceis_config.output_dir)
     click.echo(f"Results: {results_path}")
 
-    # CEIS grading
-    from lostbench.ceis import grade_corpus, detect_regression
+    # CEIS grading (multi-trial pooling when n_trials > 1)
+    from lostbench.ceis import grade_corpus, grade_corpus_multi_trial, detect_regression
     from lostbench.scenarios.loader import load_scenarios
 
     scenarios = load_scenarios(run_config.corpus)
     if run_config.conditions:
         scenarios = [s for s in scenarios if s["id"] in run_config.conditions]
 
-    # Extract responses from results
-    all_responses: dict[str, list[str]] = {}
+    # Extract responses from all trials
+    all_trial_responses: dict[str, list[list[str]]] = {}
     for s in results.get("scenarios", []):
         sid = s["scenario_id"]
-        # Collect responses across all trials (use first trial for CEIS)
-        if s.get("trials"):
-            trial = s["trials"][0]
-            all_responses[sid] = [
-                turn.get("assistant", "") for turn in trial.get("turns", [])
-            ]
+        trials = s.get("per_trial", [])
+        if not trials:
+            continue
+        trial_responses: list[list[str]] = []
+        for trial in trials:
+            conv = trial.get("conversation", [])
+            responses = [m["content"] for m in conv if m.get("role") == "assistant"]
+            trial_responses.append(responses)
+        all_trial_responses[sid] = trial_responses
 
-    corpus_grade = asyncio.run(grade_corpus(scenarios, all_responses))
+    n_trials = max((len(v) for v in all_trial_responses.values()), default=1)
+    if n_trials > 1:
+        click.echo(f"CEIS grading: pooling {n_trials} trials per scenario", err=True)
+        corpus_grade = asyncio.run(
+            grade_corpus_multi_trial(scenarios, all_trial_responses)
+        )
+    else:
+        # Single trial — use original grade_corpus
+        single_responses = {
+            sid: trials[0] for sid, trials in all_trial_responses.items() if trials
+        }
+        corpus_grade = asyncio.run(grade_corpus(scenarios, single_responses))
 
     # Regression detection (if prior results provided)
     regression_result = None
     if ceis_config.prior_results_path:
-        prior_data = json.load(open(ceis_config.prior_results_path))
+        with open(ceis_config.prior_results_path) as f:
+            prior_data = json.load(f)
         prior_scenarios = load_scenarios(run_config.corpus)
         if run_config.conditions:
             prior_scenarios = [s for s in prior_scenarios if s["id"] in run_config.conditions]
-        prior_responses: dict[str, list[str]] = {}
+        prior_trial_responses: dict[str, list[list[str]]] = {}
         for s in prior_data.get("scenarios", []):
             sid = s["scenario_id"]
-            if s.get("trials"):
-                trial = s["trials"][0]
-                prior_responses[sid] = [
-                    turn.get("assistant", "") for turn in trial.get("turns", [])
-                ]
-        prior_grade = asyncio.run(grade_corpus(prior_scenarios, prior_responses))
+            trials = s.get("per_trial", [])
+            if not trials:
+                continue
+            trial_responses_prior: list[list[str]] = []
+            for trial in trials:
+                conv = trial.get("conversation", [])
+                responses = [m["content"] for m in conv if m.get("role") == "assistant"]
+                trial_responses_prior.append(responses)
+            prior_trial_responses[sid] = trial_responses_prior
+        prior_n = max((len(v) for v in prior_trial_responses.values()), default=1)
+        if prior_n > 1:
+            prior_grade = asyncio.run(
+                grade_corpus_multi_trial(prior_scenarios, prior_trial_responses)
+            )
+        else:
+            prior_single = {
+                sid: trials[0] for sid, trials in prior_trial_responses.items() if trials
+            }
+            prior_grade = asyncio.run(grade_corpus(prior_scenarios, prior_single))
         regression_result = detect_regression(
             corpus_grade, prior_grade,
             prior_model_id=ceis_config.prior_model_id or "",
