@@ -419,6 +419,8 @@ class CrossModelResult:
     errors: int = 0
     pairwise: dict = field(default_factory=dict)
     mean_agreement: float = 0.0
+    cohens_kappa: dict = field(default_factory=dict)
+    per_scenario_agreement: dict = field(default_factory=dict)
     details: list = field(default_factory=list)
 
     @property
@@ -426,17 +428,52 @@ class CrossModelResult:
         return self.errors / self.total if self.total > 0 else 1.0
 
 
+def compute_cohens_kappa(
+    verdicts_a: list[bool], verdicts_b: list[bool]
+) -> float | None:
+    """Compute Cohen's kappa for two binary raters.
+
+    kappa = (p_o - p_e) / (1 - p_e)
+    where p_o = observed agreement, p_e = expected agreement by chance.
+    """
+    if len(verdicts_a) != len(verdicts_b) or len(verdicts_a) == 0:
+        return None
+
+    n = len(verdicts_a)
+    agree = sum(1 for a, b in zip(verdicts_a, verdicts_b) if a == b)
+    p_o = agree / n
+
+    # Marginal proportions
+    p_a_safe = sum(verdicts_a) / n
+    p_b_safe = sum(verdicts_b) / n
+    p_a_unsafe = 1 - p_a_safe
+    p_b_unsafe = 1 - p_b_safe
+
+    p_e = (p_a_safe * p_b_safe) + (p_a_unsafe * p_b_unsafe)
+
+    if p_e == 1.0:
+        return 1.0 if p_o == 1.0 else 0.0
+    return (p_o - p_e) / (1 - p_e)
+
+
 async def run_cross_model(
     transcripts: list[Transcript],
     sample_size: int,
+    judges: list[str] | None = None,
 ) -> CrossModelResult:
     result = CrossModelResult()
     rng = random.Random(99)
-    sample = rng.sample(transcripts, min(sample_size, len(transcripts)))
+
+    if sample_size >= len(transcripts):
+        sample = list(transcripts)  # Use all when sample_size >= total
+    else:
+        sample = rng.sample(transcripts, sample_size)
     result.total = len(sample)
 
-    vendors = ["claude", "gpt", "gemini"]
-    pairs = [("claude", "gpt"), ("claude", "gemini"), ("gpt", "gemini")]
+    vendors = judges or ["claude", "gpt", "gemini"]
+    pairs = [(vendors[i], vendors[j])
+             for i in range(len(vendors))
+             for j in range(i + 1, len(vendors))]
 
     print(f"\n{'='*60}", file=sys.stderr)
     print("  Cross-Model Agreement Test", file=sys.stderr)
@@ -447,6 +484,12 @@ async def run_cross_model(
 
     agree_count = {p: 0 for p in pairs}
     valid_count = {p: 0 for p in pairs}
+    # Track per-pair verdicts for kappa
+    pair_verdicts: dict[tuple, tuple[list[bool], list[bool]]] = {
+        p: ([], []) for p in pairs
+    }
+    # Track per-scenario agreement
+    scenario_verdicts: dict[str, dict[str, list[bool]]] = {}
 
     for i, t in enumerate(sample):
         text = format_transcript(t)
@@ -477,8 +520,18 @@ async def run_cross_model(
             if verdicts[a].judge_error or verdicts[b].judge_error:
                 continue
             valid_count[(a, b)] += 1
+            pair_verdicts[(a, b)][0].append(verdicts[a].semantic_safe)
+            pair_verdicts[(a, b)][1].append(verdicts[b].semantic_safe)
             if verdicts[a].semantic_safe == verdicts[b].semantic_safe:
                 agree_count[(a, b)] += 1
+
+        # Track per-scenario verdicts
+        sid = t.scenario_id
+        if sid not in scenario_verdicts:
+            scenario_verdicts[sid] = {v: [] for v in vendors}
+        for vendor in vendors:
+            if not verdicts[vendor].judge_error:
+                scenario_verdicts[sid][vendor].append(verdicts[vendor].semantic_safe)
 
         result.details.append({
             "scenario_id": t.scenario_id,
@@ -494,6 +547,7 @@ async def run_cross_model(
             },
         })
 
+    # Pairwise raw agreement
     for pair in pairs:
         key = f"{pair[0]}_vs_{pair[1]}"
         if valid_count[pair] > 0:
@@ -505,6 +559,29 @@ async def run_cross_model(
     result.mean_agreement = (sum(valid_rates) / len(valid_rates)
                             if valid_rates else 0.0)
 
+    # Cohen's kappa for each pair
+    for pair in pairs:
+        key = f"{pair[0]}_vs_{pair[1]}"
+        va, vb = pair_verdicts[pair]
+        kappa = compute_cohens_kappa(va, vb)
+        result.cohens_kappa[key] = kappa
+
+    # Per-scenario agreement (for each pair)
+    for sid in sorted(scenario_verdicts):
+        result.per_scenario_agreement[sid] = {}
+        for pair in pairs:
+            key = f"{pair[0]}_vs_{pair[1]}"
+            va = scenario_verdicts[sid].get(pair[0], [])
+            vb = scenario_verdicts[sid].get(pair[1], [])
+            # Agreement = fraction of matching verdicts
+            min_len = min(len(va), len(vb))
+            if min_len > 0:
+                matches = sum(1 for a, b in zip(va[:min_len], vb[:min_len]) if a == b)
+                result.per_scenario_agreement[sid][key] = matches / min_len
+            else:
+                result.per_scenario_agreement[sid][key] = None
+
+    # Print results
     print("\n  Pairwise agreement:", file=sys.stderr)
     for key, rate in result.pairwise.items():
         if rate is not None:
@@ -512,6 +589,32 @@ async def run_cross_model(
         else:
             print(f"    {key}: N/A (errors)", file=sys.stderr)
     print(f"  Mean agreement: {result.mean_agreement:.1%}", file=sys.stderr)
+
+    print("\n  Cohen's kappa:", file=sys.stderr)
+    for key, kappa in result.cohens_kappa.items():
+        if kappa is not None:
+            # Interpretation: <0.20 poor, 0.21-0.40 fair, 0.41-0.60 moderate,
+            # 0.61-0.80 substantial, 0.81-1.00 near-perfect
+            label = (
+                "near-perfect" if kappa > 0.80 else
+                "substantial" if kappa > 0.60 else
+                "moderate" if kappa > 0.40 else
+                "fair" if kappa > 0.20 else
+                "poor"
+            )
+            print(f"    {key}: {kappa:.3f} ({label})", file=sys.stderr)
+        else:
+            print(f"    {key}: N/A", file=sys.stderr)
+
+    if result.per_scenario_agreement:
+        print("\n  Per-scenario agreement:", file=sys.stderr)
+        for sid in sorted(result.per_scenario_agreement):
+            parts = []
+            for key, rate in result.per_scenario_agreement[sid].items():
+                if rate is not None:
+                    parts.append(f"{key}={rate:.0%}")
+            if parts:
+                print(f"    {sid}: {', '.join(parts)}", file=sys.stderr)
 
     if result.mean_agreement < 0.85:
         print(f"\n  *** WARNING: agreement {result.mean_agreement:.1%} "
@@ -549,6 +652,12 @@ async def main():
     parser.add_argument("--sample-size-cross", type=int, default=10)
     parser.add_argument("--judge-vendor", default="claude",
                         choices=["claude", "gpt", "gemini"])
+    parser.add_argument("--judges", default=None,
+                        help="Comma-separated judge vendors for cross-model "
+                             "(e.g., claude,gpt for paper sensitivity analysis)")
+    parser.add_argument("--all-scenarios", action="store_true",
+                        help="Use ALL transcripts instead of sampling "
+                             "(for systematic sensitivity analysis)")
     parser.add_argument("--output", default="judge_validation.json")
     parser.add_argument("--self-only", action="store_true")
     parser.add_argument("--cross-only", action="store_true")
@@ -559,6 +668,17 @@ async def main():
         print("ERROR: --self-only and --cross-only are mutually exclusive. "
               "Omit both to run full validation.", file=sys.stderr)
         sys.exit(1)
+
+    # Parse judge list
+    judge_list = None
+    if args.judges:
+        judge_list = [j.strip() for j in args.judges.split(",")]
+        for j in judge_list:
+            if j not in JUDGE_MODELS:
+                print(f"ERROR: Unknown judge vendor '{j}'. "
+                      f"Available: {sorted(JUDGE_MODELS.keys())}",
+                      file=sys.stderr)
+                sys.exit(1)
 
     run_cross = not args.self_only
     check_api_keys(run_cross)
@@ -572,6 +692,13 @@ async def main():
     print(f"  {len(transcripts)} valid emergency trajectories",
           file=sys.stderr)
 
+    # Override sample size when --all-scenarios
+    cross_sample_size = (len(transcripts) if args.all_scenarios
+                         else args.sample_size_cross)
+    if args.all_scenarios:
+        print(f"  --all-scenarios: using all {len(transcripts)} transcripts",
+              file=sys.stderr)
+
     validation = {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "results_dir": str(args.results_dir),
@@ -580,6 +707,7 @@ async def main():
         "judge_temperature": 0.0,
         "judge_seed": 42,
         "provider_layer_version": __version__,
+        "all_scenarios": args.all_scenarios,
     }
 
     self_result = None
@@ -613,7 +741,8 @@ async def main():
 
     if not args.self_only:
         cross_result = await run_cross_model(
-            transcripts, args.sample_size_cross)
+            transcripts, cross_sample_size,
+            judges=judge_list)
         validation["cross_model"] = {
             "sample_size": cross_result.total,
             "errors": cross_result.errors,
@@ -621,6 +750,17 @@ async def main():
             "pairwise_agreement": {
                 k: round(v, 4) if v is not None else None
                 for k, v in cross_result.pairwise.items()
+            },
+            "cohens_kappa": {
+                k: round(v, 4) if v is not None else None
+                for k, v in cross_result.cohens_kappa.items()
+            },
+            "per_scenario_agreement": {
+                sid: {
+                    k: round(v, 4) if v is not None else None
+                    for k, v in pairs.items()
+                }
+                for sid, pairs in cross_result.per_scenario_agreement.items()
             },
             "judge_cross_model_agreement": round(
                 cross_result.mean_agreement, 4),
@@ -642,6 +782,10 @@ async def main():
     if cross_result:
         validation["summary"]["judge_cross_model_agreement"] = round(
             cross_result.mean_agreement, 4)
+        # Include kappa in summary
+        for key, kappa in cross_result.cohens_kappa.items():
+            if kappa is not None:
+                validation["summary"][f"cohens_kappa_{key}"] = round(kappa, 4)
 
     # Write artifact
     output_path = Path(args.output)
@@ -661,6 +805,11 @@ async def main():
         ca = cross_result.mean_agreement
         m = "\u2713" if ca >= 0.90 else "\u26a0" if ca >= 0.85 else "\u2717"
         print(f"  Judge cross-model agreement: {ca:.1%}  {m}")
+        for key, kappa in cross_result.cohens_kappa.items():
+            if kappa is not None:
+                m = ("\u2713" if kappa >= 0.60 else
+                     "\u26a0" if kappa >= 0.40 else "\u2717")
+                print(f"  Cohen's kappa ({key}): {kappa:.3f}  {m}")
     err = max(
         self_result.error_rate if self_result else 0,
         cross_result.error_rate if cross_result else 0,

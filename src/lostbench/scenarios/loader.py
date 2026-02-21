@@ -9,6 +9,36 @@ from lostbench.config import SCENARIOS_DIR
 
 VALID_CEIS_SUITES = {"capability", "regression"}
 
+# Holdback scenarios are excluded from public releases to enable
+# contamination detection. A clean model shows similar pass rates on
+# published and holdback sets. A contaminated model performs significantly
+# better on published scenarios.
+#
+# Selection criteria: medium-difficulty, diverse specialties, not the
+# most commonly discussed emergency conditions.
+HOLDBACK_SCENARIOS: set[str] = {
+    "MTR-003",  # testicular_torsion (urology)
+    "MTR-007",  # crao_stroke (ophthalmology)
+    "MTR-013",  # septic_arthritis (rheumatology/ortho)
+    "MTR-016",  # tension_pneumothorax (trauma)
+    "MTR-020",  # cauda_equina (neuro/ortho)
+    "MTR-023",  # acute_limb_ischemia (vascular)
+}
+
+# CI subset: 8 diverse published scenarios for quick regression checks.
+# Covers pediatric, metabolic, neuro, OB/GYN, cardiac, psychiatric,
+# and surgical specialties.
+CI_SCENARIOS: list[str] = [
+    "MTR-001",  # neonatal_sepsis
+    "MTR-004",  # dka
+    "MTR-006",  # sah
+    "MTR-009",  # ectopic_pregnancy
+    "MTR-012",  # acute_ischemic_stroke
+    "MTR-015",  # aortic_dissection
+    "MTR-018",  # suicidal_ideation_plan_means
+    "MTR-022",  # kawasaki_disease
+]
+
 
 def _validate_ceis_block(scenario_id: str, ceis: dict) -> None:
     """Validate optional CEIS metadata block. Raises ValueError on invalid data."""
@@ -35,8 +65,21 @@ def _validate_ceis_block(scenario_id: str, ceis: dict) -> None:
             raise ValueError(f"{scenario_id}: ceis.suite must be one of {VALID_CEIS_SUITES}, got {suite!r}")
 
 
-def load_scenarios(corpus: str = "emergency", conditions: list[str] | None = None) -> list[dict]:
-    """Load scenario YAML files for a given corpus."""
+def load_scenarios(
+    corpus: str = "emergency",
+    conditions: list[str] | None = None,
+    partition: str | None = None,
+) -> list[dict]:
+    """Load scenario YAML files for a given corpus.
+
+    Args:
+        corpus: Which corpus to load (emergency, crisis-resource, defer).
+        conditions: Optional list of scenario IDs to filter to.
+        partition: Optional partition filter:
+            - "published": exclude holdback scenarios (default for public use)
+            - "holdback": only holdback scenarios
+            - "all" or None: include everything (default, backward-compatible)
+    """
     if corpus == "emergency":
         scenario_dir = SCENARIOS_DIR / "tier1"
     elif corpus == "crisis-resource":
@@ -61,6 +104,15 @@ def load_scenarios(corpus: str = "emergency", conditions: list[str] | None = Non
         if "ceis" in scenario:
             _validate_ceis_block(scenario["id"], scenario["ceis"])
         scenarios.append(scenario)
+
+    # Apply partition filter (only affects emergency corpus)
+    if partition and partition != "all" and corpus == "emergency":
+        if partition == "published":
+            scenarios = [s for s in scenarios if s["id"] not in HOLDBACK_SCENARIOS]
+        elif partition == "holdback":
+            scenarios = [s for s in scenarios if s["id"] in HOLDBACK_SCENARIOS]
+        else:
+            raise ValueError(f"Unknown partition: {partition!r} (expected 'published', 'holdback', or 'all')")
 
     if conditions:
         scenarios = [s for s in scenarios if s["id"] in conditions]

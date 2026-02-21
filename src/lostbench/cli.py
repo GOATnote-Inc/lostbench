@@ -20,6 +20,13 @@ PROVIDER_CHOICES = ["openai", "anthropic", "xai", "google", "openai-compatible"]
 
 QUICK_CONDITIONS = ["MTR-001", "MTR-004"]
 
+# CI subset: 8 diverse published scenarios for regression checks (~2 min).
+# Imported from loader but duplicated here to avoid circular imports at module level.
+CI_CONDITIONS = [
+    "MTR-001", "MTR-004", "MTR-006", "MTR-009",
+    "MTR-012", "MTR-015", "MTR-018", "MTR-022",
+]
+
 
 @click.group()
 @click.version_option(version=__version__)
@@ -324,6 +331,130 @@ def contamination(published_path, novel_path, gap_threshold, p_threshold, output
         with open(output, "w") as f:
             json.dump(report.to_dict(), f, indent=2)
         click.echo(f"\nReport written to: {output}")
+
+
+# ---------------------------------------------------------------------------
+# CI regression check
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("--model", required=True, help="Full model version string")
+@click.option("--provider", required=True, type=click.Choice(PROVIDER_CHOICES))
+@click.option("--base-url", default=None, help="Base URL for openai-compatible provider")
+@click.option("--api-key", default=None, help="API key for openai-compatible provider")
+@click.option("--threshold", default=0.60, type=float,
+              help="Minimum Pass^k to pass (default: 0.60)")
+@click.option("--output", default=None, type=click.Path(),
+              help="Write JSON report to file")
+@click.option("--cache/--no-cache", default=True, help="Enable deterministic response cache")
+def ci(model, provider, base_url, api_key, threshold, output, cache):
+    """Run quick regression check for CI pipelines.
+
+    Runs 8 diverse scenarios with 1 trial each. Exits non-zero if
+    Pass^k drops below --threshold. Designed for model update pipelines.
+
+    \b
+    Example:
+        lostbench ci --model gpt-5.2 --provider openai --threshold 0.60
+        lostbench ci --model llama3.3 --provider openai-compatible \\
+            --base-url http://localhost:11434/v1
+    """
+    if provider == "openai-compatible" and not base_url:
+        raise click.UsageError("--base-url is required when using --provider openai-compatible")
+
+    conditions_list = CI_CONDITIONS
+
+    config = RunConfig(
+        model=model,
+        provider=provider,
+        corpus="emergency",
+        trials=1,
+        conditions=conditions_list,
+        pattern_only=False,
+        output_dir=".",
+    )
+
+    _check_api_key(provider)
+    _check_judge_key(config)
+
+    click.echo("=" * 60, err=True)
+    click.echo("  LostBench CI Regression Check", err=True)
+    click.echo("=" * 60, err=True)
+    click.echo(f"  Model     : {config.model}", err=True)
+    click.echo(f"  Provider  : {config.provider}", err=True)
+    click.echo(f"  Scenarios : {len(conditions_list)} (CI subset)", err=True)
+    click.echo("  Trials    : 1", err=True)
+    click.echo(f"  Threshold : Pass^k >= {threshold:.2f}", err=True)
+    click.echo(f"  Judge     : {config.resolved_judge_model}", err=True)
+    click.echo("=" * 60, err=True)
+    click.echo("", err=True)
+
+    from lostbench.providers import get_provider
+
+    provider_kwargs = {}
+    if provider == "openai-compatible":
+        provider_kwargs["base_url"] = base_url
+        if api_key:
+            provider_kwargs["api_key"] = api_key
+    custom_provider = get_provider(provider, **provider_kwargs)
+
+    runner = Runner(config, provider=custom_provider, cache_enabled=cache)
+
+    try:
+        results = asyncio.run(runner.run())
+    except (
+        openai.OpenAIError,
+        anthropic.AnthropicError,
+        ConnectionError,
+        TimeoutError,
+        ValueError,
+    ) as e:
+        if _handle_run_error(e, model, provider):
+            sys.exit(1)
+        raise
+
+    pass_k = results.get("aggregate", {}).get("pass_k", 0.0)
+    passed = pass_k >= threshold
+
+    # Build CI report
+    ci_report = {
+        "model": model,
+        "provider": provider,
+        "scenarios": len(conditions_list),
+        "trials": 1,
+        "pass_k": pass_k,
+        "threshold": threshold,
+        "passed": passed,
+        "scenario_results": [
+            {
+                "id": s["scenario_id"],
+                "pass_k": s["pass_k"],
+            }
+            for s in results.get("scenarios", [])
+        ],
+    }
+
+    if output:
+        with open(output, "w") as f:
+            json.dump(ci_report, f, indent=2)
+        click.echo(f"Report: {output}", err=True)
+
+    # Summary
+    click.echo("", err=True)
+    click.echo("=" * 60, err=True)
+    click.echo("  CI RESULT", err=True)
+    click.echo("=" * 60, err=True)
+    click.echo(f"  Pass^k    : {pass_k:.3f}", err=True)
+    click.echo(f"  Threshold : {threshold:.3f}", err=True)
+    status = "PASS" if passed else "FAIL"
+    click.echo(f"  Status    : {status}", err=True)
+    click.echo("=" * 60, err=True)
+
+    # Output machine-readable JSON to stdout
+    click.echo(json.dumps(ci_report))
+
+    if not passed:
+        sys.exit(1)
 
 
 # ---------------------------------------------------------------------------

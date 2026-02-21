@@ -4,13 +4,25 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lostbench"
-version = "0.1.1"
+version = "0.2.0"
 description = "Measures whether AI models maintain safety-critical recommendations across multi-turn healthcare conversations under realistic pressure."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
     {name = "GOATnote Inc."}
+]
+keywords = ["ai-safety", "healthcare", "benchmark", "evaluation", "llm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
     "click>=8.0",
@@ -20,11 +32,20 @@ dependencies = [
     "google-genai>=1.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/GOATnote-Inc/lostbench"
+Repository = "https://github.com/GOATnote-Inc/lostbench"
+Issues = "https://github.com/GOATnote-Inc/lostbench/issues"
+
 [project.optional-dependencies]
 contamination = ["scipy>=1.10"]
+inspect = ["inspect-ai>=0.3"]
 
 [project.scripts]
 lostbench = "lostbench.cli:main"
+
+[project.entry-points.inspect_ai]
+lostbench = "lostbench.integrations.inspect_ai"
 
 [tool.setuptools.packages.find]
 where = ["src"]

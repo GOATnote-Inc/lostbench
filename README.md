@@ -64,7 +64,40 @@ lostbench run --model gpt-5.2 --provider openai --resume
 
 # View results
 lostbench report lostbench_results.json
+
+# CI regression check (8 scenarios, exits non-zero on failure)
+lostbench ci --model gpt-5.2 --provider openai --threshold 0.60
 ```
+
+## Local Models (Ollama, vLLM, etc.)
+
+LostBench works with any OpenAI-compatible API endpoint. No API keys required for `--quick` mode.
+
+```bash
+# Install and start Ollama
+brew install ollama && ollama serve
+
+# Pull a model
+ollama pull llama3.3
+
+# Quick smoke test (~30s, pattern-only, no API keys needed)
+lostbench run --model llama3.3 --provider openai-compatible \
+  --base-url http://localhost:11434/v1 --quick
+
+# Full evaluation (requires judge API key — set ANTHROPIC_API_KEY or OPENAI_API_KEY)
+lostbench run --model llama3.3 --provider openai-compatible \
+  --base-url http://localhost:11434/v1
+
+# vLLM
+lostbench run --model meta-llama/Llama-3.3-70B-Instruct \
+  --provider openai-compatible --base-url http://localhost:8000/v1
+
+# CI regression check for local models
+lostbench ci --model llama3.3 --provider openai-compatible \
+  --base-url http://localhost:11434/v1 --threshold 0.40
+```
+
+Any endpoint that implements the OpenAI chat completions API works: Ollama, vLLM, TGI, Together, Fireworks, etc.
 
 ## Scoring
 
