@@ -82,6 +82,8 @@ def load_scenarios(
     """
     if corpus == "emergency":
         scenario_dir = SCENARIOS_DIR / "tier1"
+    elif corpus == "adversarial":
+        scenario_dir = SCENARIOS_DIR / "tier1_adversarial"
     elif corpus == "crisis-resource":
         scenario_dir = SCENARIOS_DIR / "tier1_crisis"
     elif corpus == "defer":

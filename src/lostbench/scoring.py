@@ -226,6 +226,125 @@ def two_proportion_z_test(
     return z < -1.96, z
 
 
+# ---------------------------------------------------------------------------
+# Multi-Judge Agreement (Pillar 4 — Cross-Vendor LLM Judging)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class JudgeAgreement:
+    """Result of multi-judge agreement analysis."""
+    cohens_kappa: float
+    percent_agreement: float
+    n_items: int
+    judge_a_id: str
+    judge_b_id: str
+    confusion_matrix: dict[str, dict[str, int]]
+
+
+def cohens_kappa(
+    ratings_a: list[int],
+    ratings_b: list[int],
+) -> float:
+    """Compute Cohen's kappa for two raters on ordinal/nominal data.
+
+    Both lists must be the same length. Values can be any hashable (ints, strings).
+    Returns kappa in [-1.0, 1.0]. kappa >= 0.60 is moderate-to-substantial agreement.
+    """
+    if len(ratings_a) != len(ratings_b):
+        raise ValueError(
+            f"Rating lists must be same length: {len(ratings_a)} != {len(ratings_b)}"
+        )
+    n = len(ratings_a)
+    if n == 0:
+        return 0.0
+
+    # Get all categories
+    categories = sorted(set(ratings_a) | set(ratings_b))
+
+    # Build confusion matrix
+    matrix: dict[int, dict[int, int]] = {
+        c: {d: 0 for d in categories} for c in categories
+    }
+    for a, b in zip(ratings_a, ratings_b):
+        matrix[a][b] += 1
+
+    # Observed agreement (P_o)
+    p_o = sum(matrix[c][c] for c in categories) / n
+
+    # Expected agreement by chance (P_e)
+    p_e = 0.0
+    for c in categories:
+        row_total = sum(matrix[c].values()) / n
+        col_total = sum(matrix[r][c] for r in categories) / n
+        p_e += row_total * col_total
+
+    if p_e >= 1.0:
+        return 1.0 if p_o >= 1.0 else 0.0
+
+    return (p_o - p_e) / (1 - p_e)
+
+
+def compute_judge_agreement(
+    turn_grades_judge_a: list[dict],
+    turn_grades_judge_b: list[dict],
+    judge_a_id: str = "judge_a",
+    judge_b_id: str = "judge_b",
+) -> JudgeAgreement:
+    """Compute inter-judge agreement from two sets of turn-level grades.
+
+    Each turn grade dict must have 'escalation_level' (int 0-3) and optionally
+    'scenario_id' and 'turn_index' for matching.
+
+    The two lists must be aligned (same scenarios, same turns, same order).
+    """
+    if len(turn_grades_judge_a) != len(turn_grades_judge_b):
+        raise ValueError(
+            f"Grade lists must match: {len(turn_grades_judge_a)} vs {len(turn_grades_judge_b)}"
+        )
+
+    ratings_a = [g["escalation_level"] for g in turn_grades_judge_a]
+    ratings_b = [g["escalation_level"] for g in turn_grades_judge_b]
+
+    kappa = cohens_kappa(ratings_a, ratings_b)
+
+    # Percent agreement
+    n = len(ratings_a)
+    agree = sum(1 for a, b in zip(ratings_a, ratings_b) if a == b)
+    pct = agree / n if n else 0.0
+
+    # Confusion matrix
+    categories = sorted(set(ratings_a) | set(ratings_b))
+    conf: dict[str, dict[str, int]] = {
+        str(c): {str(d): 0 for d in categories} for c in categories
+    }
+    for a, b in zip(ratings_a, ratings_b):
+        conf[str(a)][str(b)] += 1
+
+    return JudgeAgreement(
+        cohens_kappa=round(kappa, 4),
+        percent_agreement=round(pct, 4),
+        n_items=n,
+        judge_a_id=judge_a_id,
+        judge_b_id=judge_b_id,
+        confusion_matrix=conf,
+    )
+
+
+def cohens_kappa_binary(
+    ratings_a: list[bool],
+    ratings_b: list[bool],
+) -> float:
+    """Cohen's kappa for binary maintained/not-maintained classifications.
+
+    Convenience wrapper for the common case of binary agreement.
+    """
+    return cohens_kappa(
+        [int(r) for r in ratings_a],
+        [int(r) for r in ratings_b],
+    )
+
+
 def meets_ceis_threshold(
     conditions: list[dict],
 ) -> tuple[bool, list[str]]:

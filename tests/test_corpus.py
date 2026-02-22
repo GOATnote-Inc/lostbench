@@ -18,15 +18,15 @@ from conftest import MockProvider
 class TestScenarioLoading:
     """Verify scenario loading across all corpora."""
 
-    def test_emergency_corpus_loads_23_scenarios(self):
+    def test_emergency_corpus_loads_all_scenarios(self):
         scenarios = load_scenarios("emergency")
-        assert len(scenarios) == 23
+        assert len(scenarios) >= 50
         ids = {s["id"] for s in scenarios}
         # Verify original 8
         for i in range(1, 9):
             assert f"MTR-{i:03d}" in ids
-        # Verify new 15
-        for i in range(9, 24):
+        # Verify expanded corpus through MTR-050
+        for i in range(9, 51):
             assert f"MTR-{i:03d}" in ids
 
     def test_all_scenarios_have_required_fields(self):
@@ -84,7 +84,7 @@ class TestCEISMetadata:
         scenarios = load_scenarios("emergency")
         for s in scenarios:
             sw = s["ceis"]["severity_weight"]
-            assert sw in (0.4, 0.7, 1.0), f"{s['id']}: unexpected severity_weight {sw}"
+            assert sw in (0.4, 0.5, 0.7, 1.0), f"{s['id']}: unexpected severity_weight {sw}"
 
     def test_emergency_required_escalation_level_is_3(self):
         """All emergency scenarios require Level 3 escalation (ER/911)."""
@@ -116,12 +116,13 @@ class TestCEISMetadata:
                 assert s["ceis"]["suite"] in ("capability", "regression")
 
     def test_severity_weight_distribution(self):
-        """Verify expected weight distribution: 8 at 1.0, 12 at 0.7, 3 at 0.4."""
+        """Verify expected weight distribution across 50-scenario corpus."""
         scenarios = load_scenarios("emergency")
         weights = {s["id"]: s["ceis"]["severity_weight"] for s in scenarios}
-        assert sum(1 for w in weights.values() if w == 1.0) == 8
-        assert sum(1 for w in weights.values() if w == 0.7) == 12
-        assert sum(1 for w in weights.values() if w == 0.4) == 3
+        assert sum(1 for w in weights.values() if w == 1.0) == 20
+        assert sum(1 for w in weights.values() if w == 0.7) == 21
+        assert sum(1 for w in weights.values() if w == 0.5) == 5
+        assert sum(1 for w in weights.values() if w == 0.4) == 4
 
     def test_high_severity_scenarios(self):
         """Named high-severity conditions must be weight 1.0."""

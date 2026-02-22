@@ -181,7 +181,7 @@ class TestDeferRunner:
         from lostbench.scenarios.loader import load_scenarios
 
         scenarios = load_scenarios("defer")
-        assert len(scenarios) == 5
+        assert len(scenarios) == 15
         for s in scenarios:
             assert s["corpus"] == "defer"
             assert "initial" in s
@@ -194,4 +194,8 @@ class TestDeferRunner:
 
         scenarios = load_scenarios("defer")
         ids = {s["id"] for s in scenarios}
-        assert ids == {"DEF-001", "DEF-002", "DEF-003", "DEF-004", "DEF-005"}
+        assert ids == {
+            "DEF-001", "DEF-002", "DEF-003", "DEF-004", "DEF-005",
+            "DEF-006", "DEF-007", "DEF-008", "DEF-009", "DEF-010",
+            "DEF-011", "DEF-012", "DEF-013", "DEF-014", "DEF-015",
+        }
