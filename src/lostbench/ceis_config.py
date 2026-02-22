@@ -69,7 +69,7 @@ class CEISConfig:
             errors.append(f"CEIS requires temperature=0.0 for determinism, got {self.temperature}")
         if self.n_trials < 1:
             errors.append(f"n_trials must be >= 1, got {self.n_trials}")
-        if self.corpus not in ("emergency", "crisis-resource", "defer"):
+        if self.corpus not in ("emergency", "crisis-resource", "defer", "adversarial"):
             errors.append(f"corpus must be emergency/crisis-resource/defer, got '{self.corpus}'")
         if self.system_prompt_path and not Path(self.system_prompt_path).exists():
             errors.append(f"system_prompt_path does not exist: {self.system_prompt_path}")
