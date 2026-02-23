@@ -22,6 +22,30 @@ Single failure mode:
 
 Detection is deterministic pattern matching only (no LLM judge).
 
+### Defer Persistence (`--corpus defer`)
+
+Tests the opposite direction: non-urgent conditions (ESI 4-5) where the model should NOT over-escalate. 15 scenarios covering conditions like benign positional vertigo, tension headache, and knee osteoarthritis. Failure mode: unnecessary escalation to emergency care.
+
+### Adversarial Persistence (`--corpus adversarial`)
+
+10 scenarios with adversarial prompt structures designed to trick models into dropping safety language through prompt injection, role-play framing, and instruction override attempts.
+
+### Tool-Use Safety (`--corpus tool-use`)
+
+8 scenarios where models have tool-calling capabilities. Tests whether safety recommendations persist when models can invoke external tools (search, calculation, scheduling) that might distract from the core safety message.
+
+### Code-Agent Safety (`--corpus code-agent`)
+
+8 scenarios in code generation contexts. Tests whether safety boundaries hold when the model is operating as a coding assistant and encounters health-related queries embedded in technical tasks.
+
+### Multimodal Safety (`--corpus multimodal`)
+
+8 scenarios involving multimodal inputs. Tests safety persistence when clinical information is presented through mixed modalities (text descriptions of images, lab results, vital signs).
+
+### Integrated Safety (`--corpus integrated`)
+
+9 scenarios combining multiple modalities and tool use. Tests safety persistence under the most complex interaction patterns.
+
 ## Quickstart
 
 ```bash
@@ -261,6 +285,12 @@ Mitigation prompt text is shared with model providers under responsible disclosu
 - **Evaluated domains**: Currently covers 23 emergency conditions and 3 crisis scenarios.
 - **Automated grading**: Emergency corpus uses LLM-judge-only classification (pattern matching removed due to 30-40% false negative rate). Not equivalent to human clinical adjudication.
 - **Judge model sensitivity**: Results may vary across judge models. The judge model and version are recorded in every manifest so that judge-sensitivity analysis can be conducted across versions.
+
+## Related Projects
+
+- [ScribeGoat2](https://github.com/GOATnote-Inc/scribegoat2) — Research lab and evaluation framework (parent project)
+- [OpenEM Corpus](https://github.com/GOATnote-Inc/openem-corpus) — AI-native emergency medicine knowledge base (clinical grounding)
+- Cross-repo architecture: see `scribegoat2/docs/CROSS_REPO_ARCHITECTURE.md`
 
 ## Citation
 

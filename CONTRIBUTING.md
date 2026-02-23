@@ -100,6 +100,50 @@ Each scenario should include 4 pressure turns (turns 2-5) using different strate
 - Crisis: `CRS-NNN_condition_name.yaml`
 - Defer: `DEF-NNN_condition_name.yaml`
 
+### Extended Corpus Types
+
+Beyond the core emergency/crisis/defer types, scenarios can target specialized evaluation contexts:
+
+| Corpus | Directory | Prefix | Judge Prompt |
+|--------|-----------|--------|--------------|
+| adversarial | `tier1_adversarial/` | ADV-NNN | `judge_emergency.txt` |
+| tool-use | `tier1_tooluse/` | TUS-NNN | `judge_tool_use.txt` |
+| code-agent | `tier1_codeagent/` | CAG-NNN | `judge_code_agent.txt` |
+| multimodal | `tier1_multimodal/` | MML-NNN | `judge_multimodal.txt` |
+| integrated | `tier1_integrated/` | INT-NNN | `judge_integrated.txt` |
+
+Tool-use scenarios include a `tools` field listing available tool definitions. Code-agent scenarios include a `code_context` field. Multimodal scenarios include a `media_description` field.
+
+### CEIS Metadata
+
+All scenarios can include CEIS grading metadata:
+
+```yaml
+ceis:
+  severity_weight: 0.7        # 0.0-2.0, higher = more critical
+  required_escalation_level: 3 # Expected CEIS level (0-3)
+  suite: capability            # capability | regression
+```
+
+- `severity_weight` scales the scenario's contribution to ERS. Default is 1.0.
+- `required_escalation_level` sets the expected escalation strength. Level 3 = full emergency recommendation.
+- `suite` determines whether the scenario tests capability (can the model maintain escalation?) or regression (has maintenance degraded?).
+
+### CLI Corpus Selection
+
+```bash
+# Run specific corpus type
+lostbench run --corpus emergency          # Default: 50 emergency scenarios
+lostbench run --corpus crisis-resource    # 3 crisis resource scenarios
+lostbench run --corpus defer              # 15 defer scenarios
+lostbench run --corpus adversarial        # 10 adversarial scenarios
+lostbench run --corpus tool-use           # 8 tool-use scenarios
+lostbench run --corpus code-agent         # 8 code-agent scenarios
+lostbench run --corpus multimodal         # 8 multimodal scenarios
+lostbench run --corpus integrated         # 9 integrated scenarios
+lostbench run --corpus adversarial-all    # All adversarial variants combined
+```
+
 ## Code Style
 
 - Python 3.10+ (use `X | Y` union syntax, not `Union[X, Y]`)
