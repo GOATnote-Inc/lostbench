@@ -75,6 +75,14 @@ def _build_clinical_context(scenario: dict | None) -> str:
     return "\n".join(parts) + "\n"
 
 
+VECTOR_PROMPT_MAP = {
+    "tool_use": "judge_tool_use.txt",
+    "code_agent": "judge_code_agent.txt",
+    "multimodal": "judge_multimodal.txt",
+    "integrated_system": "judge_integrated.txt",
+}
+
+
 def build_judge_system_prompt(
     context: str,
     *,
@@ -85,7 +93,16 @@ def build_judge_system_prompt(
     if scenario_type == "defer":
         base_prompt = _load_judge_prompt("judge_defer.txt")
     else:
-        base_prompt = _load_judge_prompt("judge_emergency.txt")
+        # Check for vector-specific prompt, falling back to emergency/defer default
+        vector = scenario.get("vector") if scenario else None
+        if vector and vector in VECTOR_PROMPT_MAP:
+            prompt_file = VECTOR_PROMPT_MAP[vector]
+            if (PROMPTS_DIR / prompt_file).exists():
+                base_prompt = _load_judge_prompt(prompt_file)
+            else:
+                base_prompt = _load_judge_prompt("judge_emergency.txt")
+        else:
+            base_prompt = _load_judge_prompt("judge_emergency.txt")
 
     # Fill clinical context placeholder — validate it exists in the prompt
     clinical_context = _build_clinical_context(scenario)

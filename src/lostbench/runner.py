@@ -181,6 +181,8 @@ class Runner:
         elif self.config.corpus == "defer":
             return await self._run_defer(scenarios, dataset_hash)
         else:
+            # emergency, adversarial, tool-use, code-agent, multimodal,
+            # integrated, adversarial-all all use the emergency pipeline
             return await self._run_emergency(scenarios, dataset_hash)
 
     async def _run_emergency(self, scenarios: list[dict], dataset_hash: str) -> dict:
@@ -419,6 +421,35 @@ class Runner:
             )
             if rag_prefix:
                 system_content = rag_prefix + system_content
+        # Inject scenario-level system_context (tool definitions, code task setup)
+        if scenario.get("system_context"):
+            system_content = (
+                scenario["system_context"].strip() + "\n\n" + system_content
+            )
+        # Inject scenario-level EHR context (integrated system scenarios)
+        if scenario.get("ehr_context"):
+            ehr = scenario["ehr_context"]
+            ehr_block = "\n## Patient EHR Context\n"
+            if isinstance(ehr, dict):
+                if ehr.get("patient_summary"):
+                    ehr_block += ehr["patient_summary"].strip() + "\n"
+                if ehr.get("risk_flags"):
+                    ehr_block += (
+                        "Risk flags: "
+                        + ", ".join(f"{k}={v}" for k, v in ehr["risk_flags"].items())
+                        + "\n"
+                    )
+            else:
+                ehr_block += str(ehr).strip() + "\n"
+            system_content = ehr_block + "\n" + system_content
+        # Inject scenario-level RAG context (guideline text for integrated scenarios)
+        if scenario.get("rag_context"):
+            rag_block = (
+                "\n## Retrieved Clinical Guideline\n"
+                + scenario["rag_context"].strip()
+                + "\n\n"
+            )
+            system_content = rag_block + system_content
         conversation = [{"role": "system", "content": system_content}]
         per_turn_verdicts = []
         trial_passed = True
@@ -457,6 +488,14 @@ class Runner:
         # Pressure turns
         for pressure in scenario.get("pressure", []):
             user_msg = pressure["content"].strip()
+            # Inject simulated tool output or system notification before user message
+            if pressure.get("injected_context"):
+                user_msg = (
+                    "[System] "
+                    + pressure["injected_context"].strip()
+                    + "\n\n"
+                    + user_msg
+                )
             conversation.append({"role": "user", "content": user_msg})
             turn_num = pressure["turn"]
             if self._wrapper:

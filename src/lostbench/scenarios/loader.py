@@ -39,6 +39,18 @@ CI_SCENARIOS: list[str] = [
     "MTR-022",  # kawasaki_disease
 ]
 
+# CI subset for new adversarial expansion corpora (2 per category)
+CI_ADVERSARIAL_EXPANSION: list[str] = [
+    "TUE-001",  # tool-use: stemi
+    "TUE-003",  # tool-use: pulmonary_embolism
+    "CAM-001",  # code-agent: stemi
+    "CAM-005",  # code-agent: suicidal_ideation
+    "MMV-001",  # multimodal: stemi
+    "MMV-003",  # multimodal: meningococcemia
+    "PRI-001",  # integrated: stemi
+    "PRI-006",  # integrated: acute_ischemic_stroke
+]
+
 
 def _validate_ceis_block(scenario_id: str, ceis: dict) -> None:
     """Validate optional CEIS metadata block. Raises ValueError on invalid data."""
@@ -92,6 +104,8 @@ def load_scenarios(
             - "holdback": only holdback scenarios
             - "all" or None: include everything (default, backward-compatible)
     """
+    required_fields = {"id", "condition", "initial"}
+
     if corpus == "emergency":
         scenario_dir = SCENARIOS_DIR / "tier1"
     elif corpus == "adversarial":
@@ -100,10 +114,47 @@ def load_scenarios(
         scenario_dir = SCENARIOS_DIR / "tier1_crisis"
     elif corpus == "defer":
         scenario_dir = SCENARIOS_DIR / "defer"
+    elif corpus == "tool-use":
+        scenario_dir = SCENARIOS_DIR / "tier1_tooluse"
+    elif corpus == "code-agent":
+        scenario_dir = SCENARIOS_DIR / "tier1_codeagent"
+    elif corpus == "multimodal":
+        scenario_dir = SCENARIOS_DIR / "tier1_multimodal"
+    elif corpus == "integrated":
+        scenario_dir = SCENARIOS_DIR / "tier1_integrated"
+    elif corpus == "adversarial-all":
+        # Load all adversarial subdirs combined
+        all_scenarios: list[dict] = []
+        for subdir in [
+            "tier1_adversarial",
+            "tier1_tooluse",
+            "tier1_codeagent",
+            "tier1_multimodal",
+            "tier1_integrated",
+        ]:
+            dir_path = SCENARIOS_DIR / subdir
+            if not dir_path.exists():
+                continue
+            for yaml_path in sorted(dir_path.glob("*.yaml")):
+                with open(yaml_path) as f:
+                    scenario = yaml.safe_load(f)
+                if not isinstance(scenario, dict):
+                    raise ValueError(
+                        f"Malformed scenario file (not a mapping): {yaml_path.name}"
+                    )
+                missing = required_fields - set(scenario.keys())
+                if missing:
+                    raise ValueError(
+                        f"Scenario {scenario.get('id', yaml_path.name)} missing required fields: {missing}"
+                    )
+                if "ceis" in scenario:
+                    _validate_ceis_block(scenario["id"], scenario["ceis"])
+                all_scenarios.append(scenario)
+        if conditions:
+            all_scenarios = [s for s in all_scenarios if s["id"] in conditions]
+        return all_scenarios
     else:
         raise ValueError(f"Unknown corpus: {corpus}")
-
-    required_fields = {"id", "condition", "initial"}
     scenarios = []
     for yaml_path in sorted(scenario_dir.glob("*.yaml")):
         with open(yaml_path) as f:

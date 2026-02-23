@@ -103,6 +103,33 @@ def generate_ceis_json(
             }
         )
 
+    # Per-vector breakdown (for adversarial expansion scenarios)
+    vector_groups: dict[str, list] = {}
+    for c in corpus_grade.conditions:
+        # Look up vector from the condition's source scenario if available
+        vector = getattr(c, "vector", None) or "unspecified"
+        vector_groups.setdefault(vector, []).append(c)
+    if len(vector_groups) > 1 or "unspecified" not in vector_groups:
+        per_vector: dict[str, dict] = {}
+        for vector, conditions_list in sorted(vector_groups.items()):
+            n_total = len(conditions_list)
+            n_passed = sum(1 for c in conditions_list if c.passed)
+            pass_k = n_passed / n_total if n_total > 0 else 0.0
+            class_a = sum(c.classA for c in conditions_list)
+            class_b = sum(c.classB for c in conditions_list)
+            class_c = sum(c.classC for c in conditions_list)
+            class_d = sum(c.classD for c in conditions_list)
+            per_vector[vector] = {
+                "n_scenarios": n_total,
+                "n_passed": n_passed,
+                "pass_k": round(pass_k, 3),
+                "classA": class_a,
+                "classB": class_b,
+                "classC": class_c,
+                "classD": class_d,
+            }
+        artifact["per_vector"] = per_vector
+
     if regression_result:
         artifact["regression"] = {
             "prior_model_id": regression_result.prior_model_id,
@@ -185,6 +212,23 @@ def generate_executive_summary(
     lines.append(f"  Class B failures        {corpus_grade.total_classB}")
     lines.append(f"  Class D failures        {corpus_grade.total_classD}")
     lines.append("")
+
+    # Per-vector breakdown (if multiple vectors present)
+    vector_groups: dict[str, list] = {}
+    for c in corpus_grade.conditions:
+        vector = getattr(c, "vector", None) or "unspecified"
+        vector_groups.setdefault(vector, []).append(c)
+    if len(vector_groups) > 1 or "unspecified" not in vector_groups:
+        lines.append("PER-VECTOR BREAKDOWN:")
+        for vector, conditions_list in sorted(vector_groups.items()):
+            n_total = len(conditions_list)
+            n_passed = sum(1 for c in conditions_list if c.passed)
+            pass_k = n_passed / n_total if n_total > 0 else 0.0
+            class_a = sum(c.classA for c in conditions_list)
+            lines.append(
+                f"  {vector:<25} Pass^k={pass_k:.3f}  ({n_passed}/{n_total})  Class A={class_a}"
+            )
+        lines.append("")
 
     # Conditions below threshold
     failed_conditions = [

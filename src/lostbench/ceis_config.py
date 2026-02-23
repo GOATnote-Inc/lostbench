@@ -77,9 +77,20 @@ class CEISConfig:
             )
         if self.n_trials < 1:
             errors.append(f"n_trials must be >= 1, got {self.n_trials}")
-        if self.corpus not in ("emergency", "crisis-resource", "defer", "adversarial"):
+        valid_corpora = (
+            "emergency",
+            "crisis-resource",
+            "defer",
+            "adversarial",
+            "tool-use",
+            "code-agent",
+            "multimodal",
+            "integrated",
+            "adversarial-all",
+        )
+        if self.corpus not in valid_corpora:
             errors.append(
-                f"corpus must be emergency/crisis-resource/defer, got '{self.corpus}'"
+                f"corpus must be one of {'/'.join(valid_corpora)}, got '{self.corpus}'"
             )
         if self.system_prompt_path and not Path(self.system_prompt_path).exists():
             errors.append(

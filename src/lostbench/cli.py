@@ -80,7 +80,19 @@ def main(verbose):
 @click.option(
     "--corpus",
     default="emergency",
-    type=click.Choice(["emergency", "crisis-resource", "defer"]),
+    type=click.Choice(
+        [
+            "emergency",
+            "crisis-resource",
+            "defer",
+            "adversarial",
+            "tool-use",
+            "code-agent",
+            "multimodal",
+            "integrated",
+            "adversarial-all",
+        ]
+    ),
 )
 @click.option("--trials", default=3, type=int, help="Number of trials per scenario")
 @click.option(
@@ -854,6 +866,162 @@ def ceis_report(results_path, fmt):
                 )
 
         click.echo(f"{'=' * 60}\n")
+
+
+@ceis.command("review")
+@click.option(
+    "--results",
+    "results_path",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to LostBench results JSON file",
+)
+@click.option(
+    "--vector",
+    default=None,
+    type=click.Choice(
+        [
+            "tool_use",
+            "code_agent",
+            "multimodal",
+            "integrated_system",
+        ]
+    ),
+    help="Filter to a specific attack vector",
+)
+@click.option(
+    "--failure-class",
+    "failure_class",
+    default=None,
+    type=click.Choice(["A", "B", "C", "D"]),
+    help="Filter to a specific failure class",
+)
+@click.option(
+    "--all",
+    "show_all",
+    is_flag=True,
+    default=False,
+    help="Show all scenarios (default: failures only)",
+)
+def ceis_review(results_path, vector, failure_class, show_all):
+    """Review conversation transcripts with inline grading.
+
+    Reads a LostBench results JSON and prints conversation transcripts
+    with turn-level grades for forensic analysis.
+
+    Example: lostbench ceis review --results results.json --vector tool_use
+    """
+    with open(results_path) as f:
+        results = json.load(f)
+
+    scenarios = results.get("scenarios", [])
+    if not scenarios:
+        click.echo("No scenarios found in results file.", err=True)
+        sys.exit(1)
+
+    # Load scenario YAMLs to get vector metadata
+    corpus = results.get("metadata", {}).get("corpus", "emergency")
+    try:
+        yaml_scenarios = {
+            s["id"]: s
+            for s in __import__(
+                "lostbench.scenarios.loader", fromlist=["load_scenarios"]
+            ).load_scenarios(corpus)
+        }
+    except (ValueError, FileNotFoundError):
+        yaml_scenarios = {}
+
+    filtered = []
+    for s in scenarios:
+        sid = s["scenario_id"]
+        yaml_s = yaml_scenarios.get(sid, {})
+        s_vector = yaml_s.get("vector")
+
+        # Vector filter
+        if vector and s_vector != vector:
+            continue
+
+        # Failure filter
+        if not show_all:
+            has_failure = s.get("pass_k") is not True and s.get("pass_k") != 1.0
+            if not has_failure:
+                continue
+
+        # Failure class filter
+        if failure_class:
+            has_class = False
+            for trial in s.get("per_trial", []):
+                for v in trial.get("per_turn_verdicts", []):
+                    ft = v.get("failure_tier", "") or ""
+                    if failure_class.upper() in ft.upper():
+                        has_class = True
+                        break
+                    fc = v.get("reasoning", "") or ""
+                    if f"Class {failure_class}" in fc:
+                        has_class = True
+                        break
+            if not has_class:
+                continue
+
+        filtered.append((s, yaml_s))
+
+    if not filtered:
+        click.echo("No scenarios match the given filters.", err=True)
+        sys.exit(0)
+
+    click.echo(f"\n{'=' * 70}")
+    click.echo(f"CEIS Transcript Review — {len(filtered)} scenario(s)")
+    if vector:
+        click.echo(f"Vector filter: {vector}")
+    if failure_class:
+        click.echo(f"Failure class filter: {failure_class}")
+    click.echo(f"{'=' * 70}\n")
+
+    for s, yaml_s in filtered:
+        sid = s["scenario_id"]
+        condition = s.get("condition", "unknown")
+        s_vector = yaml_s.get("vector", "unspecified")
+        pass_k = s.get("pass_k")
+
+        click.echo(f"--- {sid} ({condition}) | vector={s_vector} | pass_k={pass_k} ---")
+
+        for trial_idx, trial in enumerate(s.get("per_trial", [])):
+            click.echo(f"\n  Trial {trial_idx}:")
+            conv = trial.get("conversation", [])
+            verdicts = trial.get("per_turn_verdicts", [])
+            verdict_idx = 0
+            turn_num = 0
+
+            for msg in conv:
+                role = msg.get("role", "")
+                content = msg.get("content", "")
+                # Truncate long content
+                display = content[:300] + "..." if len(content) > 300 else content
+                display = display.replace("\n", "\n      ")
+
+                if role == "system":
+                    click.echo(f"    [system] {display[:100]}...")
+                elif role == "user":
+                    turn_num += 1
+                    click.echo(f"    [user t{turn_num}] {display}")
+                elif role == "assistant":
+                    click.echo(f"    [assistant] {display}")
+                    # Print verdict for this assistant turn
+                    if verdict_idx < len(verdicts):
+                        v = verdicts[verdict_idx]
+                        verdict_str = v.get("verdict", "?")
+                        stage = v.get("detection_stage", "?")
+                        fm = v.get("failure_mode") or "-"
+                        ft = v.get("failure_tier") or "-"
+                        conf = v.get("confidence")
+                        conf_str = f" conf={conf:.2f}" if conf is not None else ""
+                        click.echo(
+                            f"    >> GRADE: {verdict_str} | stage={stage} | "
+                            f"failure={fm} | tier={ft}{conf_str}"
+                        )
+                        verdict_idx += 1
+
+        click.echo("")
 
 
 def _check_api_key(provider: str) -> None:
