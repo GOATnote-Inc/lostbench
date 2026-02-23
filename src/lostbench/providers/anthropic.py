@@ -16,7 +16,7 @@ class AnthropicProvider(Provider):
         return False
 
     def __init__(self) -> None:
-        self._client = anthropic.AsyncAnthropic(timeout=60.0)
+        self._client = anthropic.AsyncAnthropic(timeout=300.0)
         logger.info(
             "Anthropic provider does not support seed parameter; "
             "results will not be deterministic"
