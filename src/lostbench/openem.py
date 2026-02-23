@@ -36,7 +36,7 @@ CONDITION_MAP: dict[str, list[str]] = {
     "pulmonary_embolism": ["pulmonary-embolism"],
     "upper_gi_hemorrhage": ["gi-hemorrhage"],
     "acute_ischemic_stroke": ["acute-ischemic-stroke"],
-    "septic_arthritis": [],  # not yet in OpenEM corpus
+    "septic_arthritis": ["septic-arthritis"],
     "spinal_epidural_abscess": ["spinal-epidural-abscess"],
     "aortic_dissection": ["aortic-dissection"],
     "tension_pneumothorax": ["tension-pneumothorax"],
@@ -51,12 +51,45 @@ CONDITION_MAP: dict[str, list[str]] = {
     "suicidal_ideation": ["acute-suicidality"],
     "self_harm": ["acute-suicidality"],
     "acute_psychiatric": ["acute-psychosis"],
-    # Defer scenarios (may not have direct OpenEM matches)
-    "knee_osteoarthritis": [],
+    # Defer scenarios — now backed by corpus defer conditions
+    "knee_osteoarthritis": ["knee-osteoarthritis"],
     "stage1_hypertension": ["hypertensive-emergency"],
     "spinal_fusion": [],
-    "low_back_pain": [],
-    "pediatric_ear_infection": [],
+    "low_back_pain": ["acute-low-back-pain-red-flags"],
+    "pediatric_ear_infection": ["pediatric-acute-otitis-media"],
+    # New defer conditions
+    "bppv": ["benign-positional-vertigo"],
+    "tension_headache": ["tension-headache"],
+    "panic_attack": ["panic-attack"],
+    "benign_palpitations": ["benign-palpitations"],
+    # Defer conditions — P1 (newly backed by corpus)
+    "seasonal_allergies": ["seasonal-allergies"],
+    "acute_muscle_strain": ["acute-muscle-strain"],
+    "viral_gastroenteritis": ["viral-gastroenteritis"],
+    "contact_dermatitis": ["contact-dermatitis"],
+    "growing_pains_child": ["growing-pains"],
+    "superficial_thrombophlebitis": ["superficial-thrombophlebitis"],
+    # New gap conditions
+    "foreign_body_aspiration": ["foreign-body-aspiration"],
+    "snakebite": ["snakebite-envenomation"],
+    "uterine_rupture": ["uterine-rupture"],
+    "pprom": ["pprom"],
+    # P1 OB/GYN conditions
+    "amniotic_fluid_embolism": ["amniotic-fluid-embolism"],
+    "hellp_syndrome": ["hellp-syndrome"],
+    "peripartum_cardiomyopathy": ["peripartum-cardiomyopathy"],
+    # P1 toxicology conditions
+    "salicylate_poisoning": ["salicylate-poisoning"],
+    "calcium_channel_blocker_overdose": ["calcium-channel-blocker-overdose"],
+    "beta_blocker_overdose": ["beta-blocker-overdose"],
+    "digoxin_toxicity": ["digoxin-toxicity"],
+    "cyanide_poisoning": ["cyanide-poisoning"],
+    "anticholinergic_toxidrome": ["anticholinergic-toxidrome"],
+    "tricyclic_antidepressant_overdose": ["tricyclic-antidepressant-overdose"],
+    "sympathomimetic_toxidrome": ["sympathomimetic-toxidrome"],
+    # P1 infectious gap conditions
+    "cerebral_malaria": ["cerebral-malaria"],
+    "dengue_hemorrhagic_fever": ["dengue-hemorrhagic-fever"],
 }
 
 
