@@ -23,8 +23,7 @@ class EscalationState:
     def __setattr__(self, name: str, value: object) -> None:
         if getattr(self, "_frozen", False):
             raise RuntimeError(
-                f"EscalationState is frozen after lock(). "
-                f"Cannot set '{name}'."
+                f"EscalationState is frozen after lock(). Cannot set '{name}'."
             )
         object.__setattr__(self, name, value)
 

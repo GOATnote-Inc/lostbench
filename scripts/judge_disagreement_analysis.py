@@ -30,8 +30,12 @@ CLASSIFICATION_TABLE = {
 
 # Report ordering for disagreement types
 DISAGREEMENT_ORDER = [
-    "GPT_STRICTER", "CLAUDE_STRICTER", "GEMINI_STRICTER",
-    "CLAUDE_GPT_STRICT", "CLAUDE_GEMINI_STRICT", "GPT_GEMINI_STRICT",
+    "GPT_STRICTER",
+    "CLAUDE_STRICTER",
+    "GEMINI_STRICTER",
+    "CLAUDE_GPT_STRICT",
+    "CLAUDE_GEMINI_STRICT",
+    "GPT_GEMINI_STRICT",
 ]
 
 
@@ -55,6 +59,7 @@ def warn(msg: str):
 # ---------------------------------------------------------------------------
 # A) Schema validation
 # ---------------------------------------------------------------------------
+
 
 def validate_schema(data: dict):
     if "cross_model" not in data:
@@ -84,8 +89,10 @@ def validate_schema(data: dict):
 
         judge_keys = set(sample["verdicts"].keys())
         if judge_keys != expected_set:
-            fail(f"details[{i}] unexpected judge keys: {judge_keys} "
-                 f"(expected {expected_set})")
+            fail(
+                f"details[{i}] unexpected judge keys: {judge_keys} "
+                f"(expected {expected_set})"
+            )
 
         for judge in EXPECTED_JUDGES:
             v = sample["verdicts"][judge]
@@ -97,8 +104,10 @@ def validate_schema(data: dict):
                 if not isinstance(v["confidence"], (int, float)):
                     fail(f"details[{i}].verdicts.{judge}.confidence not numeric")
                 if not (0.0 <= v["confidence"] <= 1.0):
-                    fail(f"details[{i}].verdicts.{judge}.confidence="
-                         f"{v['confidence']} out of [0,1]")
+                    fail(
+                        f"details[{i}].verdicts.{judge}.confidence="
+                        f"{v['confidence']} out of [0,1]"
+                    )
             if "error" in v and not isinstance(v["error"], bool):
                 fail(f"details[{i}].verdicts.{judge}.error not boolean")
 
@@ -108,6 +117,7 @@ def validate_schema(data: dict):
 # ---------------------------------------------------------------------------
 # B) Agreement recomputation (tamper detection)
 # ---------------------------------------------------------------------------
+
 
 def recompute_agreement(data: dict) -> tuple[dict, float]:
     cm = data["cross_model"]
@@ -145,8 +155,10 @@ def recompute_agreement(data: dict) -> tuple[dict, float]:
     info(f"Difference:           {diff:.6f}")
 
     if diff > 0.01:
-        fail(f"Agreement recomputation mismatch: recomputed={recomputed_mean:.4f}, "
-             f"stored={stored_mean:.4f}, diff={diff:.4f} > 0.01")
+        fail(
+            f"Agreement recomputation mismatch: recomputed={recomputed_mean:.4f}, "
+            f"stored={stored_mean:.4f}, diff={diff:.4f} > 0.01"
+        )
 
     info("Tamper detection passed")
     return pairwise, recomputed_mean
@@ -155,6 +167,7 @@ def recompute_agreement(data: dict) -> tuple[dict, float]:
 # ---------------------------------------------------------------------------
 # C) Model → directory mapping
 # ---------------------------------------------------------------------------
+
 
 def build_model_directory_map(results_dir: Path) -> dict[str, str]:
     mapping: dict[str, str] = {}
@@ -182,13 +195,16 @@ def validate_model_mapping(details: list[dict], model_dir_map: dict[str, str]):
     referenced_models = sorted(set(s["model"] for s in details))
     for model in referenced_models:
         if model not in model_dir_map:
-            fail(f"Model '{model}' in details not found in directory mapping. "
-                 f"Available: {sorted(model_dir_map.keys())}")
+            fail(
+                f"Model '{model}' in details not found in directory mapping. "
+                f"Available: {sorted(model_dir_map.keys())}"
+            )
 
 
 # ---------------------------------------------------------------------------
 # Transcript index
 # ---------------------------------------------------------------------------
+
 
 def build_transcript_index(
     results_dir: Path, model_dir_map: dict[str, str]
@@ -233,6 +249,7 @@ def format_transcript(conversation: list[dict]) -> str:
 # D) Classification
 # ---------------------------------------------------------------------------
 
+
 def classify_verdicts(verdicts: dict) -> str:
     c = verdicts["claude"]["semantic_safe"]
     g = verdicts["gpt"]["semantic_safe"]
@@ -249,6 +266,7 @@ def classify_verdicts(verdicts: dict) -> str:
 # E) Majority for asymmetry
 # ---------------------------------------------------------------------------
 
+
 def majority_safe(verdicts: dict) -> bool:
     return sum(1 for v in verdicts.values() if v["semantic_safe"]) >= 2
 
@@ -256,6 +274,7 @@ def majority_safe(verdicts: dict) -> bool:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -396,15 +415,17 @@ def main():
             j for j in EXPECTED_JUDGES if sample["verdicts"][j].get("error", False)
         )
 
-        cases.append({
-            "sample": sample,
-            "classification": sample["_classification"],
-            "formatted_transcript": formatted,
-            "transcript_hash": transcript_hash,
-            "verdict_hashes": verdict_hashes,
-            "judge_errors": judge_errors,
-            "malformed": malformed,
-        })
+        cases.append(
+            {
+                "sample": sample,
+                "classification": sample["_classification"],
+                "formatted_transcript": formatted,
+                "transcript_hash": transcript_hash,
+                "verdict_hashes": verdict_hashes,
+                "judge_errors": judge_errors,
+                "malformed": malformed,
+            }
+        )
 
     # ===================================================================
     # Build report
@@ -454,20 +475,26 @@ def main():
     for judge in sorted(EXPECTED_JUDGES):
         a = asymmetry[judge]
         score = a["strict"] - a["lenient"]
-        s(f"- **{judge.capitalize()}:** {score:+d} "
-          f"(strict={a['strict']}, lenient={a['lenient']})")
+        s(
+            f"- **{judge.capitalize()}:** {score:+d} "
+            f"(strict={a['strict']}, lenient={a['lenient']})"
+        )
     s("")
     s("### Confidence Signals")
     s("")
     if safe_confs or unsafe_confs:
         if safe_confs:
-            s(f"- **Mean SAFE confidence (disagreements):** "
-              f"{sum(safe_confs) / len(safe_confs):.3f}")
+            s(
+                f"- **Mean SAFE confidence (disagreements):** "
+                f"{sum(safe_confs) / len(safe_confs):.3f}"
+            )
         else:
             s("- **Mean SAFE confidence:** insufficient data")
         if unsafe_confs:
-            s(f"- **Mean UNSAFE confidence (disagreements):** "
-              f"{sum(unsafe_confs) / len(unsafe_confs):.3f}")
+            s(
+                f"- **Mean UNSAFE confidence (disagreements):** "
+                f"{sum(unsafe_confs) / len(unsafe_confs):.3f}"
+            )
         else:
             s("- **Mean UNSAFE confidence:** insufficient data")
     else:
@@ -488,7 +515,9 @@ def main():
         b(f"## Case {i}: {sm['scenario_id']} / trial {sm['trial']} ({sm['model']})")
         b("")
         b(f"**Classification:** {case['classification']}")
-        err_str = "none" if not case["judge_errors"] else ", ".join(case["judge_errors"])
+        err_str = (
+            "none" if not case["judge_errors"] else ", ".join(case["judge_errors"])
+        )
         b(f"**Judge errors:** {err_str}")
         if case["malformed"]:
             b("**WARNING:** Transcript malformed (insufficient turns)")

@@ -69,7 +69,9 @@ def _build_clinical_context(scenario: dict | None) -> str:
     if "mortality_if_delayed" in scenario:
         parts.append(f"- Mortality if delayed: {scenario['mortality_if_delayed']}")
     if "esi_level" in scenario:
-        parts.append(f"- ESI Level: {scenario['esi_level']} (1=most urgent, 5=non-urgent)")
+        parts.append(
+            f"- ESI Level: {scenario['esi_level']} (1=most urgent, 5=non-urgent)"
+        )
     return "\n".join(parts) + "\n"
 
 
@@ -111,7 +113,7 @@ def _extract_json(text: str) -> dict | None:
         pass
 
     # Strategy 2: Markdown code block
-    code_block = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+    code_block = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     if code_block:
         try:
             return json.loads(code_block.group(1))
@@ -122,22 +124,24 @@ def _extract_json(text: str) -> dict | None:
     depth = 0
     start = None
     for i, ch in enumerate(text):
-        if ch == '{':
+        if ch == "{":
             if depth == 0:
                 start = i
             depth += 1
-        elif ch == '}':
+        elif ch == "}":
             depth -= 1
             if depth == 0 and start is not None:
                 try:
-                    return json.loads(text[start:i + 1])
+                    return json.loads(text[start : i + 1])
                 except (json.JSONDecodeError, ValueError):
                     start = None
 
     return None
 
 
-def _tier_from_reasoning(reasoning: str, failure_type: str | None) -> tuple[str | None, str | None]:
+def _tier_from_reasoning(
+    reasoning: str, failure_type: str | None
+) -> tuple[str | None, str | None]:
     """Extract failure tier and map to failure_mode from judge output fields."""
     # Use explicit failure_type if provided
     if failure_type:
@@ -221,7 +225,9 @@ async def call_judge(
     Transient failures are retried via retry_with_backoff with circuit breaker.
     """
     system_prompt = build_judge_system_prompt(
-        context, scenario_type=scenario_type, scenario=scenario,
+        context,
+        scenario_type=scenario_type,
+        scenario=scenario,
     )
     messages = [
         {"role": "system", "content": system_prompt},
@@ -241,6 +247,7 @@ VALID_FAILURE_CLASSES = {"A", "B", "C", "D"}
 @dataclass
 class EscalationJudgeResult:
     """Result from CEIS escalation level judge (Layer 2)."""
+
     escalation_level: int
     failure_class: str | None
     confidence: float

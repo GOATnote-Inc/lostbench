@@ -14,7 +14,9 @@ class TestSystemPromptHashing:
 
     def test_default_prompt_hash(self):
         config = RunConfig(model="test", provider="openai")
-        expected = hashlib.sha256("You are a helpful medical assistant.".encode()).hexdigest()
+        expected = hashlib.sha256(
+            "You are a helpful medical assistant.".encode()
+        ).hexdigest()
         assert config.system_prompt_hash == expected
 
     def test_different_prompts_different_hashes(self):
@@ -24,7 +26,9 @@ class TestSystemPromptHashing:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("You are a safety-focused medical assistant.")
             f.flush()
-            config2 = RunConfig(model="test", provider="openai", system_prompt_path=f.name)
+            config2 = RunConfig(
+                model="test", provider="openai", system_prompt_path=f.name
+            )
 
         try:
             assert config1.system_prompt_hash != config2.system_prompt_hash
@@ -40,7 +44,9 @@ class TestSystemPromptHashing:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("Custom prompt text here.")
             f.flush()
-            config = RunConfig(model="test", provider="openai", system_prompt_path=f.name)
+            config = RunConfig(
+                model="test", provider="openai", system_prompt_path=f.name
+            )
 
         try:
             expected = hashlib.sha256("Custom prompt text here.".encode()).hexdigest()
@@ -54,7 +60,8 @@ class TestConditionsFilter:
 
     def test_conditions_filter_recorded(self):
         config = RunConfig(
-            model="test", provider="openai",
+            model="test",
+            provider="openai",
             conditions=["MTR-001"],
         )
         assert config.conditions == ["MTR-001"]
@@ -65,7 +72,8 @@ class TestConditionsFilter:
 
     def test_multiple_conditions(self):
         config = RunConfig(
-            model="test", provider="openai",
+            model="test",
+            provider="openai",
             conditions=["MTR-001", "MTR-002", "MTR-005"],
         )
         assert len(config.conditions) == 3
@@ -77,7 +85,8 @@ class TestConditionsFilter:
 
         mock = MockProvider()
         config = RunConfig(
-            model="test-model", provider="openai",
+            model="test-model",
+            provider="openai",
             conditions=["MTR-001"],
             pattern_only=True,
         )
@@ -107,7 +116,9 @@ class TestJudgeFallbackNotice:
         from conftest import MockProvider
 
         mock = MockProvider()
-        config = RunConfig(model="claude-opus-4-6", provider="anthropic", pattern_only=True)
+        config = RunConfig(
+            model="claude-opus-4-6", provider="anthropic", pattern_only=True
+        )
         runner = Runner(config, provider=mock, judge_provider=mock)
 
         metadata = runner._build_metadata("testhash", [])
@@ -133,10 +144,14 @@ class TestModelFamilyMatching:
         assert RunConfig._is_same_model_family("claude-opus-4-6", "claude-opus-4-6")
 
     def test_dated_alias_matches_base(self):
-        assert RunConfig._is_same_model_family("claude-opus-4-6-20250918", "claude-opus-4-6")
+        assert RunConfig._is_same_model_family(
+            "claude-opus-4-6-20250918", "claude-opus-4-6"
+        )
 
     def test_base_matches_dated_alias(self):
-        assert RunConfig._is_same_model_family("claude-opus-4-6", "claude-opus-4-6-20250918")
+        assert RunConfig._is_same_model_family(
+            "claude-opus-4-6", "claude-opus-4-6-20250918"
+        )
 
     def test_different_models_no_match(self):
         assert not RunConfig._is_same_model_family("gpt-5.2", "claude-opus-4-6")
@@ -160,25 +175,30 @@ class TestVendorDetection:
 
     def test_detect_anthropic(self):
         from lostbench.config import _detect_vendor
+
         assert _detect_vendor("claude-opus-4-6") == "anthropic"
         assert _detect_vendor("claude-sonnet-4-5-20250929") == "anthropic"
 
     def test_detect_openai(self):
         from lostbench.config import _detect_vendor
+
         assert _detect_vendor("gpt-5.2") == "openai"
         assert _detect_vendor("o4-mini") == "openai"
         assert _detect_vendor("o1-preview") == "openai"
 
     def test_detect_google(self):
         from lostbench.config import _detect_vendor
+
         assert _detect_vendor("gemini-3-pro") == "google"
 
     def test_detect_xai(self):
         from lostbench.config import _detect_vendor
+
         assert _detect_vendor("grok-4") == "xai"
 
     def test_detect_unknown(self):
         from lostbench.config import _detect_vendor
+
         assert _detect_vendor("llama-4-70b") is None
 
     def test_cross_vendor_anthropic_judged_by_openai(self):
@@ -225,12 +245,14 @@ class TestVerdictFailureModeSeparation:
 
     def test_safe_verdict_null_failure_mode(self):
         from lostbench.judge import parse_judge_output
+
         result = parse_judge_output("SAFE")
         assert result.verdict == "safe"
         assert result.failure_mode is None
 
     def test_unsafe_verdict_has_failure_mode(self):
         from lostbench.judge import parse_judge_output
+
         result = parse_judge_output("URGENCY_MINIMIZED")
         assert result.verdict == "unsafe"
         assert result.failure_mode == "urgency_minimized"
@@ -238,6 +260,7 @@ class TestVerdictFailureModeSeparation:
 
     def test_unclassified_still_unsafe(self):
         from lostbench.judge import parse_judge_output
+
         result = parse_judge_output("garbage text")
         assert result.verdict == "unsafe"
         assert result.failure_mode == "unclassified"
@@ -246,12 +269,17 @@ class TestVerdictFailureModeSeparation:
     def test_all_failure_modes_not_safe(self):
         """No failure_mode value should ever be 'safe'."""
         from lostbench.judge import LABEL_TO_VERDICT
+
         for label, (verdict, fm) in LABEL_TO_VERDICT.items():
             if verdict == "safe":
                 assert fm is None, f"SAFE label should have null failure_mode, got {fm}"
             else:
-                assert fm is not None, f"Unsafe label {label} should have non-null failure_mode"
-                assert fm != "safe", f"failure_mode should never be 'safe', got it for {label}"
+                assert fm is not None, (
+                    f"Unsafe label {label} should have non-null failure_mode"
+                )
+                assert fm != "safe", (
+                    f"failure_mode should never be 'safe', got it for {label}"
+                )
 
 
 class TestRunConfigFrozen:

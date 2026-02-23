@@ -56,7 +56,10 @@ def _make_corpus(
     meets_threshold=True,
 ) -> CorpusGrade:
     if conditions is None:
-        conditions = [_make_scenario(), _make_scenario(scenario_id="MTR-002", condition="sepsis")]
+        conditions = [
+            _make_scenario(),
+            _make_scenario(scenario_id="MTR-002", condition="sepsis"),
+        ]
     return CorpusGrade(
         ers=ers,
         ers_bootstrap_ci=(78.0, 92.0),
@@ -168,7 +171,9 @@ class TestGenerateCEISJson:
         config = _make_config()
         corpus = _make_corpus()
         result = generate_ceis_json(
-            config, corpus, run_id="EG-test",
+            config,
+            corpus,
+            run_id="EG-test",
             system_prompt_hash="sha256:abc123",
         )
         assert result["meta"]["system_prompt_hash"] == "sha256:abc123"
@@ -177,7 +182,9 @@ class TestGenerateCEISJson:
         config = _make_config()
         corpus = _make_corpus()
         result = generate_ceis_json(
-            config, corpus, run_id="EG-test",
+            config,
+            corpus,
+            run_id="EG-test",
             corpus_hash="sha256:deadbeef",
         )
         assert result["meta"]["corpus_hash"] == "sha256:deadbeef"
@@ -241,7 +248,9 @@ class TestGenerateExecutiveSummary:
             threshold_failures=["ERS below 70", "Class A > 0"],
             conditions=conditions,
         )
-        summary = generate_executive_summary(config, corpus_with_failures, run_id="EG-test")
+        summary = generate_executive_summary(
+            config, corpus_with_failures, run_id="EG-test"
+        )
 
         assert "Does Not Meet" in summary
         assert "ERS below 70" in summary
@@ -296,8 +305,11 @@ class TestGenerateExecutiveSummary:
         config = _make_config()
         conditions = [
             _make_scenario(
-                scenario_id="MTR-001", condition="stemi",
-                classA=2, classB=1, passed=False,
+                scenario_id="MTR-001",
+                condition="stemi",
+                classA=2,
+                classB=1,
+                passed=False,
             ),
             _make_scenario(scenario_id="MTR-002", condition="sepsis"),
         ]
@@ -318,7 +330,10 @@ class TestReproducibilityBundle:
         artifact = generate_ceis_json(config, corpus, run_id="EG-test-bundle")
 
         bundle_dir = generate_reproducibility_bundle(
-            tmp_path, config, artifact, run_id="EG-test-bundle",
+            tmp_path,
+            config,
+            artifact,
+            run_id="EG-test-bundle",
         )
 
         assert bundle_dir.exists()
@@ -334,7 +349,10 @@ class TestReproducibilityBundle:
         artifact = generate_ceis_json(config, corpus, run_id="EG-test-bundle")
 
         bundle_dir = generate_reproducibility_bundle(
-            tmp_path, config, artifact, run_id="EG-test-bundle",
+            tmp_path,
+            config,
+            artifact,
+            run_id="EG-test-bundle",
         )
 
         with open(bundle_dir / "results.json") as f:
@@ -350,7 +368,10 @@ class TestReproducibilityBundle:
         artifact = generate_ceis_json(config, corpus, run_id="EG-test-bundle")
 
         bundle_dir = generate_reproducibility_bundle(
-            tmp_path, config, artifact, run_id="EG-test-bundle",
+            tmp_path,
+            config,
+            artifact,
+            run_id="EG-test-bundle",
         )
 
         config_yaml = yaml.safe_load((bundle_dir / "config.yaml").read_text())
@@ -365,7 +386,10 @@ class TestReproducibilityBundle:
         artifact = generate_ceis_json(config, corpus, run_id="EG-test-bundle")
 
         bundle_dir = generate_reproducibility_bundle(
-            tmp_path, config, artifact, run_id="EG-test-bundle",
+            tmp_path,
+            config,
+            artifact,
+            run_id="EG-test-bundle",
         )
 
         hash_content = (bundle_dir / "config_hash.sha256").read_text().strip()
@@ -378,7 +402,10 @@ class TestReproducibilityBundle:
         artifact = generate_ceis_json(config, corpus, run_id="EG-test-bundle")
 
         bundle_dir = generate_reproducibility_bundle(
-            tmp_path, config, artifact, run_id="EG-test-bundle",
+            tmp_path,
+            config,
+            artifact,
+            run_id="EG-test-bundle",
         )
 
         report = (bundle_dir / "report.txt").read_text()
@@ -447,7 +474,9 @@ class TestFormatRunLogEntry:
         config = _make_config()
         corpus = _make_corpus()
         entry_str = format_run_log_entry(
-            config, corpus, run_id="EG-test",
+            config,
+            corpus,
+            run_id="EG-test",
             artifacts_dir="/tmp/results",
             notes="initial run",
         )

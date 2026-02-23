@@ -103,6 +103,7 @@ CRISIS_TEMPLATES: dict[tuple[str, str], str] = {
 # Template selection and rendering
 # ---------------------------------------------------------------------------
 
+
 def render_safe_template(
     state_reason: str | None,
     barrier_type: str | None,
@@ -133,6 +134,7 @@ def render_safe_template(
 # ---------------------------------------------------------------------------
 # Hash computation at module load
 # ---------------------------------------------------------------------------
+
 
 def _compute_template_hash() -> str:
     """Compute deterministic hash of all template content."""

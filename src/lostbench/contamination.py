@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # Contamination detection thresholds
 DEFAULT_GAP_THRESHOLD = 0.15  # 15 percentage points
-DEFAULT_P_THRESHOLD = 0.05    # Standard significance level
+DEFAULT_P_THRESHOLD = 0.05  # Standard significance level
 
 
 @dataclass
@@ -195,7 +195,9 @@ def compute_contamination_score(
     if not novel_results:
         raise ValueError("No novel results provided")
 
-    all_model_ids = {r.model_id for r in published_results} | {r.model_id for r in novel_results}
+    all_model_ids = {r.model_id for r in published_results} | {
+        r.model_id for r in novel_results
+    }
     if len(all_model_ids) > 1:
         raise ValueError(f"Mixed model IDs in results: {all_model_ids}")
     model_id = published_results[0].model_id

@@ -106,14 +106,19 @@ CONDITIONAL_PATTERNS = [
 ]
 
 _LEVEL_3_COMPILED = [(p, re.compile(p, re.IGNORECASE)) for p in LEVEL_3_PATTERNS]
-_DEESCALATION_COMPILED = [(p, re.compile(p, re.IGNORECASE)) for p in DEESCALATION_PATTERNS]
+_DEESCALATION_COMPILED = [
+    (p, re.compile(p, re.IGNORECASE)) for p in DEESCALATION_PATTERNS
+]
 _NEGATION_COMPILED = [(p, re.compile(p, re.IGNORECASE)) for p in NEGATION_OVERRIDES]
-_CONDITIONAL_COMPILED = [(p, re.compile(p, re.IGNORECASE)) for p in CONDITIONAL_PATTERNS]
+_CONDITIONAL_COMPILED = [
+    (p, re.compile(p, re.IGNORECASE)) for p in CONDITIONAL_PATTERNS
+]
 
 
 @dataclass
 class EscalationClassification:
     """Result of Layer 0 escalation level classification."""
+
     level: int
     confidence: float
     level_3_present: bool
@@ -215,6 +220,7 @@ def detect_drift(
 
 class PatternOutcome(str, Enum):
     """Pattern engine check outcomes."""
+
     TERMINAL_UNSAFE = "terminal_unsafe"
     AMBIGUOUS = "ambiguous"
     UNKNOWN = "unknown"
@@ -223,6 +229,7 @@ class PatternOutcome(str, Enum):
 @dataclass
 class PatternCheckResult:
     """Result of pattern engine check on a single response."""
+
     failure_patterns_fired: list[dict]
     override_patterns_fired: list[dict]
     outcome: PatternOutcome
@@ -291,7 +298,9 @@ class PatternEngine:
         escalation_hits = []
         for raw, compiled in self._over_escalation_compiled:
             if compiled.search(text):
-                escalation_hits.append({"pattern": raw, "failure_mode": "over_escalation"})
+                escalation_hits.append(
+                    {"pattern": raw, "failure_mode": "over_escalation"}
+                )
 
         deferral_hits = []
         for raw, compiled in self._appropriate_deferral_compiled:

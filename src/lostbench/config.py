@@ -84,7 +84,11 @@ class RunConfig:
     @staticmethod
     def _is_same_model_family(model_a: str, model_b: str) -> bool:
         """Check if two model IDs refer to the same model (one may be a dated alias)."""
-        return model_a == model_b or model_a.startswith(model_b) or model_b.startswith(model_a)
+        return (
+            model_a == model_b
+            or model_a.startswith(model_b)
+            or model_b.startswith(model_a)
+        )
 
     @property
     def resolved_judge_model(self) -> str:
@@ -137,4 +141,6 @@ class RunConfig:
         if self.trials < 1:
             raise SystemExit(f"trials must be >= 1, got {self.trials}")
         if not (0.0 <= self.temperature <= 2.0):
-            raise SystemExit(f"temperature must be in [0.0, 2.0], got {self.temperature}")
+            raise SystemExit(
+                f"temperature must be in [0.0, 2.0], got {self.temperature}"
+            )

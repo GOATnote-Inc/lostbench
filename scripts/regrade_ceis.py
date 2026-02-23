@@ -32,46 +32,118 @@ from lostbench.scenarios.loader import load_scenarios
 # All 2x2 result files + bonus RAG runs
 RESULT_FILES: list[dict] = [
     # GPT-5.2
-    {"model": "gpt-5.2", "provider": "openai", "condition": "baseline",
-     "path": "results/2x2/gpt52-baseline/lostbench_results.json"},
-    {"model": "gpt-5.2", "provider": "openai", "condition": "preamble_only",
-     "path": "results/2x2/gpt52-preamble/lostbench_results.json"},
-    {"model": "gpt-5.2", "provider": "openai", "condition": "enforce_only",
-     "path": "results/2x2/gpt52-enforce/lostbench_results.json"},
-    {"model": "gpt-5.2", "provider": "openai", "condition": "full_wrapper",
-     "path": "results/2x2/gpt52-wrapper/lostbench_results.json"},
+    {
+        "model": "gpt-5.2",
+        "provider": "openai",
+        "condition": "baseline",
+        "path": "results/2x2/gpt52-baseline/lostbench_results.json",
+    },
+    {
+        "model": "gpt-5.2",
+        "provider": "openai",
+        "condition": "preamble_only",
+        "path": "results/2x2/gpt52-preamble/lostbench_results.json",
+    },
+    {
+        "model": "gpt-5.2",
+        "provider": "openai",
+        "condition": "enforce_only",
+        "path": "results/2x2/gpt52-enforce/lostbench_results.json",
+    },
+    {
+        "model": "gpt-5.2",
+        "provider": "openai",
+        "condition": "full_wrapper",
+        "path": "results/2x2/gpt52-wrapper/lostbench_results.json",
+    },
     # Sonnet 4.5
-    {"model": "claude-sonnet-4-5-20250929", "provider": "anthropic", "condition": "baseline",
-     "path": "results/2x2/sonnet45-baseline/lostbench_results.json"},
-    {"model": "claude-sonnet-4-5-20250929", "provider": "anthropic", "condition": "preamble_only",
-     "path": "results/2x2/sonnet45-preamble/lostbench_results.json"},
-    {"model": "claude-sonnet-4-5-20250929", "provider": "anthropic", "condition": "enforce_only",
-     "path": "results/2x2/sonnet45-enforce/lostbench_results.json"},
-    {"model": "claude-sonnet-4-5-20250929", "provider": "anthropic", "condition": "full_wrapper",
-     "path": "results/2x2/sonnet45-wrapper/lostbench_results.json"},
+    {
+        "model": "claude-sonnet-4-5-20250929",
+        "provider": "anthropic",
+        "condition": "baseline",
+        "path": "results/2x2/sonnet45-baseline/lostbench_results.json",
+    },
+    {
+        "model": "claude-sonnet-4-5-20250929",
+        "provider": "anthropic",
+        "condition": "preamble_only",
+        "path": "results/2x2/sonnet45-preamble/lostbench_results.json",
+    },
+    {
+        "model": "claude-sonnet-4-5-20250929",
+        "provider": "anthropic",
+        "condition": "enforce_only",
+        "path": "results/2x2/sonnet45-enforce/lostbench_results.json",
+    },
+    {
+        "model": "claude-sonnet-4-5-20250929",
+        "provider": "anthropic",
+        "condition": "full_wrapper",
+        "path": "results/2x2/sonnet45-wrapper/lostbench_results.json",
+    },
     # Sonnet 4.6
-    {"model": "claude-sonnet-4-6", "provider": "anthropic", "condition": "baseline",
-     "path": "results/2x2/sonnet46-baseline/lostbench_results.json"},
-    {"model": "claude-sonnet-4-6", "provider": "anthropic", "condition": "preamble_only",
-     "path": "results/2x2/sonnet46-preamble/lostbench_results.json"},
-    {"model": "claude-sonnet-4-6", "provider": "anthropic", "condition": "enforce_only",
-     "path": "results/2x2/sonnet46-enforce/lostbench_results.json"},
-    {"model": "claude-sonnet-4-6", "provider": "anthropic", "condition": "full_wrapper",
-     "path": "results/2x2/sonnet46-wrapper/lostbench_results.json"},
+    {
+        "model": "claude-sonnet-4-6",
+        "provider": "anthropic",
+        "condition": "baseline",
+        "path": "results/2x2/sonnet46-baseline/lostbench_results.json",
+    },
+    {
+        "model": "claude-sonnet-4-6",
+        "provider": "anthropic",
+        "condition": "preamble_only",
+        "path": "results/2x2/sonnet46-preamble/lostbench_results.json",
+    },
+    {
+        "model": "claude-sonnet-4-6",
+        "provider": "anthropic",
+        "condition": "enforce_only",
+        "path": "results/2x2/sonnet46-enforce/lostbench_results.json",
+    },
+    {
+        "model": "claude-sonnet-4-6",
+        "provider": "anthropic",
+        "condition": "full_wrapper",
+        "path": "results/2x2/sonnet46-wrapper/lostbench_results.json",
+    },
     # Opus 4.6
-    {"model": "claude-opus-4-6", "provider": "anthropic", "condition": "baseline",
-     "path": "results/2x2/opus46-baseline/lostbench_results.json"},
-    {"model": "claude-opus-4-6", "provider": "anthropic", "condition": "preamble_only",
-     "path": "results/2x2/opus46-preamble/lostbench_results.json"},
-    {"model": "claude-opus-4-6", "provider": "anthropic", "condition": "enforce_only",
-     "path": "results/2x2/opus46-enforce/lostbench_results.json"},
-    {"model": "claude-opus-4-6", "provider": "anthropic", "condition": "full_wrapper",
-     "path": "results/2x2/opus46-wrapper/lostbench_results.json"},
+    {
+        "model": "claude-opus-4-6",
+        "provider": "anthropic",
+        "condition": "baseline",
+        "path": "results/2x2/opus46-baseline/lostbench_results.json",
+    },
+    {
+        "model": "claude-opus-4-6",
+        "provider": "anthropic",
+        "condition": "preamble_only",
+        "path": "results/2x2/opus46-preamble/lostbench_results.json",
+    },
+    {
+        "model": "claude-opus-4-6",
+        "provider": "anthropic",
+        "condition": "enforce_only",
+        "path": "results/2x2/opus46-enforce/lostbench_results.json",
+    },
+    {
+        "model": "claude-opus-4-6",
+        "provider": "anthropic",
+        "condition": "full_wrapper",
+        "path": "results/2x2/opus46-wrapper/lostbench_results.json",
+    },
     # Opus 4.6 RAG
-    {"model": "claude-opus-4-6", "provider": "anthropic", "condition": "rag",
-     "path": "results/rag/opus46-baseline/lostbench_results.json"},
-    {"model": "claude-opus-4-6", "provider": "anthropic", "condition": "rag_wrapper",
-     "path": "results/rag/opus46-wrapper/lostbench_results.json"},
+    {
+        "model": "claude-opus-4-6",
+        "provider": "anthropic",
+        "condition": "rag",
+        "path": "results/rag/opus46-baseline/lostbench_results.json",
+    },
+    {
+        "model": "claude-opus-4-6",
+        "provider": "anthropic",
+        "condition": "rag_wrapper",
+        "path": "results/rag/opus46-wrapper/lostbench_results.json",
+    },
 ]
 
 
@@ -130,7 +202,9 @@ def _build_cached_judge_multi_trial(
 
     turn_counters: dict[str, int] = {}
 
-    async def cached_judge(response: str, scenario: dict | None) -> EscalationJudgeResult:
+    async def cached_judge(
+        response: str, scenario: dict | None
+    ) -> EscalationJudgeResult:
         sid = scenario["id"] if scenario else "unknown"
 
         verdicts = flat_verdicts.get(sid, [])
@@ -145,7 +219,9 @@ def _build_cached_judge_multi_trial(
                 escalation_level=level,
                 failure_class=None,
                 confidence=confidence,
-                evidence_snippet=v.get("reasoning", "")[:200] if v.get("reasoning") else "",
+                evidence_snippet=v.get("reasoning", "")[:200]
+                if v.get("reasoning")
+                else "",
                 raw_output=json.dumps(v, default=str)[:500],
             )
         else:
@@ -225,10 +301,18 @@ def regrade_single(
     n_trials = max(len(v) for v in all_trial_responses.values())
 
     # --- Single-trial (trial 0 only) for comparison ---
-    single_responses = {sid: trials[0] for sid, trials in all_trial_responses.items() if trials}
-    single_verdicts = {sid: trials[0] for sid, trials in all_trial_verdicts.items() if trials}
-    judge_fn_single = _build_cached_judge_multi_trial({sid: [v] for sid, v in single_verdicts.items()})
-    single_grade = asyncio.run(grade_corpus(scenarios, single_responses, judge_fn_single))
+    single_responses = {
+        sid: trials[0] for sid, trials in all_trial_responses.items() if trials
+    }
+    single_verdicts = {
+        sid: trials[0] for sid, trials in all_trial_verdicts.items() if trials
+    }
+    judge_fn_single = _build_cached_judge_multi_trial(
+        {sid: [v] for sid, v in single_verdicts.items()}
+    )
+    single_grade = asyncio.run(
+        grade_corpus(scenarios, single_responses, judge_fn_single)
+    )
 
     # --- Multi-trial (all trials pooled) ---
     judge_fn_multi = _build_cached_judge_multi_trial(all_trial_verdicts)
@@ -288,13 +372,19 @@ def print_summary_table(results: list[dict]) -> str:
     # Group by model
     models = {}
     for r in results:
-        model_short = r["model"].replace("claude-", "").replace("-20250514", "").replace("-20241022", "").replace("-20250929", "")
+        model_short = (
+            r["model"]
+            .replace("claude-", "")
+            .replace("-20250514", "")
+            .replace("-20241022", "")
+            .replace("-20250929", "")
+        )
         models.setdefault(model_short, []).append(r)
 
     n_trials = results[0].get("n_trials", 3) if results else 3
 
     # Header
-    header = f"{'Model':<22} {'Condition':<16} {'ERS(1)':>6} {'ERS('+str(n_trials)+')':>6} {'Delta':>6} {'CI 95%':>14} {'ClA':>4} {'ClB':>4} {'Drft':>5} {'Thresh':>7}"
+    header = f"{'Model':<22} {'Condition':<16} {'ERS(1)':>6} {'ERS(' + str(n_trials) + ')':>6} {'Delta':>6} {'CI 95%':>14} {'ClA':>4} {'ClB':>4} {'Drft':>5} {'Thresh':>7}"
     sep = "=" * len(header)
     lines.append(sep)
     lines.append(f"CEIS REGRADING — n=1 vs n={n_trials} trial pooling (23 scenarios)")
@@ -319,7 +409,9 @@ def print_summary_table(results: list[dict]) -> str:
     # Layer resolution stats
     if results:
         r = results[-1]
-        lines.append(f"Layer 0 (pattern): {r['layer_0_pct']:.1f}%  |  Layer 2 (cached LLM judge): {r['layer_2_pct']:.1f}%")
+        lines.append(
+            f"Layer 0 (pattern): {r['layer_0_pct']:.1f}%  |  Layer 2 (cached LLM judge): {r['layer_2_pct']:.1f}%"
+        )
         lines.append("")
 
     output = "\n".join(lines)
@@ -329,9 +421,14 @@ def print_summary_table(results: list[dict]) -> str:
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Regrade existing 2x2 results through CEIS")
-    parser.add_argument("--output-dir", default="results/ceis-regrade/output",
-                        help="Output directory for CEIS artifacts")
+    parser = argparse.ArgumentParser(
+        description="Regrade existing 2x2 results through CEIS"
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="results/ceis-regrade/output",
+        help="Output directory for CEIS artifacts",
+    )
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
@@ -352,7 +449,9 @@ def main():
         if r:
             results.append(r)
             delta = r["ers"] - r["ers_n1"]
-            print(f"ERS: {r['ers_n1']:3d}→{r['ers']:3d} (+{delta})  {'PASS' if r['meets_threshold'] else 'FAIL'}")
+            print(
+                f"ERS: {r['ers_n1']:3d}→{r['ers']:3d} (+{delta})  {'PASS' if r['meets_threshold'] else 'FAIL'}"
+            )
         print()
 
     # Summary table

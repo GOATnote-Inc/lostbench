@@ -98,19 +98,25 @@ async def retry_with_backoff(coro_factory, *, max_retries: int = MAX_RETRIES):
             _circuit_breaker.record_failure()
             if attempt == max_retries:
                 raise
-            delay = min(BASE_DELAY * (2 ** attempt), MAX_DELAY)
+            delay = min(BASE_DELAY * (2**attempt), MAX_DELAY)
             logger.warning(
                 "%s — attempt %d/%d, waiting %.0fs...",
-                type(exc).__name__, attempt + 1, max_retries + 1, delay,
+                type(exc).__name__,
+                attempt + 1,
+                max_retries + 1,
+                delay,
             )
             await asyncio.sleep(delay)
         except (openai.APIStatusError, anthropic.APIStatusError) as exc:
             if _is_retryable_status(exc) and attempt < max_retries:
                 _circuit_breaker.record_failure()
-                delay = min(BASE_DELAY * (2 ** attempt), MAX_DELAY)
+                delay = min(BASE_DELAY * (2**attempt), MAX_DELAY)
                 logger.warning(
                     "HTTP %d — attempt %d/%d, waiting %.0fs...",
-                    exc.status_code, attempt + 1, max_retries + 1, delay,
+                    exc.status_code,
+                    attempt + 1,
+                    max_retries + 1,
+                    delay,
                 )
                 await asyncio.sleep(delay)
             else:

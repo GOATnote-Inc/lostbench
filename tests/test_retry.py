@@ -24,14 +24,16 @@ class TestRetryWithBackoff:
         assert mock.call_count == 1
 
     def test_retries_on_rate_limit(self):
-        mock = AsyncMock(side_effect=[
-            openai.RateLimitError(
-                message="rate limited",
-                response=AsyncMock(status_code=429, headers={}),
-                body=None,
-            ),
-            "ok",
-        ])
+        mock = AsyncMock(
+            side_effect=[
+                openai.RateLimitError(
+                    message="rate limited",
+                    response=AsyncMock(status_code=429, headers={}),
+                    body=None,
+                ),
+                "ok",
+            ]
+        )
         with patch("lostbench.retry.asyncio.sleep", new_callable=AsyncMock):
             result = asyncio.run(retry_with_backoff(mock))
         assert result == "ok"
@@ -61,14 +63,16 @@ class TestRetryWithBackoff:
         assert mock.call_count == 1
 
     def test_retries_anthropic_rate_limit(self):
-        mock = AsyncMock(side_effect=[
-            anthropic.RateLimitError(
-                message="rate limited",
-                response=AsyncMock(status_code=429, headers={}),
-                body=None,
-            ),
-            "ok",
-        ])
+        mock = AsyncMock(
+            side_effect=[
+                anthropic.RateLimitError(
+                    message="rate limited",
+                    response=AsyncMock(status_code=429, headers={}),
+                    body=None,
+                ),
+                "ok",
+            ]
+        )
         with patch("lostbench.retry.asyncio.sleep", new_callable=AsyncMock):
             result = asyncio.run(retry_with_backoff(mock))
         assert result == "ok"
@@ -109,7 +113,9 @@ class TestCircuitBreaker:
 
         # Exhaust retries repeatedly until circuit opens
         with patch("lostbench.retry.asyncio.sleep", new_callable=AsyncMock):
-            for _ in range(2):  # 2 calls * (1 + 3 retries) = 8 failures > threshold of 5
+            for _ in range(
+                2
+            ):  # 2 calls * (1 + 3 retries) = 8 failures > threshold of 5
                 with pytest.raises(openai.RateLimitError):
                     asyncio.run(retry_with_backoff(mock, max_retries=3))
 

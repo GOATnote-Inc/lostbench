@@ -10,10 +10,14 @@ from lostbench.msiw.state import EscalationState
 from lostbench.msiw.audit import AuditEvent
 from lostbench.msiw.patterns import MSIWPatternEngine
 from lostbench.msiw.classifier import (
-    SemanticClassifier, NoOpClassifier, TIER1_THRESHOLDS,
+    SemanticClassifier,
+    NoOpClassifier,
+    TIER1_THRESHOLDS,
 )
 from lostbench.msiw.templates import (
-    render_safe_template, STATIC_FALLBACK, TEMPLATE_HASH,
+    render_safe_template,
+    STATIC_FALLBACK,
+    TEMPLATE_HASH,
 )
 from lostbench.providers.base import Provider
 
@@ -132,7 +136,11 @@ class MonotonicSafetyWrapper:
         barrier_type = self._pattern_engine.detect_barrier(user_msg)
 
         # Step 3: Build augmented conversation with MSIW preamble (if enabled)
-        augmented = self._augment_conversation(conversation) if self._preamble else [dict(m) for m in conversation]
+        augmented = (
+            self._augment_conversation(conversation)
+            if self._preamble
+            else [dict(m) for m in conversation]
+        )
 
         # Step 4: Call provider (fail-closed on provider errors only)
         try:
@@ -146,7 +154,9 @@ class MonotonicSafetyWrapper:
             # Fail-closed: provider/network error -> static fallback
             logger.error(
                 "Provider error at turn %d: %s: %s",
-                turn_index, type(exc).__name__, exc,
+                turn_index,
+                type(exc).__name__,
+                exc,
             )
             response = STATIC_FALLBACK
             audit = AuditEvent(
@@ -192,11 +202,12 @@ class MonotonicSafetyWrapper:
 
         # Step 7: Tier 1 classifier
         tier1_scores = self._classifier.predict(
-            response, self._state, user_msg,
+            response,
+            self._state,
+            user_msg,
         )
         tier1_violations = [
-            k for k, v in tier1_scores.items()
-            if v >= TIER1_THRESHOLDS.get(k, 1.0)
+            k for k, v in tier1_scores.items() if v >= TIER1_THRESHOLDS.get(k, 1.0)
         ]
 
         # Union of all violations
@@ -210,13 +221,18 @@ class MonotonicSafetyWrapper:
             original_response = response
             try:
                 response = render_safe_template(
-                    self._state.escalation_reason, barrier_type,
+                    self._state.escalation_reason,
+                    barrier_type,
                 )
-                template_id = f"{self._state.escalation_reason}:{barrier_type or 'default'}"
+                template_id = (
+                    f"{self._state.escalation_reason}:{barrier_type or 'default'}"
+                )
             except (KeyError, ValueError) as exc:
                 logger.error(
                     "Template render failed at turn %d: %s: %s",
-                    turn_index, type(exc).__name__, exc,
+                    turn_index,
+                    type(exc).__name__,
+                    exc,
                 )
                 response = STATIC_FALLBACK
                 template_id = "STATIC_FALLBACK"
@@ -249,10 +265,12 @@ class MonotonicSafetyWrapper:
         augmented = []
         for msg in conversation:
             if msg["role"] == "system":
-                augmented.append({
-                    "role": "system",
-                    "content": MSIW_SYSTEM_PREAMBLE + msg["content"],
-                })
+                augmented.append(
+                    {
+                        "role": "system",
+                        "content": MSIW_SYSTEM_PREAMBLE + msg["content"],
+                    }
+                )
             else:
                 augmented.append(dict(msg))
         return augmented

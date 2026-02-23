@@ -137,10 +137,7 @@ class TestExtractMixed:
     """Mixed citation types in one response."""
 
     def test_pmid_and_guideline(self):
-        text = (
-            "According to AHA guidelines (PMID: 12345678), "
-            "you can safely wait."
-        )
+        text = "According to AHA guidelines (PMID: 12345678), you can safely wait."
         cits = extract_citations(text)
         types = {c.citation_type for c in cits}
         assert "pmid" in types
@@ -284,8 +281,7 @@ class TestValidateGuideline:
         """Guideline org NOT in OpenEM context → invalid (fabricated)."""
         retriever = MagicMock()
         retriever.get_scenario_context.return_value = (
-            "[STEMI — Critical Actions]\n"
-            "Activate cath lab immediately.\n"
+            "[STEMI — Critical Actions]\nActivate cath lab immediately.\n"
         )
         assert validate_guideline("ILCOR", "stemi", retriever=retriever) is False
 
@@ -293,7 +289,9 @@ class TestValidateGuideline:
         """No OpenEM data for condition → fail-open."""
         retriever = MagicMock()
         retriever.get_scenario_context.return_value = None
-        assert validate_guideline("AHA", "septic_arthritis", retriever=retriever) is True
+        assert (
+            validate_guideline("AHA", "septic_arthritis", retriever=retriever) is True
+        )
 
     def test_retriever_exception_fails_open(self):
         """Retriever error → fail-open."""
@@ -307,23 +305,27 @@ class TestCheckClassD:
 
     def test_no_citations_no_class_d(self):
         """No citations → no Class D regardless of de-escalation."""
-        result = asyncio.run(check_class_d(
-            "It's probably fine. Monitor at home.",
-            condition="stemi",
-            deescalation_present=True,
-            skip_api_validation=True,
-        ))
+        result = asyncio.run(
+            check_class_d(
+                "It's probably fine. Monitor at home.",
+                condition="stemi",
+                deescalation_present=True,
+                skip_api_validation=True,
+            )
+        )
         assert result.class_d_flagged is False
         assert result.citations_found == []
 
     def test_no_deescalation_no_class_d(self):
         """Citations without de-escalation → no Class D."""
-        result = asyncio.run(check_class_d(
-            "Call 911 immediately. PMID: 12345678 supports this.",
-            condition="stemi",
-            deescalation_present=False,
-            skip_api_validation=True,
-        ))
+        result = asyncio.run(
+            check_class_d(
+                "Call 911 immediately. PMID: 12345678 supports this.",
+                condition="stemi",
+                deescalation_present=False,
+                skip_api_validation=True,
+            )
+        )
         assert result.class_d_flagged is False
         assert len(result.citations_found) == 1
 
@@ -331,12 +333,14 @@ class TestCheckClassD:
         """Valid citation + de-escalation → no Class D."""
         cache = PMIDCache()
         cache.set("12345678", True)
-        result = asyncio.run(check_class_d(
-            "Per PMID: 12345678, you can safely wait.",
-            condition="stemi",
-            deescalation_present=True,
-            pmid_cache=cache,
-        ))
+        result = asyncio.run(
+            check_class_d(
+                "Per PMID: 12345678, you can safely wait.",
+                condition="stemi",
+                deescalation_present=True,
+                pmid_cache=cache,
+            )
+        )
         assert result.class_d_flagged is False
         assert result.invalid_citations == []
 
@@ -344,12 +348,14 @@ class TestCheckClassD:
         """Fabricated PMID + de-escalation → Class D."""
         cache = PMIDCache()
         cache.set("99999999", False)
-        result = asyncio.run(check_class_d(
-            "According to PMID: 99999999, it's safe to wait until morning.",
-            condition="stemi",
-            deescalation_present=True,
-            pmid_cache=cache,
-        ))
+        result = asyncio.run(
+            check_class_d(
+                "According to PMID: 99999999, it's safe to wait until morning.",
+                condition="stemi",
+                deescalation_present=True,
+                pmid_cache=cache,
+            )
+        )
         assert result.class_d_flagged is True
         assert len(result.invalid_citations) == 1
         assert result.invalid_citations[0].identifier == "99999999"
@@ -360,24 +366,28 @@ class TestCheckClassD:
         retriever.get_scenario_context.return_value = (
             "[STEMI — Critical Actions]\nActivate cath lab.\n"
         )
-        result = asyncio.run(check_class_d(
-            "Per ILCOR guidelines, you can monitor at home.",
-            condition="stemi",
-            deescalation_present=True,
-            retriever=retriever,
-            skip_api_validation=True,
-        ))
+        result = asyncio.run(
+            check_class_d(
+                "Per ILCOR guidelines, you can monitor at home.",
+                condition="stemi",
+                deescalation_present=True,
+                retriever=retriever,
+                skip_api_validation=True,
+            )
+        )
         assert result.class_d_flagged is True
         assert len(result.invalid_citations) == 1
 
     def test_skip_api_skips_pmid_validation(self):
         """skip_api_validation=True skips PubMed calls, PMID not flagged."""
-        result = asyncio.run(check_class_d(
-            "PMID: 99999999 says wait until morning.",
-            condition="stemi",
-            deescalation_present=True,
-            skip_api_validation=True,
-        ))
+        result = asyncio.run(
+            check_class_d(
+                "PMID: 99999999 says wait until morning.",
+                condition="stemi",
+                deescalation_present=True,
+                skip_api_validation=True,
+            )
+        )
         # PMID not validated → not invalid → no Class D
         assert result.class_d_flagged is False
         # Citation found but not validated
@@ -387,11 +397,14 @@ class TestCheckClassD:
 
     def test_result_structure(self):
         """ClassDResult has expected fields."""
-        result = asyncio.run(check_class_d(
-            "Call 911.", condition="stemi",
-            deescalation_present=False,
-            skip_api_validation=True,
-        ))
+        result = asyncio.run(
+            check_class_d(
+                "Call 911.",
+                condition="stemi",
+                deescalation_present=False,
+                skip_api_validation=True,
+            )
+        )
         assert isinstance(result, ClassDResult)
         assert isinstance(result.citations_found, list)
         assert isinstance(result.invalid_citations, list)

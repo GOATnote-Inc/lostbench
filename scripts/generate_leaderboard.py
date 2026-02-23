@@ -55,7 +55,8 @@ def display_model(model_id: str) -> str:
 def generate_baseline_table(experiments: list[dict]) -> str:
     """Baseline leaderboard sorted by Pass^k descending."""
     baselines = [
-        e for e in experiments
+        e
+        for e in experiments
         if e.get("experiment") == "2x2" and e.get("mode") == "baseline"
     ]
     baselines.sort(key=lambda e: e.get("pass_k", 0), reverse=True)
@@ -170,12 +171,14 @@ def update_readme(leaderboard_md: str, readme_path: Path) -> bool:
     # Find end marker: next ## heading or end of file
     start_idx = content.find(start_marker)
     if start_idx == -1:
-        print("WARNING: '## Leaderboard' marker not found in README.md", file=sys.stderr)
+        print(
+            "WARNING: '## Leaderboard' marker not found in README.md", file=sys.stderr
+        )
         return False
 
     # Find the next ## heading after the leaderboard
-    rest = content[start_idx + len(start_marker):]
-    next_heading = re.search(r'\n## [^#]', rest)
+    rest = content[start_idx + len(start_marker) :]
+    next_heading = re.search(r"\n## [^#]", rest)
 
     if next_heading:
         end_idx = start_idx + len(start_marker) + next_heading.start()
@@ -195,11 +198,18 @@ def update_readme(leaderboard_md: str, readme_path: Path) -> bool:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate LostBench leaderboard from results index")
+    parser = argparse.ArgumentParser(
+        description="Generate LostBench leaderboard from results index"
+    )
     parser.add_argument("--index", default=str(INDEX_PATH), help="Path to index.yaml")
-    parser.add_argument("--output", default=None, help="Write output to file (default: stdout)")
-    parser.add_argument("--update-readme", action="store_true",
-                        help="Update the Leaderboard section in README.md")
+    parser.add_argument(
+        "--output", default=None, help="Write output to file (default: stdout)"
+    )
+    parser.add_argument(
+        "--update-readme",
+        action="store_true",
+        help="Update the Leaderboard section in README.md",
+    )
     args = parser.parse_args()
 
     experiments = load_index(Path(args.index))

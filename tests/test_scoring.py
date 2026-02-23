@@ -1,6 +1,5 @@
 """Tests for Wilson CI and bootstrap CI calculations."""
 
-
 from lostbench.scoring import wilson_ci, bootstrap_ci
 
 

@@ -45,7 +45,9 @@ class TestGoogleProviderSeedFlag:
             pytest.skip("google-genai SDK or GOOGLE_API_KEY not available")
         assert GoogleProvider.supports_seed.fget(None) is not None  # property exists
         # Can't instantiate without API key, but we can check the class
-        assert GoogleProvider.supports_seed.fget.__doc__ is None or True  # property defined
+        assert (
+            GoogleProvider.supports_seed.fget.__doc__ is None or True
+        )  # property defined
 
     def test_google_class_has_seed_override(self):
         """Verify GoogleProvider overrides supports_seed at class level."""

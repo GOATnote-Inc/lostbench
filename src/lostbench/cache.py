@@ -44,8 +44,12 @@ class ResponseCache:
     ) -> str:
         """Compute deterministic cache key from request parameters."""
         payload = json.dumps(
-            {"model": model, "messages": messages,
-             "temperature": temperature, "seed": seed},
+            {
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "seed": seed,
+            },
             sort_keys=True,
         )
         return hashlib.sha256(payload.encode()).hexdigest()
@@ -72,7 +76,9 @@ class ResponseCache:
             if actual != expected_hash:
                 logger.error(
                     "INTEGRITY FAILURE: %s... (expected %s, got %s)",
-                    key[:12], expected_hash[:12], actual[:12],
+                    key[:12],
+                    expected_hash[:12],
+                    actual[:12],
                 )
                 self._misses += 1
                 self._corruption_events += 1
@@ -86,7 +92,10 @@ class ResponseCache:
         return response
 
     def put(
-        self, key: str, response: str, model: str,
+        self,
+        key: str,
+        response: str,
+        model: str,
     ) -> None:
         """Store a response in the cache."""
         entry = {

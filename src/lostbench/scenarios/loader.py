@@ -43,26 +43,38 @@ CI_SCENARIOS: list[str] = [
 def _validate_ceis_block(scenario_id: str, ceis: dict) -> None:
     """Validate optional CEIS metadata block. Raises ValueError on invalid data."""
     if not isinstance(ceis, dict):
-        raise ValueError(f"{scenario_id}: ceis block must be a mapping, got {type(ceis).__name__}")
+        raise ValueError(
+            f"{scenario_id}: ceis block must be a mapping, got {type(ceis).__name__}"
+        )
 
     if "severity_weight" in ceis:
         sw = ceis["severity_weight"]
         if not isinstance(sw, (int, float)):
-            raise ValueError(f"{scenario_id}: ceis.severity_weight must be numeric, got {type(sw).__name__}")
+            raise ValueError(
+                f"{scenario_id}: ceis.severity_weight must be numeric, got {type(sw).__name__}"
+            )
         if not (0.0 <= sw <= 2.0):
-            raise ValueError(f"{scenario_id}: ceis.severity_weight must be in [0.0, 2.0], got {sw}")
+            raise ValueError(
+                f"{scenario_id}: ceis.severity_weight must be in [0.0, 2.0], got {sw}"
+            )
 
     if "required_escalation_level" in ceis:
         rel = ceis["required_escalation_level"]
         if not isinstance(rel, int):
-            raise ValueError(f"{scenario_id}: ceis.required_escalation_level must be int, got {type(rel).__name__}")
+            raise ValueError(
+                f"{scenario_id}: ceis.required_escalation_level must be int, got {type(rel).__name__}"
+            )
         if rel not in (0, 1, 2, 3):
-            raise ValueError(f"{scenario_id}: ceis.required_escalation_level must be 0-3, got {rel}")
+            raise ValueError(
+                f"{scenario_id}: ceis.required_escalation_level must be 0-3, got {rel}"
+            )
 
     if "suite" in ceis:
         suite = ceis["suite"]
         if suite not in VALID_CEIS_SUITES:
-            raise ValueError(f"{scenario_id}: ceis.suite must be one of {VALID_CEIS_SUITES}, got {suite!r}")
+            raise ValueError(
+                f"{scenario_id}: ceis.suite must be one of {VALID_CEIS_SUITES}, got {suite!r}"
+            )
 
 
 def load_scenarios(
@@ -97,7 +109,9 @@ def load_scenarios(
         with open(yaml_path) as f:
             scenario = yaml.safe_load(f)
         if not isinstance(scenario, dict):
-            raise ValueError(f"Malformed scenario file (not a mapping): {yaml_path.name}")
+            raise ValueError(
+                f"Malformed scenario file (not a mapping): {yaml_path.name}"
+            )
         missing = required_fields - set(scenario.keys())
         if missing:
             raise ValueError(
@@ -114,7 +128,9 @@ def load_scenarios(
         elif partition == "holdback":
             scenarios = [s for s in scenarios if s["id"] in HOLDBACK_SCENARIOS]
         else:
-            raise ValueError(f"Unknown partition: {partition!r} (expected 'published', 'holdback', or 'all')")
+            raise ValueError(
+                f"Unknown partition: {partition!r} (expected 'published', 'holdback', or 'all')"
+            )
 
     if conditions:
         scenarios = [s for s in scenarios if s["id"] in conditions]

@@ -27,8 +27,13 @@ def dataset_hash():
 @pytest.fixture
 def sample_results():
     return [
-        {"scenario_id": "MTR-001", "pass_k": True, "trials_run": 3,
-         "trials_passed": 3, "per_trial": [{"passed": True}]},
+        {
+            "scenario_id": "MTR-001",
+            "pass_k": True,
+            "trials_run": 3,
+            "trials_passed": 3,
+            "per_trial": [{"passed": True}],
+        },
     ]
 
 
@@ -56,8 +61,18 @@ class TestConfigHash:
         assert config_hash(cfg1) != config_hash(cfg2)
 
     def test_differs_on_wrapper_preamble_change(self):
-        cfg1 = RunConfig(model="gpt-5.2", provider="openai", wrapper_enabled=True, wrapper_preamble=True)
-        cfg2 = RunConfig(model="gpt-5.2", provider="openai", wrapper_enabled=True, wrapper_preamble=False)
+        cfg1 = RunConfig(
+            model="gpt-5.2",
+            provider="openai",
+            wrapper_enabled=True,
+            wrapper_preamble=True,
+        )
+        cfg2 = RunConfig(
+            model="gpt-5.2",
+            provider="openai",
+            wrapper_enabled=True,
+            wrapper_preamble=False,
+        )
         assert config_hash(cfg1) != config_hash(cfg2)
 
 
@@ -65,8 +80,11 @@ class TestSaveLoadCheckpoint:
     def test_roundtrip(self, tmp_path, cfg, dataset_hash, sample_results):
 
         save_checkpoint(
-            str(tmp_path), dataset_hash, cfg,
-            ["MTR-001"], sample_results,
+            str(tmp_path),
+            dataset_hash,
+            cfg,
+            ["MTR-001"],
+            sample_results,
         )
         result = load_checkpoint(str(tmp_path), dataset_hash, cfg)
         assert result is not None
@@ -80,13 +98,17 @@ class TestSaveLoadCheckpoint:
 
         assert load_checkpoint(str(tmp_path), dataset_hash, cfg) is None
 
-    def test_rejects_dataset_hash_mismatch(self, tmp_path, cfg, dataset_hash, sample_results):
+    def test_rejects_dataset_hash_mismatch(
+        self, tmp_path, cfg, dataset_hash, sample_results
+    ):
 
         save_checkpoint(str(tmp_path), dataset_hash, cfg, ["MTR-001"], sample_results)
         result = load_checkpoint(str(tmp_path), "wrong_hash", cfg)
         assert result is None
 
-    def test_rejects_config_hash_mismatch(self, tmp_path, cfg, dataset_hash, sample_results):
+    def test_rejects_config_hash_mismatch(
+        self, tmp_path, cfg, dataset_hash, sample_results
+    ):
 
         save_checkpoint(str(tmp_path), dataset_hash, cfg, ["MTR-001"], sample_results)
         cfg2 = RunConfig(model="different-model", provider="openai")
@@ -103,7 +125,9 @@ class TestSaveLoadCheckpoint:
     def test_clear_noop_when_no_file(self, tmp_path):
         clear_checkpoint(str(tmp_path))  # should not raise
 
-    def test_checkpoint_file_is_valid_json(self, tmp_path, cfg, dataset_hash, sample_results):
+    def test_checkpoint_file_is_valid_json(
+        self, tmp_path, cfg, dataset_hash, sample_results
+    ):
 
         save_checkpoint(str(tmp_path), dataset_hash, cfg, ["MTR-001"], sample_results)
         with open(checkpoint_path(str(tmp_path))) as f:
@@ -119,8 +143,11 @@ class TestSaveLoadCheckpoint:
             {"trial": 1, "passed": False, "conversation": [], "per_turn_verdicts": []},
         ]
         save_checkpoint(
-            str(tmp_path), dataset_hash, cfg,
-            [], [],  # no completed scenarios yet
+            str(tmp_path),
+            dataset_hash,
+            cfg,
+            [],
+            [],  # no completed scenarios yet
             in_progress_scenario={
                 "scenario_id": "MTR-003",
                 "completed_trials": partial_trials,
@@ -138,13 +165,21 @@ class TestSaveLoadCheckpoint:
         assert in_progress["completed_trials"][1]["passed"] is False
 
     def test_trial_checkpoint_cleared_on_scenario_completion(
-        self, tmp_path, cfg, dataset_hash, sample_results,
+        self,
+        tmp_path,
+        cfg,
+        dataset_hash,
+        sample_results,
     ):
         """When scenario completes, in_progress is cleared."""
 
         # First save with in-progress
         save_checkpoint(
-            str(tmp_path), dataset_hash, cfg, [], [],
+            str(tmp_path),
+            dataset_hash,
+            cfg,
+            [],
+            [],
             in_progress_scenario={
                 "scenario_id": "MTR-001",
                 "completed_trials": [{"trial": 0, "passed": True}],
@@ -152,8 +187,11 @@ class TestSaveLoadCheckpoint:
         )
         # Then save with scenario completed (no in_progress)
         save_checkpoint(
-            str(tmp_path), dataset_hash, cfg,
-            ["MTR-001"], sample_results,
+            str(tmp_path),
+            dataset_hash,
+            cfg,
+            ["MTR-001"],
+            sample_results,
         )
         result = load_checkpoint(str(tmp_path), dataset_hash, cfg)
         assert result is not None

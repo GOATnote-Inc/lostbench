@@ -69,8 +69,8 @@ class TestCohensKappa:
         P_e = 0.50*0.60 + 0.50*0.40 = 0.30 + 0.20 = 0.50
         kappa = (0.70 - 0.50) / (1 - 0.50) = 0.40
         """
-        ratings_a = [0]*20 + [0]*5 + [1]*10 + [1]*15
-        ratings_b = [0]*20 + [1]*5 + [0]*10 + [1]*15
+        ratings_a = [0] * 20 + [0] * 5 + [1] * 10 + [1] * 15
+        ratings_b = [0] * 20 + [1] * 5 + [0] * 10 + [1] * 15
         kappa = cohens_kappa(ratings_a, ratings_b)
         assert kappa == pytest.approx(0.40, abs=0.01)
 
@@ -109,7 +109,8 @@ class TestComputeJudgeAgreement:
             {"escalation_level": 1, "scenario_id": "S2", "turn_index": 1},
         ]
         result = compute_judge_agreement(
-            grades_a, grades_b,
+            grades_a,
+            grades_b,
             judge_a_id="gpt-5.2",
             judge_b_id="claude-opus-4-6",
         )

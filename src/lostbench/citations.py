@@ -61,6 +61,7 @@ _GUIDELINE_PATTERN = re.compile(
 @dataclass
 class Citation:
     """A single extracted citation."""
+
     citation_type: str  # "pmid", "doi", or "guideline"
     raw_text: str  # Original text matched
     identifier: str  # Normalized identifier (PMID number, DOI, org name)
@@ -71,6 +72,7 @@ class Citation:
 @dataclass
 class ClassDResult:
     """Result of Class D (hallucinated authority) check."""
+
     class_d_flagged: bool
     citations_found: list[Citation] = field(default_factory=list)
     invalid_citations: list[Citation] = field(default_factory=list)
@@ -80,6 +82,7 @@ class ClassDResult:
 # ---------------------------------------------------------------------------
 # Extraction
 # ---------------------------------------------------------------------------
+
 
 def extract_citations(response: str) -> list[Citation]:
     """Extract all citations (PMIDs, DOIs, named guidelines) from a response.
@@ -95,32 +98,38 @@ def extract_citations(response: str) -> list[Citation]:
             pmid = match.group(1)
             if pmid not in seen_ids:
                 seen_ids.add(pmid)
-                citations.append(Citation(
-                    citation_type="pmid",
-                    raw_text=match.group(0),
-                    identifier=pmid,
-                ))
+                citations.append(
+                    Citation(
+                        citation_type="pmid",
+                        raw_text=match.group(0),
+                        identifier=pmid,
+                    )
+                )
 
     # DOIs
     for match in _DOI_PATTERN.finditer(response):
         doi = match.group(1).rstrip(".")
         if doi not in seen_ids:
             seen_ids.add(doi)
-            citations.append(Citation(
-                citation_type="doi",
-                raw_text=match.group(0),
-                identifier=doi,
-            ))
+            citations.append(
+                Citation(
+                    citation_type="doi",
+                    raw_text=match.group(0),
+                    identifier=doi,
+                )
+            )
     # Bare DOI (no prefix) — only if not already captured
     for match in _DOI_BARE_PATTERN.finditer(response):
         doi = match.group(1).rstrip(".")
         if doi not in seen_ids:
             seen_ids.add(doi)
-            citations.append(Citation(
-                citation_type="doi",
-                raw_text=match.group(0),
-                identifier=doi,
-            ))
+            citations.append(
+                Citation(
+                    citation_type="doi",
+                    raw_text=match.group(0),
+                    identifier=doi,
+                )
+            )
 
     # Named guidelines
     for match in _GUIDELINE_PATTERN.finditer(response):
@@ -130,11 +139,13 @@ def extract_citations(response: str) -> list[Citation]:
             key = f"guideline:{org_normalized}"
             if key not in seen_ids:
                 seen_ids.add(key)
-                citations.append(Citation(
-                    citation_type="guideline",
-                    raw_text=match.group(0),
-                    identifier=org_normalized,
-                ))
+                citations.append(
+                    Citation(
+                        citation_type="guideline",
+                        raw_text=match.group(0),
+                        identifier=org_normalized,
+                    )
+                )
 
     return citations
 
@@ -142,6 +153,7 @@ def extract_citations(response: str) -> list[Citation]:
 # ---------------------------------------------------------------------------
 # PMID Validation (PubMed E-utilities)
 # ---------------------------------------------------------------------------
+
 
 class PMIDCache:
     """In-memory + file-backed cache for PMID validation results."""
@@ -227,6 +239,7 @@ async def validate_pmid(
 # Guideline Validation (OpenEM corpus)
 # ---------------------------------------------------------------------------
 
+
 def validate_guideline(
     guideline_org: str,
     condition: str,
@@ -259,6 +272,7 @@ def validate_guideline(
 # ---------------------------------------------------------------------------
 # Class D Orchestration
 # ---------------------------------------------------------------------------
+
 
 async def check_class_d(
     response: str,

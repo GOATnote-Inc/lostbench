@@ -81,25 +81,27 @@ def generate_ceis_json(
             severity_weight=c.severity_weight,
             classD_flag=c.classD > 0,
         )
-        artifact["conditions"].append({
-            "condition": c.condition,
-            "scenario_id": c.scenario_id,
-            "severity_weight": c.severity_weight,
-            "initial_escalation_correct": c.initial_escalation_correct,
-            "eps_point": c.eps_point,
-            "eps_wilson_lower": c.eps_wilson_lower,
-            "eps_wilson_upper": c.eps_wilson_upper,
-            "n_required_turns": c.n_required_turns,
-            "n_maintained_turns": c.n_maintained_turns,
-            "drift_count": c.drift_count,
-            "classA": c.classA,
-            "classB": c.classB,
-            "classC": c.classC,
-            "classD": c.classD,
-            "crs": round(crs, 3),
-            "passed": c.passed,
-            "failure_turns": c.failure_turns,
-        })
+        artifact["conditions"].append(
+            {
+                "condition": c.condition,
+                "scenario_id": c.scenario_id,
+                "severity_weight": c.severity_weight,
+                "initial_escalation_correct": c.initial_escalation_correct,
+                "eps_point": c.eps_point,
+                "eps_wilson_lower": c.eps_wilson_lower,
+                "eps_wilson_upper": c.eps_wilson_upper,
+                "n_required_turns": c.n_required_turns,
+                "n_maintained_turns": c.n_maintained_turns,
+                "drift_count": c.drift_count,
+                "classA": c.classA,
+                "classB": c.classB,
+                "classC": c.classC,
+                "classD": c.classD,
+                "crs": round(crs, 3),
+                "passed": c.passed,
+                "failure_turns": c.failure_turns,
+            }
+        )
 
     if regression_result:
         artifact["regression"] = {
@@ -134,12 +136,16 @@ def generate_executive_summary(
 
     # ERS and threshold
     ci = corpus_grade.ers_bootstrap_ci
-    lines.append(f"ESCALATION RISK SCORE: {corpus_grade.ers} / 100 (95% CI: [{ci[0]:.0f}, {ci[1]:.0f}])")
+    lines.append(
+        f"ESCALATION RISK SCORE: {corpus_grade.ers} / 100 (95% CI: [{ci[0]:.0f}, {ci[1]:.0f}])"
+    )
     threshold_str = "Meets" if corpus_grade.meets_threshold else "Does Not Meet"
     lines.append(f"THRESHOLD: {threshold_str}")
 
     if regression_result:
-        reg_str = "Detected" if regression_result.regression_detected else "Not Detected"
+        reg_str = (
+            "Detected" if regression_result.regression_detected else "Not Detected"
+        )
         lines.append(f"REGRESSION: {reg_str} (vs {regression_result.prior_model_id})")
     else:
         lines.append("REGRESSION: No prior version provided")
@@ -157,14 +163,23 @@ def generate_executive_summary(
     n_conditions = len([c for c in corpus_grade.conditions if c.severity_weight > 0])
     mean_eps_lower = 0.0
     if n_conditions > 0:
-        mean_eps_lower = sum(
-            c.eps_wilson_lower for c in corpus_grade.conditions if c.severity_weight > 0
-        ) / n_conditions
+        mean_eps_lower = (
+            sum(
+                c.eps_wilson_lower
+                for c in corpus_grade.conditions
+                if c.severity_weight > 0
+            )
+            / n_conditions
+        )
 
     lines.append("KEY METRICS:")
-    lines.append(f"  Pass^k                  {corpus_grade.pass_k:.3f}    {n_conditions} conditions, {config.n_trials} trials")
+    lines.append(
+        f"  Pass^k                  {corpus_grade.pass_k:.3f}    {n_conditions} conditions, {config.n_trials} trials"
+    )
     lines.append(f"  Harm-weighted pass      {corpus_grade.harm_weighted_pass:.3f}")
-    lines.append(f"  Mean EPS (Wilson lower) {mean_eps_lower:.3f}    {n_conditions} conditions")
+    lines.append(
+        f"  Mean EPS (Wilson lower) {mean_eps_lower:.3f}    {n_conditions} conditions"
+    )
     lines.append(f"  Drift events            {corpus_grade.total_drift}")
     lines.append(f"  Class A failures        {corpus_grade.total_classA}")
     lines.append(f"  Class B failures        {corpus_grade.total_classB}")
@@ -173,8 +188,7 @@ def generate_executive_summary(
 
     # Conditions below threshold
     failed_conditions = [
-        c for c in corpus_grade.conditions
-        if not c.passed and c.severity_weight > 0
+        c for c in corpus_grade.conditions if not c.passed and c.severity_weight > 0
     ]
     if failed_conditions:
         lines.append("CONDITIONS BELOW THRESHOLD:")
@@ -188,7 +202,11 @@ def generate_executive_summary(
                 failure_classes.append(f"Class C x{c.classC}")
             if c.classD > 0:
                 failure_classes.append(f"Class D x{c.classD}")
-            failure_str = ", ".join(failure_classes) if failure_classes else "no classified failures"
+            failure_str = (
+                ", ".join(failure_classes)
+                if failure_classes
+                else "no classified failures"
+            )
             lines.append(
                 f"  {c.condition} -- EPS lower={c.eps_wilson_lower:.2f}, {failure_str}"
             )
@@ -208,16 +226,26 @@ def generate_executive_summary(
                 z = regression_result.per_condition_z.get(cond, 0)
                 lines.append(f"    {cond}: z = {z}")
         if regression_result.new_classA_conditions:
-            lines.append(f"  New Class A failures: {', '.join(regression_result.new_classA_conditions)}")
+            lines.append(
+                f"  New Class A failures: {', '.join(regression_result.new_classA_conditions)}"
+            )
         if regression_result.regression_suite_failures:
-            lines.append(f"  Regression suite failures: {', '.join(regression_result.regression_suite_failures)}")
+            lines.append(
+                f"  Regression suite failures: {', '.join(regression_result.regression_suite_failures)}"
+            )
         lines.append("")
 
     # Methodology
     lines.append("METHODOLOGY:")
-    lines.append(f"  Corpus: {config.corpus}, {len(corpus_grade.conditions)} scenarios, {config.n_trials} trials, seed={config.seed}")
-    lines.append("  Grading: 3-layer hybrid (deterministic patterns -> cross-vendor LLM judge)")
-    lines.append("  Scoring: Wilson 95% CI, scenario-level bootstrap (10,000 iterations)")
+    lines.append(
+        f"  Corpus: {config.corpus}, {len(corpus_grade.conditions)} scenarios, {config.n_trials} trials, seed={config.seed}"
+    )
+    lines.append(
+        "  Grading: 3-layer hybrid (deterministic patterns -> cross-vendor LLM judge)"
+    )
+    lines.append(
+        "  Scoring: Wilson 95% CI, scenario-level bootstrap (10,000 iterations)"
+    )
     lines.append("  Regression: Two-proportion z-test, one-tailed, alpha=0.025")
 
     return "\n".join(lines) + "\n"
@@ -286,7 +314,10 @@ def generate_reproducibility_bundle(
     corpus_grade = _reconstruct_corpus_grade_for_summary(artifact)
     regression_result = _reconstruct_regression_for_summary(artifact)
     summary = generate_executive_summary(
-        config, corpus_grade, regression_result, run_id=run_id,
+        config,
+        corpus_grade,
+        regression_result,
+        run_id=run_id,
     )
     (bundle_dir / "report.txt").write_text(summary)
 
@@ -300,24 +331,26 @@ def _reconstruct_corpus_grade_for_summary(artifact: dict) -> CorpusGrade:
     agg = artifact.get("aggregate", {})
     conditions = []
     for c in artifact.get("conditions", []):
-        conditions.append(ScenarioGrade(
-            scenario_id=c.get("scenario_id", ""),
-            condition=c.get("condition", ""),
-            severity_weight=c.get("severity_weight", 0.0),
-            required_escalation_level=3,
-            initial_escalation_correct=c.get("initial_escalation_correct", False),
-            eps_point=c.get("eps_point", 0.0),
-            eps_wilson_lower=c.get("eps_wilson_lower", 0.0),
-            eps_wilson_upper=c.get("eps_wilson_upper", 0.0),
-            n_required_turns=c.get("n_required_turns", 0),
-            n_maintained_turns=c.get("n_maintained_turns", 0),
-            drift_count=c.get("drift_count", 0),
-            classA=c.get("classA", 0),
-            classB=c.get("classB", 0),
-            classC=c.get("classC", 0),
-            classD=c.get("classD", 0),
-            passed=c.get("passed", False),
-        ))
+        conditions.append(
+            ScenarioGrade(
+                scenario_id=c.get("scenario_id", ""),
+                condition=c.get("condition", ""),
+                severity_weight=c.get("severity_weight", 0.0),
+                required_escalation_level=3,
+                initial_escalation_correct=c.get("initial_escalation_correct", False),
+                eps_point=c.get("eps_point", 0.0),
+                eps_wilson_lower=c.get("eps_wilson_lower", 0.0),
+                eps_wilson_upper=c.get("eps_wilson_upper", 0.0),
+                n_required_turns=c.get("n_required_turns", 0),
+                n_maintained_turns=c.get("n_maintained_turns", 0),
+                drift_count=c.get("drift_count", 0),
+                classA=c.get("classA", 0),
+                classB=c.get("classB", 0),
+                classC=c.get("classC", 0),
+                classD=c.get("classD", 0),
+                passed=c.get("passed", False),
+            )
+        )
 
     return CorpusGrade(
         ers=agg.get("ERS", 0),
@@ -393,7 +426,9 @@ def generate_failure_catalog_entries(
                 failure_detail.append(detail)
 
         entry = {
-            "id": f"FM-AUTO-{run_id}-{c.scenario_id}" if run_id else f"FM-AUTO-{date_str}-{c.scenario_id}",
+            "id": f"FM-AUTO-{run_id}-{c.scenario_id}"
+            if run_id
+            else f"FM-AUTO-{date_str}-{c.scenario_id}",
             "title": f"Class A escalation failure: {c.condition}",
             "discovered": date_str,
             "status": "open",
@@ -418,7 +453,7 @@ def generate_failure_catalog_entries(
                 f"Model drops from Level 3 (emergency) to Level 0-1 on {c.condition}. "
                 f"Delayed treatment for this condition."
             ),
-            "reproducibility": f"{c.classA}/{c.n_required_turns} turns ({c.classA/c.n_required_turns*100:.1f}%)",
+            "reproducibility": f"{c.classA}/{c.n_required_turns} turns ({c.classA / c.n_required_turns * 100:.1f}%)",
             "discovery_method": "ceis_eval",
             "ceis_class": "A",
             "conditions": [c.condition],
@@ -474,8 +509,7 @@ def format_run_log_entry(
                 "classA_failures": corpus_grade.total_classA,
                 "meets_threshold": corpus_grade.meets_threshold,
                 "regression_detected": (
-                    regression_result.regression_detected
-                    if regression_result else None
+                    regression_result.regression_detected if regression_result else None
                 ),
             },
         },

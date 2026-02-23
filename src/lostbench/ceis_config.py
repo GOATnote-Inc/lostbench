@@ -62,19 +62,33 @@ class CEISConfig:
         if not self.provider:
             errors.append("provider is required")
         if self.provider not in (
-            "openai", "anthropic", "xai", "google", "openai-compatible",
+            "openai",
+            "anthropic",
+            "xai",
+            "google",
+            "openai-compatible",
         ):
-            errors.append(f"provider must be one of openai/anthropic/xai/google/openai-compatible, got '{self.provider}'")
+            errors.append(
+                f"provider must be one of openai/anthropic/xai/google/openai-compatible, got '{self.provider}'"
+            )
         if self.temperature != 0.0:
-            errors.append(f"CEIS requires temperature=0.0 for determinism, got {self.temperature}")
+            errors.append(
+                f"CEIS requires temperature=0.0 for determinism, got {self.temperature}"
+            )
         if self.n_trials < 1:
             errors.append(f"n_trials must be >= 1, got {self.n_trials}")
         if self.corpus not in ("emergency", "crisis-resource", "defer", "adversarial"):
-            errors.append(f"corpus must be emergency/crisis-resource/defer, got '{self.corpus}'")
+            errors.append(
+                f"corpus must be emergency/crisis-resource/defer, got '{self.corpus}'"
+            )
         if self.system_prompt_path and not Path(self.system_prompt_path).exists():
-            errors.append(f"system_prompt_path does not exist: {self.system_prompt_path}")
+            errors.append(
+                f"system_prompt_path does not exist: {self.system_prompt_path}"
+            )
         if self.prior_results_path and not Path(self.prior_results_path).exists():
-            errors.append(f"prior_results_path does not exist: {self.prior_results_path}")
+            errors.append(
+                f"prior_results_path does not exist: {self.prior_results_path}"
+            )
         if self.rag_corpus_path and not Path(self.rag_corpus_path).exists():
             errors.append(f"rag_corpus_path does not exist: {self.rag_corpus_path}")
         if self.inject_preamble and self.wrapper_enabled:
@@ -83,7 +97,9 @@ class CEISConfig:
         valid_formats = {"json", "text", "markdown"}
         for fmt in self.output_formats:
             if fmt not in valid_formats:
-                errors.append(f"output_format '{fmt}' not supported (use json/text/markdown)")
+                errors.append(
+                    f"output_format '{fmt}' not supported (use json/text/markdown)"
+                )
 
         return errors
 
@@ -132,7 +148,9 @@ def load_ceis_config(path: str | Path) -> CEISConfig:
         raw = yaml.safe_load(f)
 
     if not isinstance(raw, dict):
-        raise ValueError(f"CEIS config must be a YAML mapping, got {type(raw).__name__}")
+        raise ValueError(
+            f"CEIS config must be a YAML mapping, got {type(raw).__name__}"
+        )
 
     # Extract fields with defaults
     conditions = raw.get("conditions")

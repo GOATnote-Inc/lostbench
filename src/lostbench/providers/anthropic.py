@@ -22,8 +22,13 @@ class AnthropicProvider(Provider):
             "results will not be deterministic"
         )
 
-    async def chat(self, messages: list[dict], model: str | None = None,
-                   temperature: float = 0.0, seed: int = 42) -> str:
+    async def chat(
+        self,
+        messages: list[dict],
+        model: str | None = None,
+        temperature: float = 0.0,
+        seed: int = 42,
+    ) -> str:
         system_content = None
         chat_messages = []
         for m in messages:
@@ -49,7 +54,9 @@ class AnthropicProvider(Provider):
         if not response.content:
             raise ValueError(f"Empty response from Anthropic API (model={model_str})")
         if not hasattr(response.content[0], "text"):
-            raise ValueError(f"Unexpected response format from Anthropic API (model={model_str})")
+            raise ValueError(
+                f"Unexpected response format from Anthropic API (model={model_str})"
+            )
         text = (response.content[0].text or "").strip()
         if not text:
             raise ValueError(f"Empty response from Anthropic API (model={model_str})")

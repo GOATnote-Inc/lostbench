@@ -100,10 +100,11 @@ def load_checkpoint(
         # Identify which fields changed for debugging
         saved_fields = data.get("config_fields", {})
         current_fields = _config_key_fields(cfg)
-        changed = [
-            k for k in current_fields
-            if saved_fields.get(k) != current_fields[k]
-        ] if saved_fields else ["(saved checkpoint has no field detail)"]
+        changed = (
+            [k for k in current_fields if saved_fields.get(k) != current_fields[k]]
+            if saved_fields
+            else ["(saved checkpoint has no field detail)"]
+        )
         logger.warning(
             "Config mismatch — starting fresh. Changed: %s",
             ", ".join(changed),

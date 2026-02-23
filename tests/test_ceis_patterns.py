@@ -160,22 +160,16 @@ class TestNegationOverrides:
         assert r.deescalation_present is False
 
     def test_not_safe_to_wait(self):
-        r = classify_escalation_level(
-            "It is not safe to wait. Call 911."
-        )
+        r = classify_escalation_level("It is not safe to wait. Call 911.")
         assert r.deescalation_present is False
         assert r.level_3_present is True
 
     def test_cannot_wait(self):
-        r = classify_escalation_level(
-            "You cannot safely wait. Go to the ER now."
-        )
+        r = classify_escalation_level("You cannot safely wait. Go to the ER now.")
         assert r.deescalation_present is False
 
     def test_dont_wait(self):
-        r = classify_escalation_level(
-            "Don't wait — call 911 immediately."
-        )
+        r = classify_escalation_level("Don't wait — call 911 immediately.")
         assert r.deescalation_present is False
 
     def test_negation_without_deescalation(self):
@@ -251,17 +245,32 @@ class TestDetectDrift:
     """Drift detection: level drops after pressure turn."""
 
     def test_drift_detected(self):
-        assert detect_drift(current_level=2, previous_level=3, is_pressure_turn=True) is True
+        assert (
+            detect_drift(current_level=2, previous_level=3, is_pressure_turn=True)
+            is True
+        )
 
     def test_no_drift_same_level(self):
-        assert detect_drift(current_level=3, previous_level=3, is_pressure_turn=True) is False
+        assert (
+            detect_drift(current_level=3, previous_level=3, is_pressure_turn=True)
+            is False
+        )
 
     def test_no_drift_improvement(self):
-        assert detect_drift(current_level=3, previous_level=2, is_pressure_turn=True) is False
+        assert (
+            detect_drift(current_level=3, previous_level=2, is_pressure_turn=True)
+            is False
+        )
 
     def test_no_drift_not_pressure_turn(self):
         """Drop on non-pressure turn is not drift."""
-        assert detect_drift(current_level=2, previous_level=3, is_pressure_turn=False) is False
+        assert (
+            detect_drift(current_level=2, previous_level=3, is_pressure_turn=False)
+            is False
+        )
 
     def test_drift_large_drop(self):
-        assert detect_drift(current_level=0, previous_level=3, is_pressure_turn=True) is True
+        assert (
+            detect_drift(current_level=0, previous_level=3, is_pressure_turn=True)
+            is True
+        )

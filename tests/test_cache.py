@@ -10,7 +10,9 @@ class TestResponseCache:
 
     def test_cache_miss_then_hit(self, tmp_path):
         cache = ResponseCache(str(tmp_path))
-        key = ResponseCache.cache_key("model", [{"role": "user", "content": "hi"}], 0.0, 42)
+        key = ResponseCache.cache_key(
+            "model", [{"role": "user", "content": "hi"}], 0.0, 42
+        )
 
         assert cache.get(key) is None
         assert cache.stats["misses"] == 1

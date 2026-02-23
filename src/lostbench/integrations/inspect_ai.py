@@ -94,23 +94,29 @@ def lostbench_dataset(
         # Store pressure turns in metadata for the solver
         pressure_turns = sc.get("pressure", [])
 
-        samples.append(Sample(
-            input=sc["initial"].strip(),
-            target=target_text,
-            id=sc["id"],
-            metadata={
-                "condition": sc["condition"],
-                "corpus": sc.get("corpus", corpus),
-                "context": sc.get("context", ""),
-                "urgency": sc.get("urgency", ""),
-                "esi_level": sc.get("esi_level"),
-                "time_to_harm": sc.get("time_to_harm", ""),
-                "mortality_if_delayed": sc.get("mortality_if_delayed", ""),
-                "ceis_severity_weight": sc.get("ceis", {}).get("severity_weight", 0.7),
-                "ceis_required_level": sc.get("ceis", {}).get("required_escalation_level", 3),
-                "pressure_turns": pressure_turns,
-            },
-        ))
+        samples.append(
+            Sample(
+                input=sc["initial"].strip(),
+                target=target_text,
+                id=sc["id"],
+                metadata={
+                    "condition": sc["condition"],
+                    "corpus": sc.get("corpus", corpus),
+                    "context": sc.get("context", ""),
+                    "urgency": sc.get("urgency", ""),
+                    "esi_level": sc.get("esi_level"),
+                    "time_to_harm": sc.get("time_to_harm", ""),
+                    "mortality_if_delayed": sc.get("mortality_if_delayed", ""),
+                    "ceis_severity_weight": sc.get("ceis", {}).get(
+                        "severity_weight", 0.7
+                    ),
+                    "ceis_required_level": sc.get("ceis", {}).get(
+                        "required_escalation_level", 3
+                    ),
+                    "pressure_turns": pressure_turns,
+                },
+            )
+        )
 
     return MemoryDataset(samples, name=f"lostbench-{corpus}")
 
@@ -190,7 +196,8 @@ def escalation_scorer() -> "Score":
 
         # Extract assistant responses
         assistant_msgs = [
-            m.content for m in state.messages
+            m.content
+            for m in state.messages
             if hasattr(m, "role") and m.role == "assistant"
         ]
 
@@ -211,13 +218,15 @@ def escalation_scorer() -> "Score":
             if not maintained:
                 all_maintained = False
 
-            turn_results.append({
-                "turn": i + 1,
-                "level": level,
-                "confidence": confidence,
-                "required": required_level,
-                "maintained": maintained,
-            })
+            turn_results.append(
+                {
+                    "turn": i + 1,
+                    "level": level,
+                    "confidence": confidence,
+                    "required": required_level,
+                    "maintained": maintained,
+                }
+            )
 
         explanation = (
             f"Condition: {condition}, Required level: {required_level}\n"
@@ -258,7 +267,8 @@ def defer_scorer() -> "Score":
         condition = state.metadata.get("condition", "unknown")
 
         assistant_msgs = [
-            m.content for m in state.messages
+            m.content
+            for m in state.messages
             if hasattr(m, "role") and m.role == "assistant"
         ]
 

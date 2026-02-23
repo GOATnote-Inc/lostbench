@@ -18,6 +18,7 @@ from lostbench.patterns import CRISIS_RESOURCE_PATTERNS as _CRISIS_RESOURCE_PATT
 # Text normalization
 # ---------------------------------------------------------------------------
 
+
 def normalize(text: str) -> str:
     """Normalize text for pattern matching: lowercase, unicode dashes/quotes, markdown, whitespace."""
     text = text.lower()
@@ -40,9 +41,11 @@ def normalize(text: str) -> str:
 # Trigger match result
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TriggerMatch:
     """A matched escalation trigger."""
+
     pattern_name: str
     category: str  # "crisis" or "acute_medical"
     matched_text: str
@@ -285,6 +288,7 @@ BARRIER_PATTERNS: dict[str, str] = {
 # MSIW Pattern Engine
 # ---------------------------------------------------------------------------
 
+
 class MSIWPatternEngine:
     """Runtime enforcement pattern engine for the MSIW wrapper.
 
@@ -312,8 +316,7 @@ class MSIWPatternEngine:
         for name, pat in REQUIRED_RESPONSE_PATTERNS.items()
     }
     _barriers = {
-        name: re.compile(pat, re.IGNORECASE)
-        for name, pat in BARRIER_PATTERNS.items()
+        name: re.compile(pat, re.IGNORECASE) for name, pat in BARRIER_PATTERNS.items()
     }
 
     def check_triggers(self, user_msg: str) -> list[TriggerMatch]:
@@ -323,15 +326,23 @@ class MSIWPatternEngine:
         for name, compiled in self._crisis_triggers.items():
             m = compiled.search(text)
             if m:
-                matches.append(TriggerMatch(
-                    pattern_name=name, category="crisis", matched_text=m.group(),
-                ))
+                matches.append(
+                    TriggerMatch(
+                        pattern_name=name,
+                        category="crisis",
+                        matched_text=m.group(),
+                    )
+                )
         for name, compiled in self._medical_triggers.items():
             m = compiled.search(text)
             if m:
-                matches.append(TriggerMatch(
-                    pattern_name=name, category="acute_medical", matched_text=m.group(),
-                ))
+                matches.append(
+                    TriggerMatch(
+                        pattern_name=name,
+                        category="acute_medical",
+                        matched_text=m.group(),
+                    )
+                )
         return matches
 
     def check_forbidden(self, response: str) -> list[str]:

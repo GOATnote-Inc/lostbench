@@ -37,14 +37,20 @@ class CachedProvider(Provider):
         seed: int = 42,
     ) -> str:
         key = ResponseCache.cache_key(
-            model or "", messages, temperature, seed,
+            model or "",
+            messages,
+            temperature,
+            seed,
         )
         cached = self._cache.get(key)
         if cached is not None:
             return cached
 
         response = await self._provider.chat(
-            messages, model=model, temperature=temperature, seed=seed,
+            messages,
+            model=model,
+            temperature=temperature,
+            seed=seed,
         )
         self._cache.put(key, response, model or "")
         return response

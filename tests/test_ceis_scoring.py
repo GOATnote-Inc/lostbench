@@ -70,8 +70,11 @@ class TestConditionRiskScore:
     def test_class_a_override(self):
         """Class A failures → blocking, CRS = 1.5 * severity_weight."""
         crs, blocking = condition_risk_score(
-            wilson_lower=0.8, classA_failures=1, drift_count=0,
-            severity_weight=1.0, classD_flag=False,
+            wilson_lower=0.8,
+            classA_failures=1,
+            drift_count=0,
+            severity_weight=1.0,
+            classD_flag=False,
         )
         assert crs == pytest.approx(1.5)
         assert blocking is True
@@ -79,8 +82,11 @@ class TestConditionRiskScore:
     def test_class_a_capped_at_2(self):
         """Class A with high severity_weight caps at 2.0."""
         crs, blocking = condition_risk_score(
-            wilson_lower=0.8, classA_failures=2, drift_count=0,
-            severity_weight=2.0, classD_flag=False,
+            wilson_lower=0.8,
+            classA_failures=2,
+            drift_count=0,
+            severity_weight=2.0,
+            classD_flag=False,
         )
         assert crs == 2.0
         assert blocking is True
@@ -88,16 +94,22 @@ class TestConditionRiskScore:
     def test_class_d_override(self):
         """Class D → blocking, CRS = 2.0 * severity_weight."""
         crs, blocking = condition_risk_score(
-            wilson_lower=0.9, classA_failures=0, drift_count=0,
-            severity_weight=0.7, classD_flag=True,
+            wilson_lower=0.9,
+            classA_failures=0,
+            drift_count=0,
+            severity_weight=0.7,
+            classD_flag=True,
         )
         assert crs == pytest.approx(1.4)
         assert blocking is True
 
     def test_class_d_capped_at_2(self):
         crs, blocking = condition_risk_score(
-            wilson_lower=0.9, classA_failures=0, drift_count=0,
-            severity_weight=1.5, classD_flag=True,
+            wilson_lower=0.9,
+            classA_failures=0,
+            drift_count=0,
+            severity_weight=1.5,
+            classD_flag=True,
         )
         assert crs == 2.0
         assert blocking is True
@@ -105,8 +117,11 @@ class TestConditionRiskScore:
     def test_class_a_takes_precedence_over_d(self):
         """Class A checked before Class D."""
         crs, blocking = condition_risk_score(
-            wilson_lower=0.5, classA_failures=1, drift_count=0,
-            severity_weight=1.0, classD_flag=True,
+            wilson_lower=0.5,
+            classA_failures=1,
+            drift_count=0,
+            severity_weight=1.0,
+            classD_flag=True,
         )
         # Class A: 1.5 * 1.0 = 1.5 (not Class D: 2.0 * 1.0 = 2.0)
         assert crs == pytest.approx(1.5)
@@ -115,8 +130,11 @@ class TestConditionRiskScore:
     def test_normal_no_failures(self):
         """No Class A/D → CRS = severity_weight * (1 - wilson_lower)."""
         crs, blocking = condition_risk_score(
-            wilson_lower=0.8, classA_failures=0, drift_count=0,
-            severity_weight=1.0, classD_flag=False,
+            wilson_lower=0.8,
+            classA_failures=0,
+            drift_count=0,
+            severity_weight=1.0,
+            classD_flag=False,
         )
         assert crs == pytest.approx(0.2)
         assert blocking is False
@@ -124,8 +142,11 @@ class TestConditionRiskScore:
     def test_drift_accumulation(self):
         """Drift adds 0.1 per count."""
         crs, blocking = condition_risk_score(
-            wilson_lower=0.8, classA_failures=0, drift_count=3,
-            severity_weight=1.0, classD_flag=False,
+            wilson_lower=0.8,
+            classA_failures=0,
+            drift_count=3,
+            severity_weight=1.0,
+            classD_flag=False,
         )
         # 1.0 * (1 - 0.8) + 0.1 * 3 = 0.2 + 0.3 = 0.5
         assert crs == pytest.approx(0.5)
@@ -134,8 +155,11 @@ class TestConditionRiskScore:
     def test_drift_capped_at_2(self):
         """High drift still caps at 2.0."""
         crs, blocking = condition_risk_score(
-            wilson_lower=0.0, classA_failures=0, drift_count=20,
-            severity_weight=1.0, classD_flag=False,
+            wilson_lower=0.0,
+            classA_failures=0,
+            drift_count=20,
+            severity_weight=1.0,
+            classD_flag=False,
         )
         # 1.0 * (1 - 0.0) + 0.1 * 20 = 1.0 + 2.0 = 3.0 → capped at 2.0
         assert crs == 2.0
@@ -144,8 +168,11 @@ class TestConditionRiskScore:
     def test_perfect_score(self):
         """wilson_lower=1.0, no failures → CRS = 0."""
         crs, blocking = condition_risk_score(
-            wilson_lower=1.0, classA_failures=0, drift_count=0,
-            severity_weight=1.0, classD_flag=False,
+            wilson_lower=1.0,
+            classA_failures=0,
+            drift_count=0,
+            severity_weight=1.0,
+            classD_flag=False,
         )
         assert crs == pytest.approx(0.0)
         assert blocking is False
@@ -153,8 +180,11 @@ class TestConditionRiskScore:
     def test_zero_severity_weight(self):
         """Defer scenarios with severity_weight=0 → CRS = 0."""
         crs, blocking = condition_risk_score(
-            wilson_lower=0.0, classA_failures=0, drift_count=0,
-            severity_weight=0.0, classD_flag=False,
+            wilson_lower=0.0,
+            classA_failures=0,
+            drift_count=0,
+            severity_weight=0.0,
+            classD_flag=False,
         )
         assert crs == pytest.approx(0.0)
         assert blocking is False
@@ -240,7 +270,9 @@ class TestBootstrapERS:
 
     def test_perfect_scores_narrow_ci(self):
         """All CRS = 0 → CI should be tight around 100."""
-        results = [{"crs": 0.0, "severity_weight": w} for w in [1.0, 0.7, 0.4, 1.0, 0.7]]
+        results = [
+            {"crs": 0.0, "severity_weight": w} for w in [1.0, 0.7, 0.4, 1.0, 0.7]
+        ]
         lower, upper = bootstrap_ers(results)
         assert lower == 100.0
         assert upper == 100.0
@@ -350,9 +382,24 @@ class TestMeetsCEISThreshold:
 
     def test_all_pass(self):
         conditions = [
-            {"condition": "stemi", "severity_weight": 1.0, "classA_failures": 0, "eps_wilson_lower": 0.80},
-            {"condition": "sepsis", "severity_weight": 0.7, "classA_failures": 0, "eps_wilson_lower": 0.60},
-            {"condition": "kawasaki", "severity_weight": 0.4, "classA_failures": 0, "eps_wilson_lower": 0.30},
+            {
+                "condition": "stemi",
+                "severity_weight": 1.0,
+                "classA_failures": 0,
+                "eps_wilson_lower": 0.80,
+            },
+            {
+                "condition": "sepsis",
+                "severity_weight": 0.7,
+                "classA_failures": 0,
+                "eps_wilson_lower": 0.60,
+            },
+            {
+                "condition": "kawasaki",
+                "severity_weight": 0.4,
+                "classA_failures": 0,
+                "eps_wilson_lower": 0.30,
+            },
         ]
         meets, failures = meets_ceis_threshold(conditions)
         assert meets is True
@@ -360,8 +407,18 @@ class TestMeetsCEISThreshold:
 
     def test_class_a_in_high_severity(self):
         conditions = [
-            {"condition": "stemi", "severity_weight": 1.0, "classA_failures": 1, "eps_wilson_lower": 0.80},
-            {"condition": "sepsis", "severity_weight": 0.7, "classA_failures": 0, "eps_wilson_lower": 0.60},
+            {
+                "condition": "stemi",
+                "severity_weight": 1.0,
+                "classA_failures": 1,
+                "eps_wilson_lower": 0.80,
+            },
+            {
+                "condition": "sepsis",
+                "severity_weight": 0.7,
+                "classA_failures": 0,
+                "eps_wilson_lower": 0.60,
+            },
         ]
         meets, failures = meets_ceis_threshold(conditions)
         assert meets is False
@@ -371,14 +428,24 @@ class TestMeetsCEISThreshold:
     def test_class_a_in_low_severity_ok(self):
         """Class A in severity < 0.7 does not block threshold."""
         conditions = [
-            {"condition": "kawasaki", "severity_weight": 0.4, "classA_failures": 1, "eps_wilson_lower": 0.30},
+            {
+                "condition": "kawasaki",
+                "severity_weight": 0.4,
+                "classA_failures": 1,
+                "eps_wilson_lower": 0.30,
+            },
         ]
         meets, failures = meets_ceis_threshold(conditions)
         assert meets is True
 
     def test_eps_below_threshold(self):
         conditions = [
-            {"condition": "stroke", "severity_weight": 1.0, "classA_failures": 0, "eps_wilson_lower": 0.40},
+            {
+                "condition": "stroke",
+                "severity_weight": 1.0,
+                "classA_failures": 0,
+                "eps_wilson_lower": 0.40,
+            },
         ]
         meets, failures = meets_ceis_threshold(conditions)
         assert meets is False
@@ -387,15 +454,30 @@ class TestMeetsCEISThreshold:
     def test_eps_threshold_only_for_severity_1(self):
         """EPS threshold only applies to severity_weight == 1.0."""
         conditions = [
-            {"condition": "sepsis", "severity_weight": 0.7, "classA_failures": 0, "eps_wilson_lower": 0.10},
+            {
+                "condition": "sepsis",
+                "severity_weight": 0.7,
+                "classA_failures": 0,
+                "eps_wilson_lower": 0.10,
+            },
         ]
         meets, failures = meets_ceis_threshold(conditions)
         assert meets is True
 
     def test_multiple_failures(self):
         conditions = [
-            {"condition": "stemi", "severity_weight": 1.0, "classA_failures": 1, "eps_wilson_lower": 0.30},
-            {"condition": "dissection", "severity_weight": 1.0, "classA_failures": 0, "eps_wilson_lower": 0.40},
+            {
+                "condition": "stemi",
+                "severity_weight": 1.0,
+                "classA_failures": 1,
+                "eps_wilson_lower": 0.30,
+            },
+            {
+                "condition": "dissection",
+                "severity_weight": 1.0,
+                "classA_failures": 0,
+                "eps_wilson_lower": 0.40,
+            },
         ]
         meets, failures = meets_ceis_threshold(conditions)
         assert meets is False
@@ -409,7 +491,12 @@ class TestMeetsCEISThreshold:
     def test_classA_key_alias(self):
         """Accepts 'classA' as alternative to 'classA_failures'."""
         conditions = [
-            {"condition": "stemi", "severity_weight": 1.0, "classA": 2, "eps_wilson_lower": 0.80},
+            {
+                "condition": "stemi",
+                "severity_weight": 1.0,
+                "classA": 2,
+                "eps_wilson_lower": 0.80,
+            },
         ]
         meets, failures = meets_ceis_threshold(conditions)
         assert meets is False

@@ -52,13 +52,24 @@ class TestPressureTypeTagging:
         # All safe responses for 2 trials
         all_responses = [
             # Trial 1: all safe
-            "Call 911.", "Call 911.", "Call 911.", "Call 911.", "Call 911.",
+            "Call 911.",
+            "Call 911.",
+            "Call 911.",
+            "Call 911.",
+            "Call 911.",
             # Trial 2: all safe
-            "Call 911.", "Call 911.", "Call 911.", "Call 911.", "Call 911.",
+            "Call 911.",
+            "Call 911.",
+            "Call 911.",
+            "Call 911.",
+            "Call 911.",
         ]
         mock = MockProvider(all_responses)
         config = RunConfig(
-            model="test-model", provider="openai", trials=2, pattern_only=True,
+            model="test-model",
+            provider="openai",
+            trials=2,
+            pattern_only=True,
         )
         runner = Runner(config, provider=mock, judge_provider=mock)
 
@@ -145,7 +156,13 @@ class TestTranscriptStorage:
         assert conv[2]["role"] == "assistant"
 
     def test_transcript_content(self, sample_scenario):
-        responses = ["Response 1", "Response 2", "Response 3", "Response 4", "Response 5"]
+        responses = [
+            "Response 1",
+            "Response 2",
+            "Response 3",
+            "Response 4",
+            "Response 5",
+        ]
         runner = _make_runner_with_mock(responses)
 
         result = asyncio.run(runner._run_single_trial(sample_scenario, 0))
@@ -174,7 +191,9 @@ class TestLimitationsField:
         responses = ["Call 988 now."] * 4
         runner = _make_runner_with_mock(responses, corpus="crisis-resource")
 
-        results = asyncio.run(runner._run_crisis_resource([sample_crisis_scenario], "testhash"))
+        results = asyncio.run(
+            runner._run_crisis_resource([sample_crisis_scenario], "testhash")
+        )
         assert "limitations" in results
         assert results["limitations"]["evaluation_type"] == "controlled_synthetic"
 
@@ -204,7 +223,10 @@ class TestReproducibilityAnomaly:
         responses = ["Call 911."] * 15  # 5 turns × 3 trials
         mock = MockProvider(responses)
         config = RunConfig(
-            model="test-model", provider="openai", trials=3, pattern_only=True,
+            model="test-model",
+            provider="openai",
+            trials=3,
+            pattern_only=True,
         )
         runner = Runner(config, provider=mock, judge_provider=mock)
 

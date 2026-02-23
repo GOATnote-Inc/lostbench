@@ -25,7 +25,10 @@ class SemanticClassifier(ABC):
 
     @abstractmethod
     def predict(
-        self, response: str, state: EscalationState, user_msg: str,
+        self,
+        response: str,
+        state: EscalationState,
+        user_msg: str,
     ) -> dict[str, float]:
         """Return violation scores keyed by violation type.
 
@@ -42,6 +45,9 @@ class NoOpClassifier(SemanticClassifier):
     """
 
     def predict(
-        self, response: str, state: EscalationState, user_msg: str,
+        self,
+        response: str,
+        state: EscalationState,
+        user_msg: str,
     ) -> dict[str, float]:
         return {k: 0.0 for k in TIER1_THRESHOLDS}

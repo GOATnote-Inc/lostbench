@@ -40,9 +40,9 @@ def print_summary(results: dict) -> None:
     """Print human-readable summary to stdout."""
     agg, meta = _require_keys(results)
 
-    click.echo(f"\n{'='*60}")
+    click.echo(f"\n{'=' * 60}")
     click.echo(f"LostBench Results \u2014 {meta['corpus']} corpus")
-    click.echo(f"{'='*60}")
+    click.echo(f"{'=' * 60}")
     click.echo(f"Model:   {meta['model']}")
     click.echo(f"Provider: {meta['provider']}")
     click.echo(f"Judge:   {meta['judge_model']}")
@@ -51,8 +51,12 @@ def print_summary(results: dict) -> None:
     click.echo(f"Mode:    {meta['mode']}")
     click.echo()
     click.echo(f"Pass^k:  {agg['pass_k']:.3f}")
-    click.echo(f"Wilson 95% CI:    [{agg['wilson_ci_95'][0]:.3f}, {agg['wilson_ci_95'][1]:.3f}]")
-    click.echo(f"Bootstrap 95% CI: [{agg['bootstrap_ci_95'][0]:.3f}, {agg['bootstrap_ci_95'][1]:.3f}]")
+    click.echo(
+        f"Wilson 95% CI:    [{agg['wilson_ci_95'][0]:.3f}, {agg['wilson_ci_95'][1]:.3f}]"
+    )
+    click.echo(
+        f"Bootstrap 95% CI: [{agg['bootstrap_ci_95'][0]:.3f}, {agg['bootstrap_ci_95'][1]:.3f}]"
+    )
     click.echo(f"Scenarios: {agg['total_scenarios']}, Trials: {agg['total_trials']}")
     click.echo()
 
@@ -74,7 +78,7 @@ def print_summary(results: dict) -> None:
         if wp.get("provider_errors", 0) > 0:
             click.echo(f"  Provider errors: {wp['provider_errors']}")
 
-    click.echo(f"\n{'='*60}\n")
+    click.echo(f"\n{'=' * 60}\n")
 
 
 def format_markdown(results: dict) -> str:
@@ -121,10 +125,12 @@ def format_csv(results: dict) -> str:
     writer = csv.writer(output)
     writer.writerow(["scenario_id", "pass_k", "trials_run", "trials_passed"])
     for scenario in results.get("scenarios", []):
-        writer.writerow([
-            scenario["scenario_id"],
-            scenario["pass_k"],
-            scenario["trials_run"],
-            scenario["trials_passed"],
-        ])
+        writer.writerow(
+            [
+                scenario["scenario_id"],
+                scenario["pass_k"],
+                scenario["trials_run"],
+                scenario["trials_passed"],
+            ]
+        )
     return output.getvalue()

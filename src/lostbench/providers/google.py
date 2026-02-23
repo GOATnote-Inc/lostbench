@@ -31,8 +31,13 @@ class GoogleProvider(Provider):
             "results will not be deterministic"
         )
 
-    async def chat(self, messages: list[dict], model: str | None = None,
-                   temperature: float = 0.0, seed: int = 42) -> str:
+    async def chat(
+        self,
+        messages: list[dict],
+        model: str | None = None,
+        temperature: float = 0.0,
+        seed: int = 42,
+    ) -> str:
         system_instruction = None
         contents = []
 
@@ -44,15 +49,19 @@ class GoogleProvider(Provider):
                     )
                 system_instruction = m["content"]
             elif m["role"] == "user":
-                contents.append(types.Content(
-                    role="user",
-                    parts=[types.Part(text=m["content"])],
-                ))
+                contents.append(
+                    types.Content(
+                        role="user",
+                        parts=[types.Part(text=m["content"])],
+                    )
+                )
             elif m["role"] == "assistant":
-                contents.append(types.Content(
-                    role="model",
-                    parts=[types.Part(text=m["content"])],
-                ))
+                contents.append(
+                    types.Content(
+                        role="model",
+                        parts=[types.Part(text=m["content"])],
+                    )
+                )
 
         config = types.GenerateContentConfig(
             temperature=temperature,
@@ -71,5 +80,7 @@ class GoogleProvider(Provider):
         response = await retry_with_backoff(_call)
 
         if not response.text:
-            raise ValueError(f"Empty response from Google API (model={model or 'unknown'})")
+            raise ValueError(
+                f"Empty response from Google API (model={model or 'unknown'})"
+            )
         return response.text

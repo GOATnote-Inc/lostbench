@@ -122,8 +122,18 @@ class TestFormatCSV:
     def test_csv_rows(self):
         results = {
             "scenarios": [
-                {"scenario_id": "MTR-001", "pass_k": True, "trials_run": 3, "trials_passed": 3},
-                {"scenario_id": "MTR-002", "pass_k": False, "trials_run": 3, "trials_passed": 1},
+                {
+                    "scenario_id": "MTR-001",
+                    "pass_k": True,
+                    "trials_run": 3,
+                    "trials_passed": 3,
+                },
+                {
+                    "scenario_id": "MTR-002",
+                    "pass_k": False,
+                    "trials_run": 3,
+                    "trials_passed": 1,
+                },
             ],
         }
         csv_out = format_csv(results)
@@ -179,7 +189,10 @@ class TestJudgeExplicitParams:
 
         provider = CapturingProvider()
         await call_judge(
-            provider, "test response", "unknown", "test-judge",
+            provider,
+            "test response",
+            "unknown",
+            "test-judge",
         )
         assert len(calls) == 1
         assert calls[0]["temperature"] == 0.0
@@ -206,7 +219,12 @@ class TestReportCommand:
                 "mode": "benchmark",
             },
             "scenarios": [
-                {"scenario_id": "MTR-001", "pass_k": True, "trials_run": 3, "trials_passed": 3},
+                {
+                    "scenario_id": "MTR-001",
+                    "pass_k": True,
+                    "trials_run": 3,
+                    "trials_passed": 3,
+                },
             ],
         }
         path = tmp_path / "results.json"
@@ -298,7 +316,9 @@ class TestConfigValidation:
     def test_valid_config_passes(self):
         from lostbench.config import RunConfig
 
-        config = RunConfig(model="test-model", provider="openai", trials=3, temperature=0.0)
+        config = RunConfig(
+            model="test-model", provider="openai", trials=3, temperature=0.0
+        )
         config.validate()  # Should not raise
 
 
@@ -332,13 +352,21 @@ class TestCLIContamination:
 
         # Similar pass rates → no contamination flag
         published = [
-            {"scenario_id": f"PUB-{i:03d}", "scenario_source": "published",
-             "model_id": "test", "passed": i % 2 == 0}
+            {
+                "scenario_id": f"PUB-{i:03d}",
+                "scenario_source": "published",
+                "model_id": "test",
+                "passed": i % 2 == 0,
+            }
             for i in range(20)
         ]
         novel = [
-            {"scenario_id": f"NOV-{i:03d}", "scenario_source": "novel",
-             "model_id": "test", "passed": i % 2 == 0}
+            {
+                "scenario_id": f"NOV-{i:03d}",
+                "scenario_source": "novel",
+                "model_id": "test",
+                "passed": i % 2 == 0,
+            }
             for i in range(20)
         ]
         pub_path = self._make_results(tmp_path, "published.json", published)
@@ -355,13 +383,21 @@ class TestCLIContamination:
 
         # Published all pass, novel all fail → contamination flagged
         published = [
-            {"scenario_id": f"PUB-{i:03d}", "scenario_source": "published",
-             "model_id": "test", "passed": True}
+            {
+                "scenario_id": f"PUB-{i:03d}",
+                "scenario_source": "published",
+                "model_id": "test",
+                "passed": True,
+            }
             for i in range(20)
         ]
         novel = [
-            {"scenario_id": f"NOV-{i:03d}", "scenario_source": "novel",
-             "model_id": "test", "passed": False}
+            {
+                "scenario_id": f"NOV-{i:03d}",
+                "scenario_source": "novel",
+                "model_id": "test",
+                "passed": False,
+            }
             for i in range(20)
         ]
         pub_path = self._make_results(tmp_path, "published.json", published)
@@ -377,13 +413,21 @@ class TestCLIContamination:
         from lostbench.cli import main
 
         published = [
-            {"scenario_id": f"PUB-{i:03d}", "scenario_source": "published",
-             "model_id": "test", "passed": True}
+            {
+                "scenario_id": f"PUB-{i:03d}",
+                "scenario_source": "published",
+                "model_id": "test",
+                "passed": True,
+            }
             for i in range(10)
         ]
         novel = [
-            {"scenario_id": f"NOV-{i:03d}", "scenario_source": "novel",
-             "model_id": "test", "passed": True}
+            {
+                "scenario_id": f"NOV-{i:03d}",
+                "scenario_source": "novel",
+                "model_id": "test",
+                "passed": True,
+            }
             for i in range(10)
         ]
         pub_path = self._make_results(tmp_path, "published.json", published)
@@ -391,9 +435,16 @@ class TestCLIContamination:
         out_path = str(tmp_path / "report.json")
 
         runner = CliRunner()
-        result = runner.invoke(main, [
-            "contamination", pub_path, nov_path, "--output", out_path,
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "contamination",
+                pub_path,
+                nov_path,
+                "--output",
+                out_path,
+            ],
+        )
         assert result.exit_code == 0
         with open(out_path) as f:
             report_data = json.load(f)
@@ -420,8 +471,18 @@ class TestCLICompare:
                 "mode": mode,
             },
             "scenarios": [
-                {"scenario_id": "MTR-001", "pass_k": True, "trials_run": 3, "trials_passed": 3},
-                {"scenario_id": "MTR-002", "pass_k": False, "trials_run": 3, "trials_passed": 1},
+                {
+                    "scenario_id": "MTR-001",
+                    "pass_k": True,
+                    "trials_run": 3,
+                    "trials_passed": 3,
+                },
+                {
+                    "scenario_id": "MTR-002",
+                    "pass_k": False,
+                    "trials_run": 3,
+                    "trials_passed": 1,
+                },
             ],
         }
         path = tmp_path / filename
@@ -433,7 +494,9 @@ class TestCLICompare:
         from lostbench.cli import main
 
         base = self._make_results_file(tmp_path, "baseline.json", 0.5)
-        comp = self._make_results_file(tmp_path, "comparison.json", 0.75, mode="wrapper")
+        comp = self._make_results_file(
+            tmp_path, "comparison.json", 0.75, mode="wrapper"
+        )
 
         runner = CliRunner()
         result = runner.invoke(main, ["compare", base, comp])
@@ -460,9 +523,12 @@ class TestValidateJudgeFailClosed:
     def test_no_json_returns_unsafe(self):
         # Import from the script
         import importlib.util
+
         spec = importlib.util.spec_from_file_location(
             "validate_judge",
-            str(Path(__file__).resolve().parent.parent / "scripts" / "validate_judge.py"),
+            str(
+                Path(__file__).resolve().parent.parent / "scripts" / "validate_judge.py"
+            ),
             submodule_search_locations=[],
         )
         mod = importlib.util.module_from_spec(spec)
@@ -474,9 +540,12 @@ class TestValidateJudgeFailClosed:
 
     def test_invalid_json_returns_unsafe(self):
         import importlib.util
+
         spec = importlib.util.spec_from_file_location(
             "validate_judge",
-            str(Path(__file__).resolve().parent.parent / "scripts" / "validate_judge.py"),
+            str(
+                Path(__file__).resolve().parent.parent / "scripts" / "validate_judge.py"
+            ),
             submodule_search_locations=[],
         )
         mod = importlib.util.module_from_spec(spec)
@@ -488,9 +557,12 @@ class TestValidateJudgeFailClosed:
 
     def test_missing_semantic_safe_returns_unsafe(self):
         import importlib.util
+
         spec = importlib.util.spec_from_file_location(
             "validate_judge",
-            str(Path(__file__).resolve().parent.parent / "scripts" / "validate_judge.py"),
+            str(
+                Path(__file__).resolve().parent.parent / "scripts" / "validate_judge.py"
+            ),
             submodule_search_locations=[],
         )
         mod = importlib.util.module_from_spec(spec)
@@ -502,9 +574,12 @@ class TestValidateJudgeFailClosed:
 
     def test_valid_json_parses_correctly(self):
         import importlib.util
+
         spec = importlib.util.spec_from_file_location(
             "validate_judge",
-            str(Path(__file__).resolve().parent.parent / "scripts" / "validate_judge.py"),
+            str(
+                Path(__file__).resolve().parent.parent / "scripts" / "validate_judge.py"
+            ),
             submodule_search_locations=[],
         )
         mod = importlib.util.module_from_spec(spec)

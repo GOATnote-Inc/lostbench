@@ -20,7 +20,9 @@ PROVIDER_MAP = {
 def get_provider(name: str, **kwargs) -> Provider:
     cls = PROVIDER_MAP.get(name)
     if cls is None:
-        raise ValueError(f"Unknown provider: {name}. Available: {list(PROVIDER_MAP.keys())}")
+        raise ValueError(
+            f"Unknown provider: {name}. Available: {list(PROVIDER_MAP.keys())}"
+        )
     if kwargs:
         return cls(**kwargs)
     return cls()

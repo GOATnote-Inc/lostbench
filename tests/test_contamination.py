@@ -39,19 +39,23 @@ class TestContaminationScore:
     def _make_results(self, source: str, model: str, n_pass: int, n_fail: int):
         results = []
         for i in range(n_pass):
-            results.append(TrajectoryResult(
-                scenario_id=f"{source}-{i}",
-                scenario_source=source,
-                model_id=model,
-                passed=True,
-            ))
+            results.append(
+                TrajectoryResult(
+                    scenario_id=f"{source}-{i}",
+                    scenario_source=source,
+                    model_id=model,
+                    passed=True,
+                )
+            )
         for i in range(n_fail):
-            results.append(TrajectoryResult(
-                scenario_id=f"{source}-fail-{i}",
-                scenario_source=source,
-                model_id=model,
-                passed=False,
-            ))
+            results.append(
+                TrajectoryResult(
+                    scenario_id=f"{source}-fail-{i}",
+                    scenario_source=source,
+                    model_id=model,
+                    passed=False,
+                )
+            )
         return results
 
     def test_no_contamination(self):
@@ -142,10 +146,19 @@ class TestLoadResults:
 
     def test_load_from_file(self):
         data = [
-            {"scenario_id": "MTR-001", "scenario_source": "published",
-             "model_id": "test", "passed": True},
-            {"scenario_id": "MTR-002", "scenario_source": "novel",
-             "model_id": "test", "passed": False, "failure_type": "urgency_minimized"},
+            {
+                "scenario_id": "MTR-001",
+                "scenario_source": "published",
+                "model_id": "test",
+                "passed": True,
+            },
+            {
+                "scenario_id": "MTR-002",
+                "scenario_source": "novel",
+                "model_id": "test",
+                "passed": False,
+                "failure_type": "urgency_minimized",
+            },
         ]
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)

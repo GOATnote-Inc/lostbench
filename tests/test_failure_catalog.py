@@ -42,8 +42,14 @@ def corpus_with_classA():
             classD=0,
             passed=False,
             failure_turns=[
-                {"turn_index": 3, "escalation_level": 0, "required_level": 3,
-                 "failure_class": "A", "detection_layer": 2, "trial": 2},
+                {
+                    "turn_index": 3,
+                    "escalation_level": 0,
+                    "required_level": 3,
+                    "failure_class": "A",
+                    "detection_layer": 2,
+                    "trial": 2,
+                },
             ],
         ),
         ScenarioGrade(
@@ -82,10 +88,20 @@ def corpus_with_classA():
             classD=0,
             passed=False,
             failure_turns=[
-                {"turn_index": 0, "escalation_level": 1, "required_level": 3,
-                 "failure_class": "A", "detection_layer": 0},
-                {"turn_index": 2, "escalation_level": 0, "required_level": 3,
-                 "failure_class": "A", "detection_layer": 0},
+                {
+                    "turn_index": 0,
+                    "escalation_level": 1,
+                    "required_level": 3,
+                    "failure_class": "A",
+                    "detection_layer": 0,
+                },
+                {
+                    "turn_index": 2,
+                    "escalation_level": 0,
+                    "required_level": 3,
+                    "failure_class": "A",
+                    "detection_layer": 0,
+                },
             ],
         ),
     ]
@@ -106,8 +122,9 @@ def corpus_with_classA():
 
 
 class TestFailureCatalogGeneration:
-
-    def test_generates_entries_for_high_severity_classA(self, sample_config, corpus_with_classA):
+    def test_generates_entries_for_high_severity_classA(
+        self, sample_config, corpus_with_classA
+    ):
         entries = generate_failure_catalog_entries(
             sample_config, corpus_with_classA, run_id="TEST-001"
         )
@@ -126,17 +143,29 @@ class TestFailureCatalogGeneration:
         entry = entries[0]
         # Required fields per schema
         required = [
-            "id", "title", "discovered", "status", "severity_esi",
-            "category", "affected_models", "description", "trigger",
-            "evidence", "clinical_impact",
+            "id",
+            "title",
+            "discovered",
+            "status",
+            "severity_esi",
+            "category",
+            "affected_models",
+            "description",
+            "trigger",
+            "evidence",
+            "clinical_impact",
         ]
         for field in required:
             assert field in entry, f"Missing required field: {field}"
 
         # Optional fields
         optional = [
-            "mitigation", "mitigation_status", "ceis_class",
-            "reproducibility", "discovery_method", "conditions",
+            "mitigation",
+            "mitigation_status",
+            "ceis_class",
+            "reproducibility",
+            "discovery_method",
+            "conditions",
         ]
         for field in optional:
             assert field in entry, f"Missing optional field: {field}"
@@ -155,15 +184,26 @@ class TestFailureCatalogGeneration:
                 n_required_turns=5,
                 n_maintained_turns=5,
                 drift_count=0,
-                classA=0, classB=0, classC=0, classD=0,
+                classA=0,
+                classB=0,
+                classC=0,
+                classD=0,
                 passed=True,
             ),
         ]
         corpus = CorpusGrade(
-            ers=90, ers_bootstrap_ci=(85.0, 95.0), pass_k=1.0,
-            harm_weighted_pass=1.0, total_classA=0, total_classB=0,
-            total_classC=0, total_classD=0, total_drift=0,
-            meets_threshold=True, threshold_failures=[], conditions=conditions,
+            ers=90,
+            ers_bootstrap_ci=(85.0, 95.0),
+            pass_k=1.0,
+            harm_weighted_pass=1.0,
+            total_classA=0,
+            total_classB=0,
+            total_classC=0,
+            total_classD=0,
+            total_drift=0,
+            meets_threshold=True,
+            threshold_failures=[],
+            conditions=conditions,
         )
         entries = generate_failure_catalog_entries(sample_config, corpus)
         assert entries == []
