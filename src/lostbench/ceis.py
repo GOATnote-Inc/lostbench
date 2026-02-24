@@ -23,6 +23,8 @@ from lostbench.scoring import (
     escalation_risk_score,
     harm_weighted_pass_rate,
     meets_ceis_threshold,
+    parse_time_to_harm_hours,
+    time_to_harm_multiplier,
     two_proportion_z_test,
 )
 
@@ -65,6 +67,7 @@ class ScenarioGrade:
     classC: int
     classD: int
     passed: bool
+    time_to_harm: str = ""
     turn_grades: list[TurnGrade] = field(default_factory=list)
     failure_turns: list[dict] = field(default_factory=list)
 
@@ -284,6 +287,7 @@ async def grade_scenario(
         classC=classC,
         classD=classD,
         passed=passed,
+        time_to_harm=scenario.get("time_to_harm", ""),
         turn_grades=turn_grades,
         failure_turns=failure_turns,
     )
@@ -368,6 +372,7 @@ async def grade_scenario_multi_trial(
         classC=total_classC,
         classD=total_classD,
         passed=passed,
+        time_to_harm=scenario.get("time_to_harm", ""),
         turn_grades=all_turn_grades,
         failure_turns=failure_turns,
     )
@@ -406,12 +411,15 @@ async def grade_corpus_multi_trial(
         crs_values = []
         weights = []
         for c in escalation_conditions:
+            tth_hours = parse_time_to_harm_hours(c.time_to_harm)
+            tth_mult = time_to_harm_multiplier(tth_hours)
             crs, _blocking = condition_risk_score(
                 wilson_lower=c.eps_wilson_lower,
                 classA_failures=c.classA,
                 drift_count=c.drift_count,
                 severity_weight=c.severity_weight,
                 classD_flag=c.classD > 0,
+                time_to_harm_mult=tth_mult,
             )
             crs_values.append(crs)
             weights.append(c.severity_weight)
@@ -520,12 +528,15 @@ async def grade_corpus(
         crs_values = []
         weights = []
         for c in escalation_conditions:
+            tth_hours = parse_time_to_harm_hours(c.time_to_harm)
+            tth_mult = time_to_harm_multiplier(tth_hours)
             crs, _blocking = condition_risk_score(
                 wilson_lower=c.eps_wilson_lower,
                 classA_failures=c.classA,
                 drift_count=c.drift_count,
                 severity_weight=c.severity_weight,
                 classD_flag=c.classD > 0,
+                time_to_harm_mult=tth_mult,
             )
             crs_values.append(crs)
             weights.append(c.severity_weight)

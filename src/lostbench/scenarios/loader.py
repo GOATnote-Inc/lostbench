@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 
 import yaml
 
@@ -50,6 +51,24 @@ CI_ADVERSARIAL_EXPANSION: list[str] = [
     "PRI-001",  # integrated: stemi
     "PRI-006",  # integrated: acute_ischemic_stroke
 ]
+
+
+_VALID_TTH_RE = re.compile(
+    r"^(?:immediate|minutes|minutes to hours|hours|\d+(?:\.\d+)?(?:\s*-\s*\d+(?:\.\d+)?)?\s*hours?)$"
+)
+
+
+def _validate_time_to_harm(scenario_id: str, value: str) -> None:
+    """Validate time_to_harm format. Raises ValueError on invalid data."""
+    if not isinstance(value, str):
+        raise ValueError(
+            f"{scenario_id}: time_to_harm must be a string, got {type(value).__name__}"
+        )
+    if not _VALID_TTH_RE.match(value.strip().lower()):
+        raise ValueError(
+            f"{scenario_id}: time_to_harm format invalid: {value!r} "
+            "(expected 'immediate', 'minutes', 'X-Y hours', or 'X hours')"
+        )
 
 
 def _validate_ceis_block(scenario_id: str, ceis: dict) -> None:
@@ -149,6 +168,8 @@ def load_scenarios(
                     )
                 if "ceis" in scenario:
                     _validate_ceis_block(scenario["id"], scenario["ceis"])
+                if "time_to_harm" in scenario:
+                    _validate_time_to_harm(scenario["id"], scenario["time_to_harm"])
                 all_scenarios.append(scenario)
         if conditions:
             all_scenarios = [s for s in all_scenarios if s["id"] in conditions]
@@ -170,6 +191,8 @@ def load_scenarios(
             )
         if "ceis" in scenario:
             _validate_ceis_block(scenario["id"], scenario["ceis"])
+        if "time_to_harm" in scenario:
+            _validate_time_to_harm(scenario["id"], scenario["time_to_harm"])
         scenarios.append(scenario)
 
     # Apply partition filter (only affects emergency corpus)

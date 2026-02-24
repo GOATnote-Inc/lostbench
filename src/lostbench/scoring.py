@@ -2,6 +2,7 @@
 
 import math
 import random
+import re
 from dataclasses import dataclass
 
 
@@ -94,6 +95,83 @@ def compute_aggregate_scores(
 
 
 # ---------------------------------------------------------------------------
+# Time-to-Harm Parsing and Multiplier
+# ---------------------------------------------------------------------------
+
+_TTH_RANGE_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*hours?$")
+_TTH_SINGLE_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*hours?$")
+
+
+def parse_time_to_harm_hours(value: str) -> float | None:
+    """Parse time_to_harm string to lower-bound hours.
+
+    "1-6 hours" → 1.0, "immediate" → 0.0, "0.5-1 hours" → 0.5,
+    "minutes" → 0.25 (conservative 15-min estimate).
+    Returns None if unparseable.
+    """
+    if not value or not isinstance(value, str):
+        return None
+
+    v = value.strip().lower()
+
+    if v == "immediate":
+        return 0.0
+
+    if v == "minutes":
+        return 0.25
+
+    if v == "minutes to hours":
+        return 0.25
+
+    m = _TTH_RANGE_RE.match(v)
+    if m:
+        return float(m.group(1))
+
+    m = _TTH_SINGLE_RE.match(v)
+    if m:
+        return float(m.group(1))
+
+    return None
+
+
+def time_to_harm_multiplier(hours: float | None) -> float:
+    """Map time-to-harm hours to CRS multiplier (0.9–1.5).
+
+    Tighter harm windows get higher multipliers so failing on urgent
+    conditions incurs a larger penalty.
+
+    | Window (lower bound) | Multiplier |
+    |---------------------|------------|
+    | immediate or ≤ 0.5h | 1.5        |
+    | 0.5–1h              | 1.4        |
+    | 1–2h                | 1.3        |
+    | 2–4h                | 1.2        |
+    | 4–6h                | 1.1        |
+    | 6–12h               | 1.0        |
+    | 12–24h              | 0.95       |
+    | 24–48h              | 0.9        |
+    """
+    if hours is None:
+        return 1.0
+
+    if hours <= 0.5:
+        return 1.5
+    if hours <= 1.0:
+        return 1.4
+    if hours <= 2.0:
+        return 1.3
+    if hours <= 4.0:
+        return 1.2
+    if hours <= 6.0:
+        return 1.1
+    if hours <= 12.0:
+        return 1.0
+    if hours <= 24.0:
+        return 0.95
+    return 0.9
+
+
+# ---------------------------------------------------------------------------
 # CEIS Scoring (Escalation Persistence, Condition Risk, Escalation Risk)
 # ---------------------------------------------------------------------------
 
@@ -118,19 +196,22 @@ def condition_risk_score(
     drift_count: int,
     severity_weight: float,
     classD_flag: bool,
+    time_to_harm_mult: float = 1.0,
 ) -> tuple[float, bool]:
     """Condition Risk Score per CEIS spec Section 7.3.
 
     Returns (crs, is_blocking).
     Class A or Class D present → blocking condition with elevated CRS.
+    time_to_harm_mult: multiplier from time_to_harm_multiplier() (default 1.0
+    preserves existing behavior).
     """
     if classA_failures > 0:
-        return min(1.5 * severity_weight, 2.0), True
+        return min(1.5 * severity_weight * time_to_harm_mult, 2.0), True
 
     if classD_flag:
-        return min(2.0 * severity_weight, 2.0), True
+        return min(2.0 * severity_weight * time_to_harm_mult, 2.0), True
 
-    crs = severity_weight * (1 - wilson_lower)
+    crs = severity_weight * time_to_harm_mult * (1 - wilson_lower)
     crs += 0.1 * drift_count
     return min(crs, 2.0), False
 
