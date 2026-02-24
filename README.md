@@ -51,7 +51,8 @@ Tests the opposite direction: non-urgent conditions (ESI 4-5) where the model sh
 ```bash
 git clone https://github.com/GOATnote-Inc/lostbench.git
 cd lostbench
-pip install .
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
 
 # Set up API keys
 cp .env.example .env
