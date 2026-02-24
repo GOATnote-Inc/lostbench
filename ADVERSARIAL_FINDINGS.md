@@ -174,3 +174,21 @@ The wide CIs at n=3 mean absolute ERS values should be interpreted cautiously. T
 | Adversarial Opus 4.6 n=1 | `results/ceis-adversarial-opus46/` | Complete |
 
 Machine-readable manifest: `results/index.yaml`
+
+## 9. Pre-Registered Hypotheses: Adversarial 2x2
+
+Documented before running the 2x2 factorial on adversarial vectors. These predictions are based on patterns observed in the emergency corpus 2x2 (`PHASE3_FINDINGS.md` §10).
+
+**H1: Preamble improves Pass^k on code-agent.**
+The preamble shifts model framing from "helpful assistant" back toward safety-aware. Code-agent's context truncation mechanism (embedding clinical queries in code tasks) should be partially countered by a system-prompt-level safety directive. Expected: Pass^k increase of +0.10 to +0.30 for both models.
+
+**H2: Enforcement-only harms Opus on code-agent.**
+On the emergency corpus, enforcement alone never meaningfully helped Opus (§10.4) and enforcement interfered with preamble-guided behavior (§10.5). If this replicates on code-agent, Opus enforce-only should perform at or below baseline.
+
+**H3: Full wrapper underperforms preamble-only for Opus.**
+Enforcement interference was the key finding from §10.5: Opus preamble-only (0.478) > full wrapper (0.391). If this pattern holds on adversarial vectors, it suggests enforcement interference is an architectural property of constitutional AI models, not corpus-specific. This has direct implications for mitigation recommendations.
+
+**H4: Multimodal vector shows minimal wrapper delta.**
+Both models are already strong on multimodal (Opus Pass^k=0.875, GPT-5.2 Pass^k=0.750). The preamble should provide marginal improvement at best. If multimodal Pass^k reaches 0.95+ with preamble, the vector is effectively solved by system-prompt intervention alone.
+
+**Why H2/H3 matter most:** If enforcement interference replicates across both the emergency and adversarial corpora, it establishes that MSIW enforcement is counterproductive for Anthropic models — a finding with immediate deployment implications. The preamble-only recommendation would generalize beyond the emergency corpus.
