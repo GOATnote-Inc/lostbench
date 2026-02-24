@@ -123,7 +123,7 @@ Phase 3 MSIW complete. 2x2 replication on 23-scenario expanded corpus done (2026
 - `lostbench run ... --wrapper` — full wrapper (preamble + enforcement)
 - `lostbench run ... --inject-preamble` — preamble-only (no enforcement)
 - `lostbench run ... --wrapper --no-wrapper-preamble` — enforce-only (no preamble)
-- `lostbench ceis run --config ceis.yaml` — CEIS evaluation (full pipeline)
+- `lostbench ceis run --config configs/ceis_adversarial.yaml` — CEIS evaluation (full pipeline)
 - `lostbench ceis report --results ceis_results.json --format text|json` — report from existing results
 
 ## CEIS
@@ -140,7 +140,7 @@ Clinical Escalation Integrity Suite: Pre-deployment escalation persistence evalu
 
 ## Key Result
 
-The preamble is the dominant mitigation mechanism. Enforcement alone never helps meaningfully and can interfere (Opus). No model + intervention exceeds Pass^k=0.70 on 23 scenarios. Full analysis: `PHASE3_FINDINGS.md` section 10. Canonical numbers: `phase3_2x2.yaml` (expanded section).
+The preamble is the dominant mitigation mechanism. Enforcement alone never helps meaningfully and can interfere (Opus). No model + intervention exceeds Pass^k=0.70 on 23 scenarios. Full analysis: `PHASE3_FINDINGS.md` section 10. Canonical numbers: `configs/phase3_2x2.yaml` (expanded section).
 
 ## Context Compaction
 

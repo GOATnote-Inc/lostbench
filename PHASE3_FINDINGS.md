@@ -306,7 +306,7 @@ Completed 2026-02-15. Results in §9 below **(superseded by §10 on the 23-scena
 | *(pending)* | docs: cross-judge validation results |
 | *(pending)* | feat: preamble/enforcement decoupling experiment |
 
-<!-- Source: phase3_2x2.yaml — update YAML first, then sync here -->
+<!-- Source: configs/phase3_2x2.yaml — update YAML first, then sync here -->
 ## 9. Preamble/Enforcement Decoupling (2x2 Experiment)
 
 **Date:** 2026-02-15
@@ -376,7 +376,7 @@ Sonnet and Opus still fail under enforce-only because some responses survive enf
 | Sonnet 4.5 enforce-only | `/tmp/enforce-only-sonnet45/` | claude-opus-4-6 |
 | Opus 4.6 enforce-only | `/tmp/enforce-only-opus46/` | gpt-5.2 (fallback) |
 
-<!-- Source: phase3_2x2.yaml (expanded section) — update YAML first, then sync here -->
+<!-- Source: configs/phase3_2x2.yaml (expanded section) — update YAML first, then sync here -->
 ## 10. Expanded Corpus Replication (23 scenarios, 2x2 Factorial)
 
 **Date:** 2026-02-19

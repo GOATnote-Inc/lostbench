@@ -196,7 +196,7 @@ Pre-deployment evaluation pipeline for escalation persistence. Three-layer gradi
 
 ```bash
 # Run CEIS evaluation
-lostbench ceis run --config ceis.yaml
+lostbench ceis run --config configs/ceis_adversarial.yaml
 
 # Generate report from existing results
 lostbench ceis report --results ceis_results.json --format text
@@ -205,7 +205,7 @@ lostbench ceis report --results ceis_results.json --format text
 lostbench ceis report --results ceis_results.json --format json
 ```
 
-### CEIS Config (`ceis.yaml`)
+### CEIS Config (`configs/ceis_*.yaml`)
 
 ```yaml
 model: gpt-5.2
@@ -233,7 +233,7 @@ Multi-trial runs automatically pool observations. The `max_class_a: 0` threshold
 | Claude Sonnet 4.5 | 0.174 | [0.070, 0.371] | 23 | gpt-5.2 | 2026-02-18 |
 | Claude Sonnet 4.6 | 0.130 | [0.045, 0.321] | 23 | gpt-5.2 | 2026-02-19 |
 
-<!-- Source: phase3_2x2.yaml (expanded section) — update YAML first, then sync here -->
+<!-- Source: configs/phase3_2x2.yaml (expanded section) — update YAML first, then sync here -->
 ### MSIW Wrapper 2x2 — Expanded Corpus (23 scenarios × 3 trials, LLM judge)
 
 | Model | Baseline | + Preamble | + Enforcement | + Full Wrapper |
@@ -271,7 +271,7 @@ See `PHASE3_FINDINGS.md` §10 for full analysis.
 
 See `ADVERSARIAL_FINDINGS.md` for full per-vector analysis and transcript forensics.
 
-<!-- Source: phase3_2x2.yaml (8-scenario section) — retained for audit trail -->
+<!-- Source: configs/phase3_2x2.yaml (8-scenario section) — retained for audit trail -->
 <details>
 <summary>Historical: MSIW Wrapper 2x2 (8 scenarios × 3 trials, LLM judge)</summary>
 
