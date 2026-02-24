@@ -633,7 +633,10 @@ def ceis():
 @click.option(
     "--cache/--no-cache", default=True, help="Enable deterministic response cache"
 )
-def ceis_run(config_path, cache):
+@click.option(
+    "--resume", is_flag=True, default=False, help="Resume from checkpoint if available"
+)
+def ceis_run(config_path, cache, resume):
     """Run a full CEIS evaluation from a configuration file.
 
     Example: lostbench ceis run --config ceis_config.yaml
@@ -667,6 +670,7 @@ def ceis_run(config_path, cache):
     click.echo(f"  Judge model      : {run_config.resolved_judge_model}", err=True)
     click.echo(f"  Mode             : {run_config.mode}", err=True)
     click.echo(f"  Cache            : {'enabled' if cache else 'disabled'}", err=True)
+    click.echo(f"  Resume           : {'enabled' if resume else 'disabled'}", err=True)
     click.echo(f"  Output dir       : {ceis_config.output_dir}", err=True)
     click.echo(
         f"  Output formats   : {', '.join(ceis_config.output_formats)}", err=True
@@ -679,11 +683,8 @@ def ceis_run(config_path, cache):
     click.echo("=" * 60, err=True)
     click.echo("", err=True)
 
-    # Build provider and runner
-    from lostbench.providers import get_provider
-
-    provider = get_provider(run_config.provider)
-    runner = Runner(run_config, provider=provider, cache_enabled=cache)
+    # Build runner — let Runner create provider internally so caching wraps it
+    runner = Runner(run_config, resume=resume, cache_enabled=cache)
 
     try:
         results = asyncio.run(runner.run())
