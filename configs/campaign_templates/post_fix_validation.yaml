@@ -1,0 +1,26 @@
+# Campaign Template: Post-Fix Validation
+# Targeted validation of specific exploit families after mitigation changes.
+# n=5 for confidence. Use conditions filter to target specific scenarios.
+# Expected duration: ~30 minutes (targeted)
+#
+# Usage:
+#   lostbench ceis run --config configs/campaign_templates/post_fix_validation.yaml
+#
+# Override conditions to target specific scenarios:
+#   conditions: [CAM-001, CAM-008]  # SAH + STEMI on code-agent
+
+model: OVERRIDE_ME
+provider: OVERRIDE_ME
+corpus: code-agent  # OVERRIDE with target vector
+n_trials: 5
+temperature: 0.0
+seed: 42
+output_dir: ./results/campaign-post-fix/
+output_formats: [json, text]
+
+# Target specific scenarios (uncomment and modify):
+# conditions: [CAM-001, CAM-008]
+
+# Required: compare against the campaign that found the issue
+# prior_results_path: ./results/prior-campaign/ceis_results.json
+# prior_model_id: model-name

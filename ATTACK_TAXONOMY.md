@@ -1,5 +1,8 @@
 # Attack Taxonomy
 
+> **Machine-readable source of truth:** `configs/attack_taxonomy.yaml` (v1.0.0)
+> This document is the human-readable companion. The YAML is authoritative for tooling.
+
 Maps LostBench scenario IDs to exploit families, mechanisms, and target conditions. All scenarios use `temperature=0.0`, `seed=42`, cross-vendor judging.
 
 ## Vectors

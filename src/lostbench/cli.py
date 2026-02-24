@@ -1025,6 +1025,189 @@ def ceis_review(results_path, vector, failure_class, show_all):
         click.echo("")
 
 
+# ---------------------------------------------------------------------------
+# Coverage, Dashboard, Readout, and Audit subcommands
+# ---------------------------------------------------------------------------
+
+
+@main.command()
+@click.option(
+    "--taxonomy",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to attack_taxonomy.yaml",
+)
+@click.option(
+    "--scenarios",
+    default="src/lostbench/scenarios",
+    type=click.Path(exists=True),
+    help="Path to scenarios directory",
+)
+@click.option(
+    "--results",
+    "results_dir",
+    default=None,
+    type=click.Path(exists=True),
+    help="Path to results directory (for tested coverage)",
+)
+@click.option(
+    "--output",
+    default="coverage.html",
+    type=click.Path(),
+    help="Output HTML file path",
+)
+def coverage(taxonomy, scenarios, results_dir, output):
+    """Generate coverage heatmap from attack taxonomy.
+
+    Example: lostbench coverage --taxonomy configs/attack_taxonomy.yaml --output coverage.html
+    """
+    from lostbench.coverage import compute_coverage, generate_heatmap_html, identify_gaps
+
+    matrix = compute_coverage(taxonomy, scenarios, results_dir)
+    generate_heatmap_html(matrix, output)
+
+    gaps = identify_gaps(matrix)
+    click.echo(f"Coverage heatmap: {output}")
+    click.echo(f"Vectors: {len(matrix.vectors)}")
+    click.echo(f"Conditions: {len(matrix.conditions)}")
+    click.echo(f"Gaps found: {len(gaps)}")
+    for g in gaps[:10]:
+        click.echo(f"  [{g.gap_type}] {g.description}")
+    if len(gaps) > 10:
+        click.echo(f"  ... and {len(gaps) - 10} more")
+
+
+@main.command()
+@click.option(
+    "--results",
+    "results_dir",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to results directory",
+)
+@click.option(
+    "--output",
+    default="dashboard.html",
+    type=click.Path(),
+    help="Output HTML file path",
+)
+def dashboard(results_dir, output):
+    """Generate adversarial program dashboard.
+
+    Example: lostbench dashboard --results results/ --output dashboard.html
+    """
+    from lostbench.dashboard import generate_dashboard
+
+    generate_dashboard(results_dir, output)
+    click.echo(f"Dashboard: {output}")
+
+
+@main.command()
+@click.option(
+    "--results",
+    "results_path",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to CEIS results JSON file",
+)
+@click.option(
+    "--template",
+    default="executive",
+    type=click.Choice(["executive", "partner", "internal"]),
+    help="Readout template",
+)
+@click.option(
+    "--families",
+    "families_path",
+    default=None,
+    type=click.Path(exists=True),
+    help="Path to exploit_families.yaml",
+)
+@click.option(
+    "--output",
+    default=None,
+    type=click.Path(),
+    help="Output file path (default: stdout)",
+)
+def readout(results_path, template, families_path, output):
+    """Generate executive readout from CEIS results.
+
+    Example: lostbench readout --results ceis_results.json --template executive
+    """
+    import yaml
+
+    from lostbench.readout import generate_readout
+
+    with open(results_path) as f:
+        ceis_results = json.load(f)
+
+    registry = None
+    if families_path:
+        with open(families_path) as f:
+            registry = yaml.safe_load(f)
+
+    text = generate_readout(ceis_results, family_registry=registry, template=template)
+
+    if output:
+        Path(output).write_text(text)
+        click.echo(f"Readout: {output}")
+    else:
+        click.echo(text)
+
+
+@main.command()
+@click.option(
+    "--taxonomy",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to attack_taxonomy.yaml",
+)
+@click.option(
+    "--scenarios",
+    default="src/lostbench/scenarios",
+    type=click.Path(exists=True),
+    help="Path to scenarios directory",
+)
+@click.option(
+    "--results",
+    "results_dir",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to results directory",
+)
+@click.option(
+    "--families",
+    "families_path",
+    default=None,
+    type=click.Path(exists=True),
+    help="Path to exploit_families.yaml",
+)
+@click.option(
+    "--risk-debt",
+    "risk_debt_path",
+    default=None,
+    type=click.Path(exists=True),
+    help="Path to risk_debt.yaml",
+)
+def audit(taxonomy, scenarios, results_dir, families_path, risk_debt_path):
+    """Run adversarial program self-audit.
+
+    Checks for blind spots, calibration drift, and overdue risk debt.
+
+    Example: lostbench audit --taxonomy configs/attack_taxonomy.yaml --results results/
+    """
+    from lostbench.audit import run_audit
+
+    report = run_audit(
+        taxonomy_path=taxonomy,
+        scenarios_dir=scenarios,
+        results_dir=results_dir,
+        family_registry_path=families_path,
+        risk_debt_path=risk_debt_path,
+    )
+    click.echo(report.to_text())
+
+
 def _check_api_key(provider: str) -> None:
     """Validate that the required API key exists before starting a run."""
     key_map = {
