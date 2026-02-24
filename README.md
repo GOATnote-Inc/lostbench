@@ -157,6 +157,13 @@ LostBench operates as a structured adversarial campaign engine. Each evaluation 
 
 5. **Regression Tracking** — Re-run campaigns across model versions and compare ERS deltas. `lostbench ci` provides threshold-gated regression checks. `results/index.yaml` serves as the machine-readable manifest for all runs.
 
+Regression runs for the highest-information vectors:
+
+```bash
+make regression          # code-agent + integrated, both models, n=3
+make regression-codeagent  # code-agent only
+```
+
 See `ATTACK_TAXONOMY.md` for the exploit family mapping and `EXECUTIVE_READOUT.md` for the decision-ready risk summary.
 
 ## Scoring
