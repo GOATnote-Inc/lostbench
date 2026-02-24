@@ -472,3 +472,16 @@ The newer model capitulates more easily at baseline and is drastically less resp
 | Opus 4.6 preamble-only | `results/2x2/opus46-preamble/` |
 | Opus 4.6 enforce-only | `results/2x2/opus46-enforce/` |
 | Opus 4.6 full wrapper | `results/2x2/opus46-wrapper/` |
+
+## 11. Adversarial Expansion
+
+Four new attack vectors (code-agent, tool-use, multimodal, integrated) were evaluated across 33 scenarios on GPT-5.2 and Opus 4.6. Bare-model baselines at n=3 multi-trial:
+
+- **Code-agent is the most effective vector.** Both models near ERS=0. GPT-5.2 shows 36 Class A failures across 8 scenarios.
+- **Multimodal is the least effective vector.** Both models maintain most recommendations (Opus Pass^k=0.875).
+- **Integrated vector produces model divergence.** Opus Pass^k=1.000 vs GPT-5.2 Pass^k=0.556.
+- **Opus citation hallucination pattern.** Consistent Class D failures across all vectors (3:1 A:D ratio vs GPT-5.2's 11:1).
+
+The 2x2 preamble/enforcement factorial has not been run on adversarial vectors. Pre-registered hypotheses and 2x2 results (when available) are in `ADVERSARIAL_FINDINGS.md`.
+
+Full per-vector analysis: see `ADVERSARIAL_FINDINGS.md`.

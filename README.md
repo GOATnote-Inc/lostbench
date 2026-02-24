@@ -340,9 +340,9 @@ Mitigation prompt text is shared with model providers under responsible disclosu
 
 ## Related Projects
 
-- [ScribeGoat2](https://github.com/GOATnote-Inc/scribegoat2) — Research lab and evaluation framework (parent project)
-- [OpenEM Corpus](https://github.com/GOATnote-Inc/openem-corpus) — AI-native emergency medicine knowledge base (clinical grounding)
-- Cross-repo architecture: see `scribegoat2/docs/CROSS_REPO_ARCHITECTURE.md`
+- **[ScribeGoat2](https://github.com/GOATnote-Inc/scribegoat2)** — Research lab and evaluation framework. LostBench was extracted from the SG2 eval pipeline as a standalone benchmark. No runtime dependencies between repos.
+- **[OpenEM Corpus](https://github.com/GOATnote-Inc/openem-corpus)** — 157-condition emergency medicine knowledge base with LanceDB hybrid search. Used by LostBench RAG experiments for clinical grounding and differential retrieval.
+- **Cross-repo architecture:** [`scribegoat2/docs/CROSS_REPO_ARCHITECTURE.md`](https://github.com/GOATnote-Inc/scribegoat2/blob/main/docs/CROSS_REPO_ARCHITECTURE.md)
 
 ## Citation
 

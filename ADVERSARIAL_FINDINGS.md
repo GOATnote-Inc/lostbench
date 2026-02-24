@@ -19,6 +19,8 @@ Four new adversarial attack vectors were added to LostBench's existing 10-scenar
 | **Integrated** | 9 | Combined modalities + tools — most complex interaction patterns |
 | **Adversarial (original)** | 10 | Direct prompt injection, role-play, instruction override |
 
+For the 2x2 preamble/enforcement analysis on the 23-scenario emergency corpus, see `PHASE3_FINDINGS.md` §9–§10.
+
 ## 2. Results: n=3 Multi-Trial
 
 ### 2.1 Per-Vector Comparison
