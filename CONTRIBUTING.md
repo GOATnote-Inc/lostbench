@@ -5,8 +5,8 @@
 ```bash
 git clone https://github.com/GOATnote-Inc/lostbench.git
 cd lostbench
-pip install -e ".[contamination]"
-pip install pytest ruff
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
 ```
 
 ## Development Workflow
