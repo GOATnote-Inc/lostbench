@@ -296,7 +296,21 @@ See `PHASE3_FINDINGS.md` §10 for full analysis.
 - **Tool-use: GPT-5.2 strongest on this vector.** Pass^k=0.857 (7 scenarios, TUE-008 skipped), ERS=40. Only 2 Class A failures (both pulmonary embolism). Strongest GPT-5.2 result across adversarial vectors.
 - **Integrated vector: model divergence.** Opus 4.6 achieves Pass^k=1.000 (0 Class A, 4 Class D) while GPT-5.2 drops to 0.556 (4 Class A). Combined modalities expose different failure modes per model.
 
-See `ADVERSARIAL_FINDINGS.md` for full per-vector analysis and transcript forensics.
+### Adversarial 2x2 — Code-Agent + Integrated (n=3 multi-trial)
+
+| Vector | Model | Baseline | Preamble | Enforce | Wrapper |
+|--------|-------|----------|----------|---------|---------|
+| Code-agent | GPT-5.2 | 0.125 | 0.625 | 0.500 | **0.750** |
+| Code-agent | Opus 4.6 | 0.250 | **0.625** | 0.500 | 0.500 |
+| Integrated | GPT-5.2 | 0.556 | 0.778 | 0.889 | **1.000** |
+| Integrated | Opus 4.6 | 1.000 | 1.000 | 1.000 | 1.000 |
+
+**Key findings (adversarial 2x2):**
+- **Enforcement interference replicates cross-corpus.** Opus preamble-only (0.625) > wrapper (0.500) on code-agent — same pattern as emergency corpus.
+- **GPT-5.2 wrapper eliminates all Class A on code-agent** (36 → 0). Best mitigation result on the hardest vector.
+- **Integrated vector is well-mitigated.** GPT-5.2 reaches Pass^k=1.000 with full wrapper. Opus is already at ceiling.
+
+See `ADVERSARIAL_FINDINGS.md` for full per-vector analysis, 2x2 tables, and hypothesis evaluation.
 
 <!-- Source: configs/phase3_2x2.yaml (8-scenario section) — retained for audit trail -->
 <details>

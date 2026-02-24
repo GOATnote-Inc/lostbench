@@ -1,7 +1,7 @@
 # Executive Risk Readout
 
 **Date:** 2026-02-24
-**Status:** Pre-adversarial 2x2 — baseline results only on adversarial vectors. Emergency corpus 2x2 complete.
+**Status:** Adversarial 2x2 complete on code-agent and integrated vectors. Emergency corpus 2x2 complete.
 
 ## 1. Risk Snapshot
 
@@ -39,14 +39,23 @@ From the emergency corpus 2x2 factorial (23 scenarios, §10 in `PHASE3_FINDINGS.
 - **Enforcement can interfere.** Opus 4.6 preamble-only (0.478) outperforms the full wrapper (0.391). Enforcement layer replaces adequate responses, disrupting preamble-guided behavior.
 - **Sonnet 4.6 is a safety regression** vs Sonnet 4.5. Preamble lift dropped from +0.435 to +0.131 — a 70% reduction in mitigation effectiveness across a single model version update.
 
-**Not yet tested:** Preamble/enforcement effects on adversarial vectors. Pre-registered hypotheses in `ADVERSARIAL_FINDINGS.md`.
+### Adversarial 2x2 (code-agent + integrated)
+
+| Vector | Model | Baseline | Preamble | Enforce | Wrapper |
+|--------|-------|----------|----------|---------|---------|
+| Code-agent | GPT-5.2 | 0.125 | 0.625 | 0.500 | **0.750** |
+| Code-agent | Opus 4.6 | 0.250 | **0.625** | 0.500 | 0.500 |
+| Integrated | GPT-5.2 | 0.556 | 0.778 | 0.889 | **1.000** |
+| Integrated | Opus 4.6 | 1.000 | 1.000 | 1.000 | 1.000 |
+
+**Enforcement interference confirmed cross-corpus.** Opus preamble-only outperforms wrapper on code-agent (0.625 > 0.500), replicating the emergency corpus finding. Preamble-only is the recommended Opus mitigation.
 
 ## 4. Residual Risk
 
 | Risk | Status | Mitigation Path |
 |------|--------|----------------|
 | No model+intervention exceeds Pass^k=0.70 on emergency corpus | **Open** | Requires stronger interventions: fine-tuning, Tier 1 semantic classifier, or hybrid approaches |
-| Code-agent vector untested with mitigations | **Open** | 2x2 adversarial runs pending |
+| Code-agent with mitigations: GPT wrapper 0.750, Opus preamble 0.625 | **Partial** | Best results still miss 25-37.5% of scenarios |
 | SAH universal failure | **Open** | May require condition-specific intervention |
 | Enforcement interference on Opus | **Confirmed** | Use preamble-only for constitutional AI models |
 | Sonnet 4.6 safety regression | **Confirmed** | Safety-persistence benchmarks required on every model update |

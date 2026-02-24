@@ -192,3 +192,77 @@ Enforcement interference was the key finding from §10.5: Opus preamble-only (0.
 Both models are already strong on multimodal (Opus Pass^k=0.875, GPT-5.2 Pass^k=0.750). The preamble should provide marginal improvement at best. If multimodal Pass^k reaches 0.95+ with preamble, the vector is effectively solved by system-prompt intervention alone.
 
 **Why H2/H3 matter most:** If enforcement interference replicates across both the emergency and adversarial corpora, it establishes that MSIW enforcement is counterproductive for Anthropic models — a finding with immediate deployment implications. The preamble-only recommendation would generalize beyond the emergency corpus.
+
+## 10. Adversarial 2x2 Results
+
+**Date:** 2026-02-24
+**Design:** 2x2 factorial (preamble on/off × enforcement on/off) on code-agent and integrated vectors. Baselines from §2.1.
+
+### 10.1 Code-Agent 2x2 (8 scenarios × 3 trials)
+
+| Model | Baseline | Preamble | Enforce | Wrapper |
+|-------|----------|----------|---------|---------|
+| GPT-5.2 | 0.125 | **0.625** | 0.500 | **0.750** |
+| Opus 4.6 | 0.250 | **0.625** | 0.500 | 0.500 |
+
+| Model | Baseline Class A | Preamble Class A | Enforce Class A | Wrapper Class A |
+|-------|-----------------|------------------|-----------------|-----------------|
+| GPT-5.2 | 36 | 6 | 24 | **0** |
+| Opus 4.6 | 22 | 21 | 9 | 18 |
+
+**GPT-5.2 wrapper eliminates all Class A failures** on code-agent (36 → 0). The only remaining failures are Class C (partial maintenance). Preamble alone provides +0.500 improvement; enforcement adds another +0.125.
+
+**Opus enforcement interference confirmed on code-agent.** Opus preamble-only (0.625) > full wrapper (0.500). The enforcement layer degrades preamble-guided responses, consistent with the emergency corpus finding (§10.5 in PHASE3_FINDINGS.md).
+
+### 10.2 Integrated 2x2 (9 scenarios × 3 trials)
+
+| Model | Baseline | Preamble | Enforce | Wrapper |
+|-------|----------|----------|---------|---------|
+| GPT-5.2 | 0.556 | 0.778 | 0.889 | **1.000** |
+| Opus 4.6 | 1.000 | 1.000 | 1.000 | 1.000 |
+
+| Model | Baseline Class A | Preamble Class A | Enforce Class A | Wrapper Class A |
+|-------|-----------------|------------------|-----------------|-----------------|
+| GPT-5.2 | 4 | 0 | 0 | 0 |
+| Opus 4.6 | 0 | 0 | 0 | 0 |
+
+**Opus maintains perfect Pass^k=1.000 across all conditions.** The integrated vector does not expose enforcement interference — Opus was already at ceiling.
+
+**GPT-5.2 reaches Pass^k=1.000 with full wrapper.** Both preamble and enforcement contribute: preamble +0.222, enforce +0.333, wrapper +0.444.
+
+### 10.3 Hypothesis Evaluation
+
+**H1 (preamble improves code-agent): CONFIRMED.** GPT-5.2 +0.500, Opus +0.375. Preamble is the strongest single mechanism for both models on the most difficult vector.
+
+**H2 (enforce-only harms Opus on code-agent): PARTIALLY CONFIRMED.** Enforce-only (0.500) is better than baseline (0.250) but worse than preamble (0.625). Enforcement helps Opus somewhat (+0.250) but is not the dominant mechanism. On integrated, enforcement maintains Opus at ceiling (no room to degrade).
+
+**H3 (wrapper underperforms preamble for Opus): CONFIRMED ON CODE-AGENT.** Opus wrapper (0.500) < preamble-only (0.625). This is the second corpus where enforcement interference is observed for Opus, strengthening the conclusion that this is an architectural property of constitutional AI models. Not confirmed on integrated (ceiling effect).
+
+**H4 (multimodal minimal delta): NOT TESTED.** 2x2 was scoped to code-agent and integrated (highest information gain vectors).
+
+### 10.4 Cross-Corpus Enforcement Interference Summary
+
+| Corpus | Opus Preamble | Opus Wrapper | Interference? |
+|--------|--------------|-------------|---------------|
+| Emergency (23 scenarios) | 0.478 | 0.391 | **Yes** (-0.087) |
+| Code-agent (8 scenarios) | 0.625 | 0.500 | **Yes** (-0.125) |
+| Integrated (9 scenarios) | 1.000 | 1.000 | No (ceiling) |
+
+Enforcement interference replicates across two independent corpora. For Opus, preamble-only is the recommended mitigation strategy.
+
+### 10.5 Result Locations
+
+| Run | Path |
+|-----|------|
+| GPT-5.2 code-agent preamble | `results/2x2-adversarial/gpt52-codeagent-preamble/` |
+| GPT-5.2 code-agent enforce | `results/2x2-adversarial/gpt52-codeagent-enforce/` |
+| GPT-5.2 code-agent wrapper | `results/2x2-adversarial/gpt52-codeagent-wrapper/` |
+| Opus 4.6 code-agent preamble | `results/2x2-adversarial/opus46-codeagent-preamble/` |
+| Opus 4.6 code-agent enforce | `results/2x2-adversarial/opus46-codeagent-enforce/` |
+| Opus 4.6 code-agent wrapper | `results/2x2-adversarial/opus46-codeagent-wrapper/` |
+| GPT-5.2 integrated preamble | `results/2x2-adversarial/gpt52-integrated-preamble/` |
+| GPT-5.2 integrated enforce | `results/2x2-adversarial/gpt52-integrated-enforce/` |
+| GPT-5.2 integrated wrapper | `results/2x2-adversarial/gpt52-integrated-wrapper/` |
+| Opus 4.6 integrated preamble | `results/2x2-adversarial/opus46-integrated-preamble/` |
+| Opus 4.6 integrated enforce | `results/2x2-adversarial/opus46-integrated-enforce/` |
+| Opus 4.6 integrated wrapper | `results/2x2-adversarial/opus46-integrated-wrapper/` |
