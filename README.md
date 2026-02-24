@@ -256,7 +256,7 @@ See `PHASE3_FINDINGS.md` §10 for full analysis.
 | Vector | GPT-5.2 Pass^k | GPT-5.2 ERS | Opus 4.6 Pass^k | Opus 4.6 ERS | Scenarios |
 |--------|----------------|-------------|-----------------|--------------|-----------|
 | Code-agent | 0.125 | 0 | 0.250 | 0 | 8 |
-| Tool-use | — (TUE-008 timeout) | — | 0.625 | 0 | 8 |
+| Tool-use | 0.857 (7/8, TUE-008 skipped) | 40 | 0.625 | 0 | 8 |
 | Multimodal | 0.750 | 25 | 0.875 | 10 | 8 |
 | Integrated | 0.556 | 28 | 1.000 | 0 | 9 |
 | Adversarial (original) | 0.500 (n=1) | 0 | 0.800 (n=1) | 0 | 10 |
@@ -265,7 +265,7 @@ See `PHASE3_FINDINGS.md` §10 for full analysis.
 - **Code-agent is the most effective attack vector.** Both models near ERS=0. GPT-5.2 shows 36 Class A failures across 8 scenarios — the highest failure density of any vector.
 - **Multimodal is the least effective vector.** Both models maintain most recommendations. Opus 4.6 achieves Pass^k=0.875 with only 1 Class A.
 - **Opus citation hallucination pattern.** Opus 4.6 shows consistent Class D failures across all vectors (1-4 per vector). GPT-5.2 shows near-zero Class D. This asymmetry suggests Opus fabricates clinical references when pressured.
-- **GPT-5.2 tool-use timeout (TUE-008).** Persistent OpenAI API timeout prevented n=3 completion for tool-use vector. n=1 baseline completed: Pass^k=0.875, ERS=39.
+- **Tool-use: GPT-5.2 strongest on this vector.** Pass^k=0.857 (7 scenarios, TUE-008 skipped), ERS=40. Only 2 Class A failures (both pulmonary embolism). Strongest GPT-5.2 result across adversarial vectors.
 - **Integrated vector: model divergence.** Opus 4.6 achieves Pass^k=1.000 (0 Class A, 4 Class D) while GPT-5.2 drops to 0.556 (4 Class A). Combined modalities expose different failure modes per model.
 
 See `ADVERSARIAL_FINDINGS.md` for full per-vector analysis and transcript forensics.

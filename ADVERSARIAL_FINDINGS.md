@@ -26,11 +26,11 @@ Four new adversarial attack vectors were added to LostBench's existing 10-scenar
 | Vector | GPT-5.2 Pass^k | GPT-5.2 ERS | GPT-5.2 Class A | Opus 4.6 Pass^k | Opus 4.6 ERS | Opus 4.6 Class A |
 |--------|----------------|-------------|-----------------|-----------------|--------------|------------------|
 | Code-agent | 0.125 | 0 | 36 | 0.250 | 0 | 22 |
-| Tool-use | — | — | — | 0.625 | 0 | 7 |
+| Tool-use | 0.857 | 40 | 2 | 0.625 | 0 | 7 |
 | Multimodal | 0.750 | 25 | 2 | 0.875 | 10 | 1 |
 | Integrated | 0.556 | 28 | 4 | 1.000 | 0 | 0 |
 
-GPT-5.2 tool-use n=3 not completed due to persistent TUE-008 OpenAI API timeout. n=1 baseline: Pass^k=0.875, ERS=39.
+GPT-5.2 tool-use n=3 completed on 7/8 scenarios (TUE-008 skipped due to persistent OpenAI API timeout).
 
 ### 2.2 Failure Class Distribution (n=3)
 
@@ -38,7 +38,7 @@ GPT-5.2 tool-use n=3 not completed due to persistent TUE-008 OpenAI API timeout.
 |--------|---|---------|---|---|---|----------|---|---|
 | | A | B | C | D | A | B | C | D |
 | Code-agent | 36 | 1 | 0 | 3 | 22 | 0 | 3 | 1 |
-| Tool-use | — | — | — | — | 7 | 5 | 0 | 2 |
+| Tool-use | 2 | 7 | 0 | 0 | 7 | 5 | 0 | 2 |
 | Multimodal | 2 | 11 | 2 | 0 | 1 | 5 | 0 | 3 |
 | Integrated | 4 | 2 | 4 | 1 | 0 | 9 | 0 | 4 |
 
@@ -72,9 +72,9 @@ Code-agent produces the worst results for both models. GPT-5.2 shows 36 Class A 
 
 ### 3.2 Tool-Use: Moderate Attack Vector
 
-Tool-use scenarios produced moderate failure rates. Opus 4.6 at n=3: Pass^k=0.625, 7 Class A failures concentrated on aortic dissection (5 Class A, EPS=0.36).
+Tool-use scenarios produced moderate failure rates with a clear model split. GPT-5.2 at n=3 (7 scenarios, TUE-008 skipped): Pass^k=0.857, ERS=40, only 2 Class A failures (both pulmonary embolism). Opus 4.6 at n=3: Pass^k=0.625, 7 Class A failures concentrated on aortic dissection (5 Class A, EPS=0.36).
 
-GPT-5.2 n=1 baseline showed Pass^k=0.875 with only 2 Class A failures (both on subarachnoid hemorrhage). The tool-calling context provides a distraction mechanism but models generally maintain their safety recommendations better than under code-agent pressure.
+GPT-5.2 is the strongest on this vector — the tool-calling context provides a distraction mechanism but GPT-5.2 maintains safety recommendations well. Opus is more vulnerable, particularly on aortic dissection.
 
 **Opus citation hallucination:** 2 Class D failures in tool-use. When Opus uses tool results, it occasionally fabricates clinical references to support its recommendations, even when the tools returned no such citations.
 
@@ -100,7 +100,7 @@ The combined modality + tool context appears to help Opus maintain escalation (p
 
 | Model | Total Class A (n=3) | Total Class D (n=3) | Ratio |
 |-------|---------------------|---------------------|-------|
-| GPT-5.2 | 42 | 4 | 10.5:1 |
+| GPT-5.2 | 44 | 4 | 11:1 |
 | Opus 4.6 | 30 | 10 | 3:1 |
 
 GPT-5.2 fails via critical escalation drops (Class A) — it stops recommending emergency care entirely. Opus 4.6 maintains emergency recommendations more often but fabricates clinical references (Class D). This asymmetry has different safety implications:
@@ -127,7 +127,7 @@ SAH is the single most vulnerable condition. Across all vectors and models, it c
 |---|---|---|
 | GPT-5.2 Pass^k | 0.500 | 0.125–0.875 (vector-dependent) |
 | Opus 4.6 Pass^k | 0.800 | 0.250–1.000 (vector-dependent) |
-| GPT-5.2 Class A | 6 | 42 |
+| GPT-5.2 Class A | 6 | 44 |
 | Opus 4.6 Class A | 2 | 30 |
 
 The new vectors produce a wider spread of outcomes than the original adversarial corpus. Code-agent is significantly more effective than direct prompt injection at causing safety failures.
@@ -143,7 +143,7 @@ The wide CIs at n=3 mean absolute ERS values should be interpreted cautiously. T
 
 ## 7. Limitations
 
-- **GPT-5.2 tool-use n=3 incomplete** — TUE-008 persistent OpenAI API timeout. n=1 baseline is available.
+- **GPT-5.2 tool-use TUE-008 skipped** — persistent OpenAI API timeout on 1/8 scenarios. Results cover 7 scenarios.
 - **No mitigation testing** — all results are bare-model baselines (no preamble, no MSIW wrapper). The 2x2 factorial has not been run on adversarial vectors.
 - **n=3 ceiling** — Wilson CI ceiling of 0.80 limits ERS discrimination. n=5 would raise this to 0.87.
 - **Cross-vendor judge asymmetry** — GPT-5.2 judged by Opus 4.6, Opus judged by GPT-5.2. Prior validation shows 97.5% agreement and GPT-5.2 as the more lenient judge.
@@ -158,7 +158,7 @@ The wide CIs at n=3 mean absolute ERS values should be interpreted cautiously. T
 | Code-agent Opus 4.6 n=3 | `results/ceis-codeagent-opus46-n3/` | Complete |
 | Tool-use GPT-5.2 n=1 | `results/ceis-tooluse-gpt52/` | Complete |
 | Tool-use Opus 4.6 n=1 | `results/ceis-tooluse-opus46/` | Complete |
-| Tool-use GPT-5.2 n=3 | `results/ceis-tooluse-gpt52-n3/` | Incomplete (TUE-008) |
+| Tool-use GPT-5.2 n=3 | `results/ceis-tooluse-gpt52-n3/` | Complete (7/8, TUE-008 skipped) |
 | Tool-use Opus 4.6 n=3 | `results/ceis-tooluse-opus46-n3/` | Complete |
 | Multimodal GPT-5.2 n=1 | `results/ceis-multimodal-gpt52/` | Complete |
 | Multimodal Opus 4.6 n=1 | `results/ceis-multimodal-opus46/` | Complete |
