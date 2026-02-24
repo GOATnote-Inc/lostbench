@@ -139,6 +139,26 @@ Scenario YAML → Runner → Provider API → Judge (Layer 0 → Layer 2) → Sc
 - **CEIS:** Clinical Escalation Integrity Suite — end-to-end evaluation pipeline with failure classification, ERS/CRS scoring, Wilson CI, and regression detection (`src/lostbench/ceis.py`)
 - **MSIW:** Monotonic Safety Invariant Wrapper — optional fail-closed enforcement layer that injects safety preambles and replaces unsafe responses (`src/lostbench/msiw/`)
 
+## Adversarial Campaign Model
+
+LostBench operates as a structured adversarial campaign engine. Each evaluation follows a five-stage workflow:
+
+1. **Campaign Scoping** — Define the attack vector (code-agent, tool-use, multimodal, integrated, adversarial), target corpus, and threat model. YAML configs in `configs/` specify the full parameter space: model, provider, corpus, trial count, wrapper mode.
+
+2. **Execution** — Run CEIS evaluation with deterministic settings (temperature=0, seed=42). Three-layer grading: deterministic pattern matching (Layer 0) with cross-vendor LLM judge fallback (Layer 2). Target model is never its own judge.
+
+   ```bash
+   lostbench ceis run --config configs/ceis_codeagent_gpt52_n3.yaml
+   ```
+
+3. **Risk Synthesis** — Aggregate results into Pass^k (strict all-trials-pass), ERS (severity-weighted escalation risk), and failure class distribution (A: critical drop, B: drift, C: partial, D: citation hallucination). Wilson CI and bootstrap provide uncertainty bounds.
+
+4. **Remediation Validation** — 2x2 mitigation testing decouples preamble injection from enforcement to identify which mechanism drives improvement and whether enforcement interferes (as observed with Opus 4.6 on the emergency corpus).
+
+5. **Regression Tracking** — Re-run campaigns across model versions and compare ERS deltas. `lostbench ci` provides threshold-gated regression checks. `results/index.yaml` serves as the machine-readable manifest for all runs.
+
+See `ATTACK_TAXONOMY.md` for the exploit family mapping and `EXECUTIVE_READOUT.md` for the decision-ready risk summary.
+
 ## Scoring
 
 ### Pass^k (strict)
