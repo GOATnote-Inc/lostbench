@@ -1085,25 +1085,45 @@ def coverage(taxonomy, scenarios, results_dir, output):
 @click.option(
     "--results",
     "results_dir",
-    required=True,
+    default="results/",
     type=click.Path(exists=True),
     help="Path to results directory",
 )
 @click.option(
     "--output",
-    default="dashboard.html",
+    default=None,
     type=click.Path(),
-    help="Output HTML file path",
+    help="Output file path (default: dashboard.html for html, stdout for markdown)",
 )
-def dashboard(results_dir, output):
+@click.option(
+    "--format",
+    "fmt",
+    default="html",
+    type=click.Choice(["html", "markdown"]),
+    help="Output format",
+)
+def dashboard(results_dir, output, fmt):
     """Generate adversarial program dashboard.
 
-    Example: lostbench dashboard --results results/ --output dashboard.html
+    Examples:
+        lostbench dashboard --results results/ --format html
+        lostbench dashboard --format markdown
+        lostbench dashboard --format markdown --output dashboard.md
     """
-    from lostbench.dashboard import generate_dashboard
+    if fmt == "markdown":
+        from lostbench.dashboard import generate_dashboard_markdown
 
-    generate_dashboard(results_dir, output)
-    click.echo(f"Dashboard: {output}")
+        md = generate_dashboard_markdown(results_dir, output)
+        if not output:
+            click.echo(md)
+        else:
+            click.echo(f"Dashboard: {output}", err=True)
+    else:
+        from lostbench.dashboard import generate_dashboard
+
+        out = output or "dashboard.html"
+        generate_dashboard(results_dir, out)
+        click.echo(f"Dashboard: {out}")
 
 
 @main.command()

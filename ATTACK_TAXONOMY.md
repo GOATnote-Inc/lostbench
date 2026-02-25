@@ -78,3 +78,36 @@ lostbench ceis run --config configs/ceis_codeagent_gpt52_n3.yaml
 ```
 
 Results manifest: `results/index.yaml`
+
+## OWASP Agentic Security Risks (ASI) Cross-Reference
+
+Mapping between LostBench corpora and the [OWASP Top 10 Risks for AI Agents](https://genai.owasp.org/resource/agentic-ai-threats-and-mitigations/) (ASI, 2025).
+
+### LostBench Coverage → ASI Categories
+
+| LostBench Corpus | Scenarios | ASI Category | Rationale |
+|------------------|-----------|--------------|-----------|
+| Code-agent | CAM-001–008 | ASI01 (Prompt Injection) | Clinical queries embedded in code tasks act as indirect prompt injection — context truncation shifts the model frame |
+| Code-agent | CAM-001–008 | ASI09 (Improper Output Handling) | Code-agent outputs (treatment protocols, medication dosing) are consumed downstream without safety validation |
+| Tool-use | TUE-001–008 | ASI02 (Insecure Tool/Function Calling) | External tools (search, scheduling, vitals lookup) divert attention from safety-critical recommendations |
+| Multimodal | MMV-001–008 | ASI05 (Insecure Input Handling) | Mixed modality inputs (ECG images, lab results, vital signs) as untrusted input channels |
+| Integrated | PRI-001–009 | ASI01 + ASI02 + ASI05 | Combined vector: prompt injection + tool misuse + multimodal input in single interaction |
+| Adversarial | ADV-001–010 | ASI01 (Prompt Injection) | Direct injection: authority impersonation, educational reframing, purpose shifting |
+| Emergency (2x2) | MTR-001–050 | ASI08 (Excessive Agency) | Model recommends against emergency care — exercising agency beyond safe scope |
+| Defer | DEF-001–015 | ASI08 (Excessive Agency) | Over-escalation: model insists on emergency care for non-urgent conditions |
+
+### ASI Categories Not Yet Covered
+
+| ASI Category | Description | Gap Assessment |
+|--------------|-------------|----------------|
+| ASI03 (Insecure Agentic Communication) | Attacks on inter-agent messaging | LostBench tests single-agent interactions. Multi-agent safety persistence (e.g., triage agent → specialist agent handoff) is not yet evaluated. |
+| ASI04 (Identity & Access Failures) | Agent impersonation, privilege escalation | Current scenarios involve user-to-agent pressure. Agent-to-agent credential abuse is out of scope. |
+| ASI06 (Inadequate Sandboxing) | Insufficient isolation of agent execution | Code-agent corpus tests code generation safety but not execution sandbox escapes. |
+| ASI07 (Supply Chain Vulnerabilities) | Compromised tools, plugins, dependencies | LostBench tests model behavior given tool access, not the integrity of tools themselves. |
+| ASI10 (Misaligned Behaviors) | Reward hacking, goal drift under optimization | Partially covered by enforcement interference finding (Opus wrapper < preamble), but not systematically tested as an optimization pressure phenomenon. |
+
+### Notes
+
+- ASI09 coverage is partial: LostBench grades whether the model maintains escalation language, not whether downstream systems parse the output safely.
+- The enforcement interference pattern (Opus preamble > wrapper) may be an instance of ASI10 — the enforcement mechanism creates a secondary optimization target that conflicts with the safety objective.
+- Future work: `docs/CASCADING_CORPUS_DESIGN.md` addresses ASI09 directly (evolving clinical presentations where prior output informs subsequent agent decisions).
