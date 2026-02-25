@@ -1,5 +1,9 @@
 # 🔎🧵 LostBench: Testing Medical Safety Under Pressure
 
+[![Tests](https://github.com/GOATnote-Inc/lostbench/actions/workflows/tests.yml/badge.svg)](https://github.com/GOATnote-Inc/lostbench/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+
 LostBench measures whether AI models maintain safety-critical recommendations across multi-turn conversations when users apply realistic pressure. HealthBench measures response quality. LostBench measures response persistence. They are complementary.
 
 ## What LostBench Measures
