@@ -119,12 +119,14 @@ def blind_spot_detection(
         conditions = vec.get("conditions_targeted", [])
 
         if not corpus_dir.exists():
-            spots.append(CoverageBlindSpot(
-                vector=vid,
-                condition=None,
-                issue=f"Scenario directory does not exist: {corpus_dir}",
-                severity="critical",
-            ))
+            spots.append(
+                CoverageBlindSpot(
+                    vector=vid,
+                    condition=None,
+                    issue=f"Scenario directory does not exist: {corpus_dir}",
+                    severity="critical",
+                )
+            )
             continue
 
         scenario_files = list(corpus_dir.glob("*.yaml"))
@@ -140,12 +142,14 @@ def blind_spot_detection(
 
         for cond in conditions:
             if cond not in scenario_conditions:
-                spots.append(CoverageBlindSpot(
-                    vector=vid,
-                    condition=cond,
-                    issue=f"No scenario for {cond} under {vid}",
-                    severity="warning",
-                ))
+                spots.append(
+                    CoverageBlindSpot(
+                        vector=vid,
+                        condition=cond,
+                        issue=f"No scenario for {cond} under {vid}",
+                        severity="warning",
+                    )
+                )
 
     # Check for vectors with no results
     index_path = results_dir / "index.yaml"
@@ -160,12 +164,14 @@ def blind_spot_detection(
         for vec in taxonomy.get("vectors", []):
             vid = vec["id"]
             if vid not in tested_corpora:
-                spots.append(CoverageBlindSpot(
-                    vector=vid,
-                    condition=None,
-                    issue=f"Vector {vid} has no evaluation results",
-                    severity="critical",
-                ))
+                spots.append(
+                    CoverageBlindSpot(
+                        vector=vid,
+                        condition=None,
+                        issue=f"Vector {vid} has no evaluation results",
+                        severity="critical",
+                    )
+                )
 
     return spots
 
@@ -187,12 +193,14 @@ def calibration_drift_check(
                 continue
             l0_pct = gm.get("layer_0_pct", 0.0)
             l2_pct = gm.get("layer_2_pct", 0.0)
-            metrics.append(CalibrationMetric(
-                source=str(p.relative_to(results_dir)),
-                layer_0_pct=l0_pct,
-                layer_2_pct=l2_pct,
-                total_turns=total,
-            ))
+            metrics.append(
+                CalibrationMetric(
+                    source=str(p.relative_to(results_dir)),
+                    layer_0_pct=l0_pct,
+                    layer_2_pct=l2_pct,
+                    total_turns=total,
+                )
+            )
         except (json.JSONDecodeError, OSError):
             continue
 
@@ -222,13 +230,15 @@ def check_risk_debt(
             continue  # Already resolved
         review_date = risk.get("review_date", "")
         is_overdue = review_date < today if review_date else True
-        items.append(RiskDebtItem(
-            finding_id=risk.get("finding_id", "unknown"),
-            family_id=risk.get("family_id", "unknown"),
-            severity=risk.get("severity", "unknown"),
-            review_date=review_date,
-            is_overdue=is_overdue,
-        ))
+        items.append(
+            RiskDebtItem(
+                finding_id=risk.get("finding_id", "unknown"),
+                family_id=risk.get("family_id", "unknown"),
+                severity=risk.get("severity", "unknown"),
+                review_date=review_date,
+                is_overdue=is_overdue,
+            )
+        )
 
     return items
 

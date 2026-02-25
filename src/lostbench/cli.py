@@ -1061,7 +1061,11 @@ def coverage(taxonomy, scenarios, results_dir, output):
 
     Example: lostbench coverage --taxonomy configs/attack_taxonomy.yaml --output coverage.html
     """
-    from lostbench.coverage import compute_coverage, generate_heatmap_html, identify_gaps
+    from lostbench.coverage import (
+        compute_coverage,
+        generate_heatmap_html,
+        identify_gaps,
+    )
 
     matrix = compute_coverage(taxonomy, scenarios, results_dir)
     generate_heatmap_html(matrix, output)

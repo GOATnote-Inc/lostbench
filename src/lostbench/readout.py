@@ -54,7 +54,9 @@ def generate_readout(
     elif template == "internal":
         return _internal_readout(ceis_results, family_registry, prior_results)
     else:
-        raise ValueError(f"Unknown template: {template}. Use executive, partner, or internal.")
+        raise ValueError(
+            f"Unknown template: {template}. Use executive, partner, or internal."
+        )
 
 
 def _executive_readout(
@@ -126,7 +128,9 @@ def _executive_readout(
         lines.append(f"- ERS delta: {regression.get('ers_delta', 0)}")
         lines.append(f"- Regression detected: {'Yes' if reg_detected else 'No'}")
         if regression.get("new_classA_conditions"):
-            lines.append(f"- New Class A: {', '.join(regression['new_classA_conditions'])}")
+            lines.append(
+                f"- New Class A: {', '.join(regression['new_classA_conditions'])}"
+            )
         lines.append("")
 
     # Residual risk
@@ -135,9 +139,13 @@ def _executive_readout(
     if not agg.get("meets_threshold"):
         lines.append("- Model does not meet CEIS deployment threshold")
     if agg.get("total_classA_failures", 0) > 0:
-        lines.append(f"- {agg['total_classA_failures']} Class A failures across {len(class_a_conditions)} conditions")
+        lines.append(
+            f"- {agg['total_classA_failures']} Class A failures across {len(class_a_conditions)} conditions"
+        )
     if agg.get("total_classD_failures", 0) > 0:
-        lines.append(f"- {agg['total_classD_failures']} citation hallucinations (Class D)")
+        lines.append(
+            f"- {agg['total_classD_failures']} citation hallucinations (Class D)"
+        )
     lines.append("")
 
     # Reproduction
@@ -145,7 +153,9 @@ def _executive_readout(
     lines.append("")
     lines.append("```bash")
     lines.append("lostbench ceis run --config <config.yaml>")
-    lines.append(f"# seed={meta.get('seed', 42)}, temperature={meta.get('temperature', 0.0)}, n_trials={meta.get('n_trials', 3)}")
+    lines.append(
+        f"# seed={meta.get('seed', 42)}, temperature={meta.get('temperature', 0.0)}, n_trials={meta.get('n_trials', 3)}"
+    )
     lines.append("```")
 
     return "\n".join(lines) + "\n"
@@ -174,25 +184,31 @@ def _partner_readout(results: dict, registry: dict | None) -> str:
 
     threshold_met = agg.get("meets_threshold", False)
     if threshold_met:
-        lines.append("The model **meets** the minimum safety persistence threshold for the tested scenarios.")
+        lines.append(
+            "The model **meets** the minimum safety persistence threshold for the tested scenarios."
+        )
     else:
-        lines.append("The model **does not meet** the minimum safety persistence threshold.")
+        lines.append(
+            "The model **does not meet** the minimum safety persistence threshold."
+        )
         if agg.get("threshold_failures"):
             lines.append("")
             lines.append("Threshold failures:")
             for f in agg["threshold_failures"]:
                 lines.append(f"- {f}")
 
-    lines.extend([
-        "",
-        "## Methodology",
-        "",
-        "Evaluation uses a 3-layer grading pipeline: deterministic pattern matching followed by "
-        "cross-vendor LLM judge assessment. Confidence intervals are computed using Wilson score "
-        "intervals and scenario-level bootstrap resampling (10,000 iterations).",
-        "",
-        "All evaluations use fixed deterministic settings (temperature=0.0, seed=42) for reproducibility.",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Methodology",
+            "",
+            "Evaluation uses a 3-layer grading pipeline: deterministic pattern matching followed by "
+            "cross-vendor LLM judge assessment. Confidence intervals are computed using Wilson score "
+            "intervals and scenario-level bootstrap resampling (10,000 iterations).",
+            "",
+            "All evaluations use fixed deterministic settings (temperature=0.0, seed=42) for reproducibility.",
+        ]
+    )
 
     return "\n".join(lines) + "\n"
 
@@ -213,8 +229,12 @@ def _internal_readout(
     # Full conditions table
     lines.append("\n## All Conditions (Internal Detail)")
     lines.append("")
-    lines.append("| Condition | Severity | EPS Point | EPS Lower | Class A | Class B | Class C | Class D | CRS | Passed |")
-    lines.append("|-----------|----------|-----------|-----------|---------|---------|---------|---------|-----|--------|")
+    lines.append(
+        "| Condition | Severity | EPS Point | EPS Lower | Class A | Class B | Class C | Class D | CRS | Passed |"
+    )
+    lines.append(
+        "|-----------|----------|-----------|-----------|---------|---------|---------|---------|-----|--------|"
+    )
     for c in sorted(conditions, key=lambda x: x.get("crs", 0), reverse=True):
         passed = "PASS" if c.get("passed") else "FAIL"
         lines.append(
@@ -232,8 +252,12 @@ def _internal_readout(
         lines.append("")
         lines.append(f"- Total turns graded: {gm.get('total_turns_graded', 0)}")
         lines.append(f"- Trials pooled: {gm.get('n_trials_pooled', 'N/A')}")
-        lines.append(f"- Layer 0 resolved: {gm.get('layer_0_resolved', 0)} ({gm.get('layer_0_pct', 0):.1f}%)")
-        lines.append(f"- Layer 2 resolved: {gm.get('layer_2_resolved', 0)} ({gm.get('layer_2_pct', 0):.1f}%)")
+        lines.append(
+            f"- Layer 0 resolved: {gm.get('layer_0_resolved', 0)} ({gm.get('layer_0_pct', 0):.1f}%)"
+        )
+        lines.append(
+            f"- Layer 2 resolved: {gm.get('layer_2_resolved', 0)} ({gm.get('layer_2_pct', 0):.1f}%)"
+        )
         lines.append("")
 
     # Per-vector breakdown
@@ -241,8 +265,12 @@ def _internal_readout(
     if per_vector:
         lines.append("## Per-Vector Breakdown")
         lines.append("")
-        lines.append("| Vector | Scenarios | Passed | Pass^k | Class A | Class B | Class D |")
-        lines.append("|--------|-----------|--------|--------|---------|---------|---------|")
+        lines.append(
+            "| Vector | Scenarios | Passed | Pass^k | Class A | Class B | Class D |"
+        )
+        lines.append(
+            "|--------|-----------|--------|--------|---------|---------|---------|"
+        )
         for vec, data in sorted(per_vector.items()):
             lines.append(
                 f"| {vec} | {data.get('n_scenarios', 0)} | {data.get('n_passed', 0)} | "

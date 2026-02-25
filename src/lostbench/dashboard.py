@@ -36,7 +36,9 @@ def _load_ceis_results(results_dir: Path) -> list[dict]:
     return results
 
 
-def _svg_bar(values: list[tuple[str, float, str]], width: int = 400, height: int = 200) -> str:
+def _svg_bar(
+    values: list[tuple[str, float, str]], width: int = 400, height: int = 200
+) -> str:
     """Generate an SVG bar chart.
 
     values: list of (label, value, color) tuples.
@@ -48,16 +50,24 @@ def _svg_bar(values: list[tuple[str, float, str]], width: int = 400, height: int
     bar_width = max(20, (width - 60) // len(values))
     chart_height = height - 40
 
-    parts = [f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">']
+    parts = [
+        f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">'
+    ]
     parts.append(f'<rect width="{width}" height="{height}" fill="#f8f9fa" rx="4"/>')
 
     for i, (label, val, color) in enumerate(values):
         bar_h = (val / max_val) * (chart_height - 20) if max_val > 0 else 0
         x = 40 + i * (bar_width + 4)
         y = chart_height - bar_h
-        parts.append(f'<rect x="{x}" y="{y}" width="{bar_width}" height="{bar_h}" fill="{color}" rx="2"/>')
-        parts.append(f'<text x="{x + bar_width // 2}" y="{chart_height + 14}" text-anchor="middle" font-size="10">{label}</text>')
-        parts.append(f'<text x="{x + bar_width // 2}" y="{y - 4}" text-anchor="middle" font-size="10">{val:.0f}</text>')
+        parts.append(
+            f'<rect x="{x}" y="{y}" width="{bar_width}" height="{bar_h}" fill="{color}" rx="2"/>'
+        )
+        parts.append(
+            f'<text x="{x + bar_width // 2}" y="{chart_height + 14}" text-anchor="middle" font-size="10">{label}</text>'
+        )
+        parts.append(
+            f'<text x="{x + bar_width // 2}" y="{y - 4}" text-anchor="middle" font-size="10">{val:.0f}</text>'
+        )
 
     parts.append("</svg>")
     return "\n".join(parts)
@@ -109,15 +119,23 @@ def generate_dashboard(results_dir: Path | str, output: Path | str) -> None:
     models_tested = sorted(set(e.get("model", "") for e in experiments))
 
     html.append("<div class='grid'>")
-    html.append(f"<div class='card'><div class='metric'>{total_experiments}</div><div class='metric-label'>Total Experiments</div></div>")
-    html.append(f"<div class='card'><div class='metric'>{total_ceis}</div><div class='metric-label'>CEIS Evaluations</div></div>")
-    html.append(f"<div class='card'><div class='metric'>{len(models_tested)}</div><div class='metric-label'>Models Tested</div></div>")
+    html.append(
+        f"<div class='card'><div class='metric'>{total_experiments}</div><div class='metric-label'>Total Experiments</div></div>"
+    )
+    html.append(
+        f"<div class='card'><div class='metric'>{total_ceis}</div><div class='metric-label'>CEIS Evaluations</div></div>"
+    )
+    html.append(
+        f"<div class='card'><div class='metric'>{len(models_tested)}</div><div class='metric-label'>Models Tested</div></div>"
+    )
     html.append("</div>")
 
     # ERS by model+mode table
     html.append("<h2>ERS by Experiment</h2>")
     html.append("<div class='card'>")
-    html.append("<table><tr><th>Model</th><th>Corpus</th><th>Mode</th><th>n_trials</th><th>Pass^k</th><th>ERS</th><th>Class A</th><th>Date</th></tr>")
+    html.append(
+        "<table><tr><th>Model</th><th>Corpus</th><th>Mode</th><th>n_trials</th><th>Pass^k</th><th>ERS</th><th>Class A</th><th>Date</th></tr>"
+    )
     for exp in experiments:
         model = exp.get("model", "")
         corpus = exp.get("corpus", exp.get("experiment", ""))
@@ -128,8 +146,16 @@ def generate_dashboard(results_dir: Path | str, output: Path | str) -> None:
         class_a = exp.get("class_a", "")
         dt = exp.get("date", "")
         pk_str = f"{pass_k:.3f}" if isinstance(pass_k, float) else str(pass_k)
-        cls = "pass" if isinstance(pass_k, float) and pass_k >= 0.6 else "fail" if isinstance(pass_k, float) else ""
-        html.append(f"<tr><td>{model}</td><td>{corpus}</td><td>{mode}</td><td>{n_trials}</td><td class='{cls}'>{pk_str}</td><td>{ers}</td><td>{class_a}</td><td>{dt}</td></tr>")
+        cls = (
+            "pass"
+            if isinstance(pass_k, float) and pass_k >= 0.6
+            else "fail"
+            if isinstance(pass_k, float)
+            else ""
+        )
+        html.append(
+            f"<tr><td>{model}</td><td>{corpus}</td><td>{mode}</td><td>{n_trials}</td><td class='{cls}'>{pk_str}</td><td>{ers}</td><td>{class_a}</td><td>{dt}</td></tr>"
+        )
     html.append("</table></div>")
 
     # ERS bar chart by model
@@ -142,7 +168,10 @@ def generate_dashboard(results_dir: Path | str, output: Path | str) -> None:
         if isinstance(e, (int, float)):
             model_best_ers[m] = max(model_best_ers.get(m, 0), e)
     colors = ["#e63946", "#457b9d", "#2a9d8f", "#e9c46a", "#264653", "#f4a261"]
-    bars = [(m[:15], v, colors[i % len(colors)]) for i, (m, v) in enumerate(sorted(model_best_ers.items()))]
+    bars = [
+        (m[:15], v, colors[i % len(colors)])
+        for i, (m, v) in enumerate(sorted(model_best_ers.items()))
+    ]
     html.append(_svg_bar(bars, width=max(400, len(bars) * 80), height=220))
     html.append("</div>")
 
@@ -150,7 +179,9 @@ def generate_dashboard(results_dir: Path | str, output: Path | str) -> None:
     if ceis_results:
         html.append("<h2>Failure Class Distribution</h2>")
         html.append("<div class='card'>")
-        html.append("<table><tr><th>Source</th><th>Model</th><th>ERS</th><th>Class A</th><th>Class B</th><th>Class C</th><th>Class D</th></tr>")
+        html.append(
+            "<table><tr><th>Source</th><th>Model</th><th>ERS</th><th>Class A</th><th>Class B</th><th>Class C</th><th>Class D</th></tr>"
+        )
         for cr in ceis_results:
             meta = cr.get("meta", {})
             agg = cr.get("aggregate", {})
@@ -165,7 +196,9 @@ def generate_dashboard(results_dir: Path | str, output: Path | str) -> None:
             )
         html.append("</table></div>")
 
-    html.append("<p style='margin-top:30px;color:#6c757d;font-size:12px;'>Generated by LostBench dashboard tool</p>")
+    html.append(
+        "<p style='margin-top:30px;color:#6c757d;font-size:12px;'>Generated by LostBench dashboard tool</p>"
+    )
     html.append("</body></html>")
 
     output.parent.mkdir(parents=True, exist_ok=True)

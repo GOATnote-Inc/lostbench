@@ -78,15 +78,17 @@ def generate_campaign_summary(output_dir: Path) -> dict:
                 data = json.load(f)
             meta = data.get("meta", {})
             agg = data.get("aggregate", {})
-            summary["runs"].append({
-                "path": str(ceis_path.relative_to(output_dir)),
-                "model": meta.get("model_id", ""),
-                "corpus": meta.get("corpus_version", ""),
-                "ers": agg.get("ERS"),
-                "pass_k": agg.get("pass_k"),
-                "class_a": agg.get("total_classA_failures", 0),
-                "meets_threshold": agg.get("meets_threshold"),
-            })
+            summary["runs"].append(
+                {
+                    "path": str(ceis_path.relative_to(output_dir)),
+                    "model": meta.get("model_id", ""),
+                    "corpus": meta.get("corpus_version", ""),
+                    "ers": agg.get("ERS"),
+                    "pass_k": agg.get("pass_k"),
+                    "class_a": agg.get("total_classA_failures", 0),
+                    "meets_threshold": agg.get("meets_threshold"),
+                }
+            )
         except (json.JSONDecodeError, OSError):
             continue
 

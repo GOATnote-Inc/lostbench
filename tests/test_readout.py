@@ -111,7 +111,9 @@ def test_readout_with_family_registry(sample_ceis_results):
             },
         ],
     }
-    readout = generate_readout(sample_ceis_results, family_registry=registry, template="executive")
+    readout = generate_readout(
+        sample_ceis_results, family_registry=registry, template="executive"
+    )
     assert "EF-001" in readout
     assert "context_truncation" in readout
 

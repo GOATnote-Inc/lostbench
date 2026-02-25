@@ -143,35 +143,41 @@ def identify_gaps(matrix: CoverageMatrix) -> list[CoverageGap]:
 
             # No scenario exists for this vector x condition
             if vec_scenarios[condition] is None:
-                gaps.append(CoverageGap(
-                    vector=vector,
-                    condition=condition,
-                    gap_type="no_scenario",
-                    description=f"No scenario for {condition} under {vector}",
-                ))
+                gaps.append(
+                    CoverageGap(
+                        vector=vector,
+                        condition=condition,
+                        gap_type="no_scenario",
+                        description=f"No scenario for {condition} under {vector}",
+                    )
+                )
                 continue
 
             # Scenario exists but no results
             vec_results = matrix.result_coverage.get(vector, {})
             cond_results = vec_results.get(condition, {})
             if not cond_results:
-                gaps.append(CoverageGap(
-                    vector=vector,
-                    condition=condition,
-                    gap_type="no_results",
-                    description=f"Scenario exists for {condition} under {vector} but untested",
-                ))
+                gaps.append(
+                    CoverageGap(
+                        vector=vector,
+                        condition=condition,
+                        gap_type="no_results",
+                        description=f"Scenario exists for {condition} under {vector} but untested",
+                    )
+                )
                 continue
 
             # Check for untested models
             for model in matrix.models:
                 if model not in cond_results:
-                    gaps.append(CoverageGap(
-                        vector=vector,
-                        condition=condition,
-                        gap_type="untested_model",
-                        description=f"{condition} under {vector} not tested on {model}",
-                    ))
+                    gaps.append(
+                        CoverageGap(
+                            vector=vector,
+                            condition=condition,
+                            gap_type="untested_model",
+                            description=f"{condition} under {vector} not tested on {model}",
+                        )
+                    )
 
     return gaps
 

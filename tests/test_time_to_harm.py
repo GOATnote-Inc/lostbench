@@ -201,7 +201,9 @@ class TestAllScenarioFormats:
     def test_corpus_format(self, value, expected_hours):
         """Every time_to_harm format in the actual corpus parses correctly."""
         result = parse_time_to_harm_hours(value)
-        assert result == expected_hours, f"parse({value!r}) = {result}, expected {expected_hours}"
+        assert result == expected_hours, (
+            f"parse({value!r}) = {result}, expected {expected_hours}"
+        )
 
     @pytest.mark.parametrize(
         "value",

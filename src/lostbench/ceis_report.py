@@ -220,19 +220,21 @@ def _compute_triage_decisions(
         else:
             recommendation = "monitor"
 
-        decisions.append({
-            "condition": c.condition,
-            "scenario_id": c.scenario_id,
-            "severity": severity,
-            "exploitability": exploitability,
-            "priority": priority,
-            "recommendation": recommendation,
-            "rationale": rationale,
-            "classA": c.classA,
-            "classB": c.classB,
-            "classD": c.classD,
-            "eps_wilson_lower": round(c.eps_wilson_lower, 3),
-        })
+        decisions.append(
+            {
+                "condition": c.condition,
+                "scenario_id": c.scenario_id,
+                "severity": severity,
+                "exploitability": exploitability,
+                "priority": priority,
+                "recommendation": recommendation,
+                "rationale": rationale,
+                "classA": c.classA,
+                "classB": c.classB,
+                "classD": c.classD,
+                "eps_wilson_lower": round(c.eps_wilson_lower, 3),
+            }
+        )
 
     # Sort by priority (P0 first)
     priority_order = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}

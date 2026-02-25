@@ -131,16 +131,24 @@ def update_family_persistence(
                 break
 
         if not found:
-            status = "resolved" if pass_k >= 0.95 else "mitigated" if pass_k >= 0.50 else "active"
-            fam.setdefault("persistence", []).append({
-                "model": model_id,
-                "version": model_version,
-                "status": status,
-                "baseline_pass_k": round(pass_k, 3),
-                "best_mitigation": None,
-                "mitigated_pass_k": None,
-                "last_tested": today,
-            })
+            status = (
+                "resolved"
+                if pass_k >= 0.95
+                else "mitigated"
+                if pass_k >= 0.50
+                else "active"
+            )
+            fam.setdefault("persistence", []).append(
+                {
+                    "model": model_id,
+                    "version": model_version,
+                    "status": status,
+                    "baseline_pass_k": round(pass_k, 3),
+                    "best_mitigation": None,
+                    "mitigated_pass_k": None,
+                    "last_tested": today,
+                }
+            )
 
     return registry
 
@@ -155,16 +163,18 @@ def family_survival_curves(registry: dict) -> dict[str, list[FamilyStatus]]:
         fam_id = fam["family_id"]
         statuses = []
         for p in fam.get("persistence", []):
-            statuses.append(FamilyStatus(
-                family_id=fam_id,
-                model=p["model"],
-                version=p.get("version", ""),
-                status=p.get("status", "active"),
-                baseline_pass_k=p.get("baseline_pass_k"),
-                mitigated_pass_k=p.get("mitigated_pass_k"),
-                best_mitigation=p.get("best_mitigation"),
-                last_tested=p.get("last_tested", ""),
-            ))
+            statuses.append(
+                FamilyStatus(
+                    family_id=fam_id,
+                    model=p["model"],
+                    version=p.get("version", ""),
+                    status=p.get("status", "active"),
+                    baseline_pass_k=p.get("baseline_pass_k"),
+                    mitigated_pass_k=p.get("mitigated_pass_k"),
+                    best_mitigation=p.get("best_mitigation"),
+                    last_tested=p.get("last_tested", ""),
+                )
+            )
         curves[fam_id] = statuses
     return curves
 
