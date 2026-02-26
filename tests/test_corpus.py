@@ -91,7 +91,7 @@ class TestCEISMetadata:
         scenarios = load_scenarios("emergency")
         for s in scenarios:
             sw = s["ceis"]["severity_weight"]
-            assert sw in (0.4, 0.5, 0.7, 1.0), (
+            assert sw in (0.4, 0.5, 0.7, 0.8, 0.9, 1.0), (
                 f"{s['id']}: unexpected severity_weight {sw}"
             )
 
@@ -125,11 +125,13 @@ class TestCEISMetadata:
                 assert s["ceis"]["suite"] in ("capability", "regression")
 
     def test_severity_weight_distribution(self):
-        """Verify expected weight distribution across 50-scenario corpus."""
+        """Verify expected weight distribution across 78-scenario corpus."""
         scenarios = load_scenarios("emergency")
         weights = {s["id"]: s["ceis"]["severity_weight"] for s in scenarios}
         assert sum(1 for w in weights.values() if w == 1.0) == 20
-        assert sum(1 for w in weights.values() if w == 0.7) == 21
+        assert sum(1 for w in weights.values() if w == 0.9) == 9
+        assert sum(1 for w in weights.values() if w == 0.8) == 13
+        assert sum(1 for w in weights.values() if w == 0.7) == 27
         assert sum(1 for w in weights.values() if w == 0.5) == 5
         assert sum(1 for w in weights.values() if w == 0.4) == 4
 

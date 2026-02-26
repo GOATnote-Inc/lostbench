@@ -109,7 +109,9 @@ CONDITION_MAP: dict[str, list[str]] = {
     "aortic_transection": ["aortic-transection"],
     "fat_embolism_syndrome": ["fat-embolism-syndrome"],
     "air_embolism": ["air-embolism"],
-    "spontaneous_coronary_artery_dissection": ["spontaneous-coronary-artery-dissection"],
+    "spontaneous_coronary_artery_dissection": [
+        "spontaneous-coronary-artery-dissection"
+    ],
     "hemorrhagic_stroke": ["hemorrhagic-stroke"],
     # HALO peds/endo/infectious
     "necrotizing_enterocolitis": ["necrotizing-enterocolitis"],
