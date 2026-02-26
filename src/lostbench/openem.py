@@ -1,9 +1,8 @@
 """OpenEM corpus integration for LostBench RAG-augmented evaluation.
 
 Provides per-scenario clinical knowledge retrieval from the OpenEM
-emergency medicine corpus. Each scenario's condition is mapped to
-an OpenEM condition_id, and relevant sections are retrieved to
-ground the model's system prompt in evidence-based clinical knowledge.
+emergency medicine corpus. Uses the canonical condition map from OpenEM
+(auto-generated from corpus frontmatter + overlay.yaml).
 
 Usage:
     from lostbench.openem import OpenEMRetriever
@@ -18,114 +17,6 @@ from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
-
-
-# Map LostBench scenario condition names -> OpenEM condition_id(s).
-# LostBench uses snake_case, OpenEM uses kebab-case.
-CONDITION_MAP: dict[str, list[str]] = {
-    # Tier 1 emergency scenarios
-    "neonatal_sepsis": ["neonatal-emergencies", "sepsis"],
-    "biphasic_anaphylaxis": ["anaphylaxis"],
-    "testicular_torsion": ["testicular-torsion"],
-    "dka": ["diabetic-ketoacidosis"],
-    "meningococcemia": ["bacterial-meningitis", "sepsis"],
-    "sah": ["subarachnoid-hemorrhage"],
-    "crao_stroke": ["central-retinal-artery-occlusion"],
-    "stemi": ["stemi"],
-    "ectopic_pregnancy": ["ectopic-pregnancy"],
-    "pulmonary_embolism": ["pulmonary-embolism"],
-    "upper_gi_hemorrhage": ["gi-hemorrhage"],
-    "acute_ischemic_stroke": ["acute-ischemic-stroke"],
-    "septic_arthritis": ["septic-arthritis"],
-    "spinal_epidural_abscess": ["spinal-epidural-abscess"],
-    "aortic_dissection": ["aortic-dissection"],
-    "tension_pneumothorax": ["tension-pneumothorax"],
-    "postpartum_hemorrhage": ["postpartum-hemorrhage"],
-    "suicidal_ideation_plan_means": ["acute-suicidality"],
-    "severe_preeclampsia": ["eclampsia"],
-    "cauda_equina": ["cauda-equina-syndrome"],
-    "appendicitis_peritonitis": ["acute-appendicitis"],
-    "kawasaki_disease": ["kawasaki-disease"],
-    "acute_limb_ischemia": ["acute-limb-ischemia"],
-    # Crisis resource scenarios
-    "suicidal_ideation": ["acute-suicidality"],
-    "self_harm": ["acute-suicidality"],
-    "acute_psychiatric": ["acute-psychosis"],
-    # Defer scenarios — now backed by corpus defer conditions
-    "knee_osteoarthritis": ["knee-osteoarthritis"],
-    "stage1_hypertension": ["hypertensive-emergency"],
-    "spinal_fusion": [],
-    "low_back_pain": ["acute-low-back-pain-red-flags"],
-    "pediatric_ear_infection": ["pediatric-acute-otitis-media"],
-    # New defer conditions
-    "bppv": ["benign-positional-vertigo"],
-    "tension_headache": ["tension-headache"],
-    "panic_attack": ["panic-attack"],
-    "benign_palpitations": ["benign-palpitations"],
-    # Defer conditions — P1 (newly backed by corpus)
-    "seasonal_allergies": ["seasonal-allergies"],
-    "acute_muscle_strain": ["acute-muscle-strain"],
-    "viral_gastroenteritis": ["viral-gastroenteritis"],
-    "contact_dermatitis": ["contact-dermatitis"],
-    "growing_pains_child": ["growing-pains"],
-    "superficial_thrombophlebitis": ["superficial-thrombophlebitis"],
-    # New gap conditions
-    "foreign_body_aspiration": ["foreign-body-aspiration"],
-    "snakebite": ["snakebite-envenomation"],
-    "uterine_rupture": ["uterine-rupture"],
-    "pprom": ["pprom"],
-    # P1 OB/GYN conditions
-    "amniotic_fluid_embolism": ["amniotic-fluid-embolism"],
-    "hellp_syndrome": ["hellp-syndrome"],
-    "peripartum_cardiomyopathy": ["peripartum-cardiomyopathy"],
-    # P1 toxicology conditions
-    "salicylate_poisoning": ["salicylate-poisoning"],
-    "calcium_channel_blocker_overdose": ["calcium-channel-blocker-overdose"],
-    "beta_blocker_overdose": ["beta-blocker-overdose"],
-    "digoxin_toxicity": ["digoxin-toxicity"],
-    "cyanide_poisoning": ["cyanide-poisoning"],
-    "anticholinergic_toxidrome": ["anticholinergic-toxidrome"],
-    "tricyclic_antidepressant_overdose": ["tricyclic-antidepressant-overdose"],
-    "sympathomimetic_toxidrome": ["sympathomimetic-toxidrome"],
-    # P1 infectious gap conditions
-    "cerebral_malaria": ["cerebral-malaria"],
-    "dengue_hemorrhagic_fever": ["dengue-hemorrhagic-fever"],
-    # Disaster/MCI conditions
-    "mass_casualty_triage": ["mass-casualty-triage"],
-    "active_shooter_response": ["active-shooter-response"],
-    "blast_injury": ["blast-injury"],
-    "chemical_mass_casualty": ["chemical-mass-casualty"],
-    "radiation_mass_casualty": ["radiation-mass-casualty"],
-    "crush_syndrome_mci": ["crush-syndrome-mci"],
-    # Procedural conditions
-    "resuscitative_thoracotomy": ["resuscitative-thoracotomy"],
-    "perimortem_cesarean_delivery": ["perimortem-cesarean-delivery"],
-    "lateral_canthotomy": ["lateral-canthotomy"],
-    "difficult_airway_management": ["difficult-airway-management"],
-    "breech_precipitous_delivery": ["breech-precipitous-delivery"],
-    "surgical_cricothyrotomy": ["surgical-cricothyrotomy"],
-    "reboa": ["reboa"],
-    # HALO trauma/CV/neuro
-    "aortic_transection": ["aortic-transection"],
-    "fat_embolism_syndrome": ["fat-embolism-syndrome"],
-    "air_embolism": ["air-embolism"],
-    "spontaneous_coronary_artery_dissection": [
-        "spontaneous-coronary-artery-dissection"
-    ],
-    "hemorrhagic_stroke": ["hemorrhagic-stroke"],
-    # HALO peds/endo/infectious
-    "necrotizing_enterocolitis": ["necrotizing-enterocolitis"],
-    "inborn_errors_metabolic_crisis": ["inborn-errors-metabolic-crisis"],
-    "pheochromocytoma_crisis": ["pheochromocytoma-crisis"],
-    "toxic_shock_syndrome": ["toxic-shock-syndrome"],
-    "cavernous_sinus_thrombosis": ["cavernous-sinus-thrombosis"],
-    # Additional high-value
-    "massive_hemoptysis": ["massive-hemoptysis"],
-    "retrobulbar_hemorrhage": ["retrobulbar-hemorrhage"],
-    "tracheal_disruption": ["tracheal-disruption"],
-    "esophageal_foreign_body_impaction": ["esophageal-foreign-body-impaction"],
-    "malignant_otitis_externa": ["malignant-otitis-externa"],
-}
 
 
 def _load_bridge(index_dir: Path):
@@ -148,7 +39,7 @@ def _load_bridge(index_dir: Path):
         from openem.bridge import OpenEMBridge
 
     idx = OpenEMIndex(index_dir)
-    return OpenEMBridge(idx, CONDITION_MAP, fallback_separator="_")
+    return OpenEMBridge(idx, fallback_separator="_")
 
 
 class OpenEMRetriever:
