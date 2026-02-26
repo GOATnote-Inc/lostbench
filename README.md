@@ -274,101 +274,30 @@ Multi-trial runs automatically pool observations. The `max_class_a: 0` threshold
 
 ## Leaderboard
 
-### Emergency Persistence — Expanded Corpus (23 scenarios × 3 trials, LLM judge)
+### Emergency Persistence — Baseline (23 scenarios × 3 trials, LLM judge)
 
-| Model | Pass^k | 95% CI (Wilson) | Scenarios | Judge | Date |
-|-------|--------|-----------------|-----------|-------|------|
-| GPT-5.2 | 0.261 | [0.125, 0.465] | 23 | claude-opus-4-6 | 2026-02-18 |
-| Claude Opus 4.6 | 0.217 | [0.097, 0.419] | 23 | gpt-5.2 | 2026-02-18 |
-| Claude Sonnet 4.5 | 0.174 | [0.070, 0.371] | 23 | gpt-5.2 | 2026-02-18 |
-| Claude Sonnet 4.6 | 0.130 | [0.045, 0.321] | 23 | gpt-5.2 | 2026-02-19 |
+| Model | Pass^k | ERS | Scenarios | Date |
+|-------|--------|-----|-----------|------|
+| GPT-5.2 | 0.261 | 61 | 23 | 2026-02-19 |
+| Claude Opus 4.6 | 0.217 | 41 | 23 | 2026-02-19 |
+| Claude Sonnet 4.5 | 0.174 | 29 | 23 | 2026-02-19 |
+| Claude Sonnet 4.6 | 0.130 | 0 | 23 | 2026-02-19 |
 
-<!-- Source: configs/phase3_2x2.yaml (expanded section) — update YAML first, then sync here -->
 ### MSIW Wrapper 2x2 — Expanded Corpus (23 scenarios × 3 trials, LLM judge)
 
 | Model | Baseline | + Preamble | + Enforcement | + Full Wrapper |
-|-------|----------|------------|---------------|----------------|
+|-------|------------|------------|------------|------------|
 | GPT-5.2 | 0.261 | **0.696** | 0.261 | **0.696** |
-| Claude Sonnet 4.5 | 0.174 | **0.609** | 0.217 | **0.652** |
+| Claude Sonnet 4.5 | 0.174 | 0.609 | 0.217 | **0.652** |
 | Claude Opus 4.6 | 0.217 | **0.478** | 0.304 | 0.391 |
-| Claude Sonnet 4.6 | 0.130 | 0.261 | 0.261 | 0.304 |
+| Claude Sonnet 4.6 | 0.130 | 0.261 | 0.261 | **0.304** |
 
-**Key findings (23-scenario replication):**
-- **The 8-scenario results do not hold at scale.** Full wrapper Pass^k dropped from 1.000 (all models, 8 scenarios) to 0.30–0.70 on 23 scenarios. The small sample dramatically overestimated mitigation effectiveness.
-- **The preamble is the active ingredient.** For GPT-5.2, Sonnet 4.5, and Opus 4.6, preamble-only matches or exceeds the full wrapper. Enforcement alone never meaningfully helps.
-- **Enforcement can interfere.** Opus preamble-only (0.478) > Opus wrapper (0.391). The enforcement layer degrades preamble-guided responses.
-- **Sonnet 4.6 is a safety regression.** Worse baseline (0.130 vs 0.174) and drastically reduced preamble-responsiveness (0.261 vs 0.609) compared to Sonnet 4.5.
-- **No model + intervention reaches 0.70.** GPT-5.2 with preamble is best at 0.696 — still failing 30% of scenarios.
+### CEIS Deep Dive
 
-See `PHASE3_FINDINGS.md` §10 for full analysis.
+| Model | Mode | Trials | ERS | ERS CI | Class A | Threshold |
+|-------|------|--------|-----|--------|---------|-----------|
+| GPT-5.2 | full_wrapper | 5 | 80 | [68, 85] | 1 | FAIL |
 
-### Adversarial Expansion — Per-Vector Results (n=3 multi-trial, bare-model baselines)
-
-| Vector | GPT-5.2 Pass^k | GPT-5.2 ERS | Opus 4.6 Pass^k | Opus 4.6 ERS | Scenarios |
-|--------|----------------|-------------|-----------------|--------------|-----------|
-| Code-agent | 0.125 | 0 | 0.250 | 0 | 8 |
-| Tool-use | 0.857 (7/8, TUE-008 skipped) | 40 | 0.625 | 0 | 8 |
-| Multimodal | 0.750 | 25 | 0.875 | 10 | 8 |
-| Integrated | 0.556 | 28 | 1.000 | 0 | 9 |
-| Adversarial (original) | 0.500 (n=1) | 0 | 0.800 (n=1) | 0 | 10 |
-
-**Key findings (adversarial expansion):**
-- **Code-agent is the most effective attack vector.** Both models near ERS=0. GPT-5.2 shows 36 Class A failures across 8 scenarios — the highest failure density of any vector.
-- **Multimodal is the least effective vector.** Both models maintain most recommendations. Opus 4.6 achieves Pass^k=0.875 with only 1 Class A.
-- **Opus citation hallucination pattern.** Opus 4.6 shows consistent Class D failures across all vectors (1-4 per vector). GPT-5.2 shows near-zero Class D. This asymmetry suggests Opus fabricates clinical references when pressured.
-- **Tool-use: GPT-5.2 strongest on this vector.** Pass^k=0.857 (7 scenarios, TUE-008 skipped), ERS=40. Only 2 Class A failures (both pulmonary embolism). Strongest GPT-5.2 result across adversarial vectors.
-- **Integrated vector: model divergence.** Opus 4.6 achieves Pass^k=1.000 (0 Class A, 4 Class D) while GPT-5.2 drops to 0.556 (4 Class A). Combined modalities expose different failure modes per model.
-
-### Adversarial 2x2 — Code-Agent + Integrated (n=3 multi-trial)
-
-| Vector | Model | Baseline | Preamble | Enforce | Wrapper |
-|--------|-------|----------|----------|---------|---------|
-| Code-agent | GPT-5.2 | 0.125 | 0.625 | 0.500 | **0.750** |
-| Code-agent | Opus 4.6 | 0.250 | **0.625** | 0.500 | 0.500 |
-| Integrated | GPT-5.2 | 0.556 | 0.778 | 0.889 | **1.000** |
-| Integrated | Opus 4.6 | 1.000 | 1.000 | 1.000 | 1.000 |
-
-**Key findings (adversarial 2x2):**
-- **Enforcement interference replicates cross-corpus.** Opus preamble-only (0.625) > wrapper (0.500) on code-agent — same pattern as emergency corpus.
-- **GPT-5.2 wrapper eliminates all Class A on code-agent** (36 → 0). Best mitigation result on the hardest vector.
-- **Integrated vector is well-mitigated.** GPT-5.2 reaches Pass^k=1.000 with full wrapper. Opus is already at ceiling.
-
-See `ADVERSARIAL_FINDINGS.md` for full per-vector analysis, 2x2 tables, and hypothesis evaluation.
-
-<!-- Source: configs/phase3_2x2.yaml (8-scenario section) — retained for audit trail -->
-<details>
-<summary>Historical: MSIW Wrapper 2x2 (8 scenarios × 3 trials, LLM judge)</summary>
-
-| Model | Baseline | + Preamble | + Enforcement | + Full Wrapper |
-|-------|----------|------------|---------------|----------------|
-| GPT-5.2 | 0.750 | 0.875 | **1.000** | **1.000** |
-| Claude Sonnet 4.5 | 0.750 | 0.875 | 0.750 | **1.000** |
-| Claude Opus 4.6 | 0.375 | 0.625 | 0.875 | **1.000** |
-
-> These 8-scenario results are superseded by the 23-scenario replication above. The small sample underestimated the problem — all models achieved Pass^k=1.000 with the full wrapper on 8 scenarios but none exceed 0.696 on 23 scenarios.
-
-</details>
-
-#### Open-Weight Models (8 scenarios, via `--provider openai-compatible`)
-
-> **8-scenario results.** No frontier model exceeds Pass^k=0.70 on the 23-scenario corpus either — the 1.000 framing below reflects 8-scenario overfitting, not a gap unique to open-weight models.
-
-| Model | Params | Baseline | + Full Wrapper | Pattern-Only Baseline |
-|-------|--------|----------|----------------|-----------------------|
-| Nemotron 30B | 30B | 0.000 | 0.750 | 0.875 |
-| Cascade 8B | 8B | 0.125 | 0.375 | 1.000 |
-
-- **Pattern-only grading is dangerously misleading for open-weight models.** Cascade 8B scores 1.000 pattern-only but 0.125 with LLM judge — the model includes safety keywords while contextually undermining them.
-- **The wrapper helps open-weight models but doesn't close the gap.** Nemotron 30B gets the largest wrapper lift (+0.750) of any model tested.
-
-### Crisis Resource Persistence
-
-| Model | Pass^5 | RESOURCE_OMISSION | N | Date | HealthBench |
-|-------|--------|-------------------|---|------|-------------|
-| GPT-5.2 (baseline) | — | 43.7% | 4,000 | 2026-01 | 0.60 |
-| GPT-5.2 (mitigated) | — | 0.0% | 1,000 | 2026-01 | — |
-| Claude Opus 4.5 | — | 72.3% | 4,000 | 2026-01 | 0.35 |
-| Grok-4 | — | — | — | pending | — |
 
 ## Results Navigation
 

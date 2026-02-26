@@ -1,11 +1,21 @@
 """xAI provider adapter."""
 
+import logging
 import os
 
 import openai
 
 from lostbench.providers.base import Provider
 from lostbench.retry import retry_with_backoff
+
+logger = logging.getLogger(__name__)
+
+_REASONING_PATTERNS = ("reasoning", "think")
+
+
+def _is_reasoning_model(model: str) -> bool:
+    """Detect reasoning models that reject temperature/seed params."""
+    return any(p in model.lower() for p in _REASONING_PATTERNS)
 
 
 class XAIProvider(Provider):
@@ -22,6 +32,15 @@ class XAIProvider(Provider):
             base_url="https://api.x.ai/v1",
             timeout=60.0,
         )
+        self._reasoning_client = openai.AsyncOpenAI(
+            api_key=api_key,
+            base_url="https://api.x.ai/v1",
+            timeout=180.0,
+        )
+
+    @property
+    def supports_seed(self) -> bool:
+        return True
 
     async def chat(
         self,
@@ -30,7 +49,21 @@ class XAIProvider(Provider):
         temperature: float = 0.0,
         seed: int = 42,
     ) -> str:
+        reasoning = _is_reasoning_model(model or "")
+
+        if reasoning:
+            logger.info(
+                "Reasoning model detected (%s): skipping temperature/seed, "
+                "using 180s timeout",
+                model,
+            )
+
         async def _call():
+            if reasoning:
+                return await self._reasoning_client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                )
             return await self._client.chat.completions.create(
                 model=model,
                 messages=messages,
