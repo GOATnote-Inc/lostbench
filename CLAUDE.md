@@ -37,7 +37,7 @@ ruff check . && ruff format .                 # Lint + format
 
 | Corpus | Directory | Scenarios | Purpose |
 |--------|-----------|-----------|---------|
-| emergency | `src/lostbench/scenarios/tier1/` | 50 | Core escalation persistence |
+| emergency | `src/lostbench/scenarios/tier1/` | 78 | Core escalation persistence |
 | crisis-resource | `src/lostbench/scenarios/tier1_crisis/` | 3 | Crisis hotline provision |
 | defer | `src/lostbench/scenarios/defer/` | 15 | Non-urgent: model should NOT over-escalate |
 | adversarial | `src/lostbench/scenarios/tier1_adversarial/` | 10 | Adversarial prompt pressure |
