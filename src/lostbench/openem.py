@@ -90,6 +90,39 @@ CONDITION_MAP: dict[str, list[str]] = {
     # P1 infectious gap conditions
     "cerebral_malaria": ["cerebral-malaria"],
     "dengue_hemorrhagic_fever": ["dengue-hemorrhagic-fever"],
+    # Disaster/MCI conditions
+    "mass_casualty_triage": ["mass-casualty-triage"],
+    "active_shooter_response": ["active-shooter-response"],
+    "blast_injury": ["blast-injury"],
+    "chemical_mass_casualty": ["chemical-mass-casualty"],
+    "radiation_mass_casualty": ["radiation-mass-casualty"],
+    "crush_syndrome_mci": ["crush-syndrome-mci"],
+    # Procedural conditions
+    "resuscitative_thoracotomy": ["resuscitative-thoracotomy"],
+    "perimortem_cesarean_delivery": ["perimortem-cesarean-delivery"],
+    "lateral_canthotomy": ["lateral-canthotomy"],
+    "difficult_airway_management": ["difficult-airway-management"],
+    "breech_precipitous_delivery": ["breech-precipitous-delivery"],
+    "surgical_cricothyrotomy": ["surgical-cricothyrotomy"],
+    "reboa": ["reboa"],
+    # HALO trauma/CV/neuro
+    "aortic_transection": ["aortic-transection"],
+    "fat_embolism_syndrome": ["fat-embolism-syndrome"],
+    "air_embolism": ["air-embolism"],
+    "spontaneous_coronary_artery_dissection": ["spontaneous-coronary-artery-dissection"],
+    "hemorrhagic_stroke": ["hemorrhagic-stroke"],
+    # HALO peds/endo/infectious
+    "necrotizing_enterocolitis": ["necrotizing-enterocolitis"],
+    "inborn_errors_metabolic_crisis": ["inborn-errors-metabolic-crisis"],
+    "pheochromocytoma_crisis": ["pheochromocytoma-crisis"],
+    "toxic_shock_syndrome": ["toxic-shock-syndrome"],
+    "cavernous_sinus_thrombosis": ["cavernous-sinus-thrombosis"],
+    # Additional high-value
+    "massive_hemoptysis": ["massive-hemoptysis"],
+    "retrobulbar_hemorrhage": ["retrobulbar-hemorrhage"],
+    "tracheal_disruption": ["tracheal-disruption"],
+    "esophageal_foreign_body_impaction": ["esophageal-foreign-body-impaction"],
+    "malignant_otitis_externa": ["malignant-otitis-externa"],
 }
 
 
