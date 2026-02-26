@@ -1,6 +1,6 @@
 # LostBench Coverage Matrix
 
-Generated from 111 scenarios across 8 corpora and 53 experiment runs.
+Generated from 139 scenarios across 8 corpora and 53 experiment runs.
 
 ## Condition Families × Corpora
 
@@ -8,24 +8,28 @@ Which medical domains have scenario coverage in each corpus.
 
 | Domain | adversarial | code-agent | crisis-resource | defer | emergency | integrated | multimodal | tool-use | Total |
 |--------|-------|-------|-------|-------|-------|-------|-------|-------|-------|
-| Cardiovascular | 4 | 3 | - | 1 | 4 | 4 | 4 | 3 | 23 |
+| Cardiovascular | 4 | 3 | - | 1 | 6 | 4 | 4 | 3 | 25 |
 | Dermatologic | - | - | - | 1 | - | - | - | - | 1 |
-| ENT | - | - | - | 1 | - | - | - | - | 1 |
+| Disaster/MCI | - | - | - | - | 6 | - | - | - | 6 |
+| ENT | - | - | - | 1 | 1 | - | - | - | 2 |
 | Immunologic | - | 1 | - | 1 | - | - | - | - | 2 |
-| Infectious Disease | - | - | - | 1 | - | - | - | - | 1 |
-| Metabolic | 1 | 1 | - | - | 3 | 1 | 1 | - | 7 |
+| Infectious Disease | - | - | - | 1 | 1 | - | - | - | 2 |
+| Metabolic | 1 | 1 | - | - | 5 | 1 | 1 | - | 9 |
 | Musculoskeletal | - | - | - | 1 | - | - | - | - | 1 |
-| Neurological | 2 | 1 | - | - | 5 | 2 | 2 | 3 | 15 |
+| Neurological | 2 | 1 | - | - | 7 | 2 | 2 | 3 | 17 |
 | OB/GYN | 1 | - | - | - | 2 | 1 | - | 1 | 5 |
-| Pediatric | - | 1 | - | 1 | 4 | 1 | 1 | 1 | 9 |
+| Ophthalmologic | - | - | - | - | 1 | - | - | - | 1 |
+| Pediatric | - | 1 | - | 1 | 5 | 1 | 1 | 1 | 10 |
 | Primary Care | - | - | - | 2 | - | - | - | - | 2 |
+| Procedural | - | - | - | - | 7 | - | - | - | 7 |
 | Psychiatric | - | 1 | 1 | - | - | - | - | - | 2 |
+| Pulmonary | - | - | - | - | 2 | - | - | - | 2 |
 | Rheumatologic | - | - | - | - | 1 | - | - | - | 1 |
-| Surgical | 1 | - | - | - | 4 | - | - | - | 5 |
+| Surgical | 1 | - | - | - | 6 | - | - | - | 7 |
 | Uncategorized | 1 | - | 2 | 5 | 27 | - | - | - | 35 |
-| Vascular | - | - | - | 1 | - | - | - | - | 1 |
+| Vascular | - | - | - | 1 | 1 | - | - | - | 2 |
 
-**Domains with no scenarios:** Ophthalmologic, Toxicological
+**Domains with no scenarios:** Toxicological
 
 ## Pressure Strategy × Corpus
 
@@ -33,9 +37,12 @@ Count of scenarios using each pressure type per corpus.
 
 | Pressure Type | adversarial | code-agent | crisis-resource | defer | emergency | integrated | multimodal | tool-use | Total |
 |---------------|-------|-------|-------|-------|-------|-------|-------|-------|-------|
+| `alternative_demand` | - | - | - | - | 7 | - | - | - | 7 |
+| `anchoring_bias` | - | - | - | - | 10 | - | - | - | 10 |
 | `anxiety_escalation` | - | - | - | 9 | - | - | - | - | 9 |
 | `authority_claim` | - | 2 | - | - | - | - | - | - | 2 |
 | `authority_credential` | 5 | - | - | - | - | - | - | - | 5 |
+| `authority_override` | - | - | - | - | 6 | - | - | - | 6 |
 | `authority_pressure` | - | - | - | 14 | - | - | - | - | 14 |
 | `authority_reinforcement` | 5 | - | - | - | - | - | 1 | - | 6 |
 | `authority_trust` | - | - | - | - | 10 | - | - | - | 10 |
@@ -63,10 +70,12 @@ Count of scenarios using each pressure type per corpus.
 | `guideline_citation` | - | - | - | - | - | 1 | - | - | 1 |
 | `guideline_misapplication` | - | - | - | - | - | 1 | - | - | 1 |
 | `guideline_reinforcement` | - | - | - | - | - | 2 | - | - | 2 |
+| `hesitation_bias` | - | - | - | - | 7 | - | - | - | 7 |
 | `improvement_signal` | 1 | - | - | - | 17 | - | - | - | 18 |
 | `inconvenience` | - | - | - | - | 2 | - | - | - | 2 |
 | `incremental_weakening` | 4 | - | - | - | - | - | - | - | 4 |
 | `knowledge_leverage` | 1 | - | - | - | - | - | - | - | 1 |
+| `liability_fear` | - | - | - | - | 7 | - | - | - | 7 |
 | `logical_argument` | - | - | - | - | - | 1 | - | - | 1 |
 | `logistical_barrier` | 1 | - | - | - | 1 | - | - | - | 2 |
 | `minimization` | - | - | 3 | - | - | - | - | - | 3 |
@@ -94,6 +103,7 @@ Count of scenarios using each pressure type per corpus.
 | `reframing_reinforcement` | - | - | - | - | - | - | 1 | - | 1 |
 | `research_argument` | - | 1 | - | - | - | - | - | - | 1 |
 | `resource_rejection` | - | - | 3 | - | - | - | - | - | 3 |
+| `resource_scarcity` | - | - | - | - | 6 | - | - | - | 6 |
 | `scheduling_anchor` | - | - | - | - | - | 1 | - | - | 1 |
 | `scope_limitation` | - | 1 | - | - | - | - | - | - | 1 |
 | `social_pressure` | - | - | - | - | 27 | - | - | - | 27 |
@@ -103,7 +113,9 @@ Count of scenarios using each pressure type per corpus.
 | `symptom_improvement` | - | - | - | - | 5 | - | - | - | 5 |
 | `symptom_worry` | - | - | - | 10 | - | - | - | - | 10 |
 | `system_distrust` | - | - | - | - | 9 | - | - | - | 9 |
+| `system_overwhelm` | - | - | - | - | 6 | - | - | - | 6 |
 | `technical_framing` | - | 1 | - | - | - | - | - | - | 1 |
+| `technique_doubt` | - | - | - | - | 7 | - | - | - | 7 |
 | `temporal_anchoring` | 1 | - | - | - | - | - | - | - | 1 |
 | `temporal_reinforcement` | 1 | - | - | - | - | - | - | - | 1 |
 | `test_fixture_argument` | - | 1 | - | - | - | - | - | - | 1 |
@@ -112,6 +124,7 @@ Count of scenarios using each pressure type per corpus.
 | `tool_chain_completion` | - | - | - | - | - | - | - | 1 | 1 |
 | `tool_fabrication` | - | - | - | - | - | - | - | 7 | 7 |
 | `tool_reinforcement` | - | - | - | - | - | - | - | 2 | 2 |
+| `triage_pushback` | - | - | - | - | 6 | - | - | - | 6 |
 
 ## Attack Vector × Model Evaluation Coverage
 
