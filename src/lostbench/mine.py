@@ -68,8 +68,32 @@ VALID_PRESSURE_TYPES = {
 }
 
 
+# ScribeGoat2 full-name pressure operators -> LostBench pressure types
+PRESSURE_NAME_MAP: dict[str, str] = {
+    "minimization": "improvement_signal",
+    "cost_barrier": "financial_barrier",
+    "self_diagnosis": "rational_framing",
+    "authority_challenge": "authority_trust",
+    "improvement_signal": "improvement_signal",
+    "autonomy_assertion": "autonomy_assertion",
+    "social_pressure": "social_pressure",
+    "financial_barrier": "financial_barrier",
+    "polite_disengagement": "polite_disengagement",
+    "rational_framing": "rational_framing",
+    "authority_trust": "authority_trust",
+    "provider_trust": "provider_trust",
+    "system_distrust": "system_distrust",
+    "prior_experience": "prior_experience",
+}
+
+
 def _map_pressure_type(operator_code: str) -> str:
-    """Map ScribeGoat2 operator code to LostBench pressure type."""
+    """Map ScribeGoat2 operator code or name to LostBench pressure type."""
+    # Try full name first (ScribeGoat2 turns format)
+    name_match = PRESSURE_NAME_MAP.get(operator_code.lower())
+    if name_match:
+        return name_match
+    # Try operator code (ScribeGoat2 seed format)
     return OPERATOR_MAP.get(operator_code.upper(), "rational_framing")
 
 
@@ -102,40 +126,65 @@ def convert_seed(
         seed = json.load(f)
 
     # Extract fields from seed
-    seed_id = seed.get("seed_id", seed.get("id", seed_path.stem))
+    seed_id = seed.get(
+        "seed_id", seed.get("scenario_id", seed.get("id", seed_path.stem))
+    )
     condition = seed.get("condition", "unknown")
+    # Normalize: "STEMI (ST-Elevation Myocardial Infarction)" -> "stemi"
+    # Take text before first paren, then snake_case
+    if "(" in condition:
+        condition = condition[: condition.index("(")].strip()
     condition_snake = condition.lower().replace(" ", "_").replace("-", "_")
 
-    # Build initial message
-    initial = seed.get("initial_message", seed.get("initial", ""))
-    if not initial:
-        # Try to build from presentation
-        presentation = seed.get("presentation", "")
-        if presentation:
-            initial = presentation
+    # Build initial message and pressure turns
+    # Handle two seed formats:
+    #   Format A (ScribeGoat2 full): turns[] with user_prompt + pressure_operators
+    #   Format B (simple): initial_message/initial + pressure_turns/pressure
+    turns = seed.get("turns", [])
+    if turns:
+        # Format A: extract initial from turn 1, pressure from turns 2+
+        initial = turns[0].get("user_prompt", "") if turns else ""
+        pressure_turns = []
+        for t in turns[1:]:
+            operators = t.get("pressure_operators", [])
+            # Map first operator code to pressure type
+            op_code = operators[0] if operators else "RF"
+            pressure_turns.append(
+                {
+                    "type": _map_pressure_type(op_code),
+                    "turn": t.get("turn_number", len(pressure_turns) + 2),
+                    "content": t.get("user_prompt", ""),
+                }
+            )
+    else:
+        # Format B: simple fields
+        initial = seed.get("initial_message", seed.get("initial", ""))
+        if not initial:
+            presentation = seed.get("presentation", "")
+            if presentation:
+                initial = presentation
 
-    # Build pressure turns
-    pressure_turns = []
-    raw_pressures = seed.get("pressure_turns", seed.get("pressure", []))
-    for i, p in enumerate(raw_pressures):
-        if isinstance(p, str):
-            pressure_turns.append(
-                {
-                    "type": "rational_framing",
-                    "turn": i + 2,
-                    "content": p,
-                }
-            )
-        elif isinstance(p, dict):
-            operator = p.get("operator", p.get("type", "RF"))
-            content = p.get("content", p.get("message", ""))
-            pressure_turns.append(
-                {
-                    "type": _map_pressure_type(operator),
-                    "turn": p.get("turn", i + 2),
-                    "content": content,
-                }
-            )
+        pressure_turns = []
+        raw_pressures = seed.get("pressure_turns", seed.get("pressure", []))
+        for i, p in enumerate(raw_pressures):
+            if isinstance(p, str):
+                pressure_turns.append(
+                    {
+                        "type": "rational_framing",
+                        "turn": i + 2,
+                        "content": p,
+                    }
+                )
+            elif isinstance(p, dict):
+                operator = p.get("operator", p.get("type", "RF"))
+                content = p.get("content", p.get("message", ""))
+                pressure_turns.append(
+                    {
+                        "type": _map_pressure_type(operator),
+                        "turn": p.get("turn", i + 2),
+                        "content": content,
+                    }
+                )
 
     # Determine corpus type
     corpus = seed.get("corpus", "emergency")
@@ -172,8 +221,8 @@ def convert_seed(
             "suite": "capability",
         }
 
-    # Optional time_to_harm
-    tth = seed.get("time_to_harm", "")
+    # Optional time_to_harm (ScribeGoat2 uses time_to_harm_hours)
+    tth = seed.get("time_to_harm", seed.get("time_to_harm_hours", ""))
     if tth:
         scenario["time_to_harm"] = tth
 

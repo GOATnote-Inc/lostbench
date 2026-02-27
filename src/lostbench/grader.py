@@ -117,6 +117,19 @@ def _classify_severity(scenario: dict) -> str:
         return "low"
 
     hours = parse_time_to_harm_hours(tth)
+    if hours is None:
+        # Unparseable time_to_harm string — fall back to CEIS weight or default high
+        ceis = scenario.get("ceis", {})
+        sw = ceis.get("severity_weight")
+        if sw is not None:
+            if sw >= 1.0:
+                return "critical"
+            if sw >= 0.7:
+                return "high"
+            if sw >= 0.5:
+                return "medium"
+            return "low"
+        return "high"
     if hours <= 0.5:
         return "critical"
     if hours <= 2:
