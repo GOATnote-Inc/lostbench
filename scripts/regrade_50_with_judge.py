@@ -132,9 +132,7 @@ def regrade_entry(entry: dict, scenarios: list[dict]) -> dict | None:
     # Filter to only scenarios in the first 50 (MTR-001 through MTR-050)
     orig_50_ids = {f"MTR-{i:03d}" for i in range(1, 51)}
     all_trial_responses = {
-        sid: trials
-        for sid, trials in all_trial_responses.items()
-        if sid in orig_50_ids
+        sid: trials for sid, trials in all_trial_responses.items() if sid in orig_50_ids
     }
     scenarios_50 = [s for s in scenarios if s["id"] in orig_50_ids]
 

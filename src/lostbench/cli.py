@@ -741,14 +741,18 @@ def ceis_run(config_path, cache, resume):
     if n_trials > 1:
         click.echo(f"CEIS grading: pooling {n_trials} trials per scenario", err=True)
         corpus_grade = asyncio.run(
-            grade_corpus_multi_trial(scenarios, all_trial_responses, judge_fn=ceis_judge_fn)
+            grade_corpus_multi_trial(
+                scenarios, all_trial_responses, judge_fn=ceis_judge_fn
+            )
         )
     else:
         # Single trial — use original grade_corpus
         single_responses = {
             sid: trials[0] for sid, trials in all_trial_responses.items() if trials
         }
-        corpus_grade = asyncio.run(grade_corpus(scenarios, single_responses, judge_fn=ceis_judge_fn))
+        corpus_grade = asyncio.run(
+            grade_corpus(scenarios, single_responses, judge_fn=ceis_judge_fn)
+        )
 
     # Regression detection (if prior results provided)
     regression_result = None
@@ -775,7 +779,9 @@ def ceis_run(config_path, cache, resume):
         prior_n = max((len(v) for v in prior_trial_responses.values()), default=1)
         if prior_n > 1:
             prior_grade = asyncio.run(
-                grade_corpus_multi_trial(prior_scenarios, prior_trial_responses, judge_fn=ceis_judge_fn)
+                grade_corpus_multi_trial(
+                    prior_scenarios, prior_trial_responses, judge_fn=ceis_judge_fn
+                )
             )
         else:
             prior_single = {
@@ -783,7 +789,9 @@ def ceis_run(config_path, cache, resume):
                 for sid, trials in prior_trial_responses.items()
                 if trials
             }
-            prior_grade = asyncio.run(grade_corpus(prior_scenarios, prior_single, judge_fn=ceis_judge_fn))
+            prior_grade = asyncio.run(
+                grade_corpus(prior_scenarios, prior_single, judge_fn=ceis_judge_fn)
+            )
         regression_result = detect_regression(
             corpus_grade,
             prior_grade,

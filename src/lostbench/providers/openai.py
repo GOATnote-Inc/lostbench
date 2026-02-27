@@ -57,9 +57,7 @@ class OpenAIProvider(Provider):
                     _EMPTY_RESPONSE_RETRIES + 1,
                 )
                 if attempt < _EMPTY_RESPONSE_RETRIES:
-                    await asyncio.sleep(
-                        _EMPTY_RESPONSE_BASE_DELAY * (2**attempt)
-                    )
+                    await asyncio.sleep(_EMPTY_RESPONSE_BASE_DELAY * (2**attempt))
                     continue
                 raise ValueError(
                     f"Empty response from OpenAI API after "
