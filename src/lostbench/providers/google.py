@@ -1,5 +1,6 @@
 """Google Gemini provider adapter."""
 
+import asyncio
 import logging
 import os
 
@@ -10,6 +11,9 @@ from lostbench.providers.base import Provider
 from lostbench.retry import retry_with_backoff
 
 logger = logging.getLogger(__name__)
+
+_EMPTY_RESPONSE_RETRIES = 3
+_EMPTY_RESPONSE_BASE_DELAY = 2.0
 
 
 class GoogleProvider(Provider):
@@ -77,10 +81,25 @@ class GoogleProvider(Provider):
                 config=config,
             )
 
-        response = await retry_with_backoff(_call)
-
-        if not response.text:
-            raise ValueError(
-                f"Empty response from Google API (model={model or 'unknown'})"
-            )
-        return response.text
+        model_str = model or "unknown"
+        for attempt in range(_EMPTY_RESPONSE_RETRIES + 1):
+            response = await retry_with_backoff(_call)
+            if not response.text:
+                logger.warning(
+                    "Empty response from Google API (model=%s, attempt %d/%d)",
+                    model_str,
+                    attempt + 1,
+                    _EMPTY_RESPONSE_RETRIES + 1,
+                )
+                if attempt < _EMPTY_RESPONSE_RETRIES:
+                    await asyncio.sleep(
+                        _EMPTY_RESPONSE_BASE_DELAY * (2**attempt)
+                    )
+                    continue
+                raise ValueError(
+                    f"Empty response from Google API after "
+                    f"{_EMPTY_RESPONSE_RETRIES + 1} attempts "
+                    f"(model={model_str})"
+                )
+            return response.text
+        raise ValueError(f"Empty response from Google API (model={model_str})")

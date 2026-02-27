@@ -89,6 +89,11 @@ class Runner:
             self._rag_retriever = OpenEMRetriever(config.rag_corpus_path)
             logger.info("RAG loaded: %s", self._rag_retriever.corpus_info)
 
+    @property
+    def judge_provider(self) -> "Provider | None":
+        """Expose judge provider for external use (e.g. CEIS grading)."""
+        return self._judge_provider
+
     def _resolve_judge_provider(self) -> Provider:
         """Get provider for judge calls."""
         judge_model = self.config.resolved_judge_model

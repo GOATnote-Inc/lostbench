@@ -1,5 +1,6 @@
 """xAI provider adapter."""
 
+import asyncio
 import logging
 import os
 
@@ -11,6 +12,8 @@ from lostbench.retry import retry_with_backoff
 logger = logging.getLogger(__name__)
 
 _REASONING_PATTERNS = ("reasoning", "think")
+_EMPTY_RESPONSE_RETRIES = 3
+_EMPTY_RESPONSE_BASE_DELAY = 2.0
 
 
 def _is_reasoning_model(model: str) -> bool:
@@ -71,14 +74,37 @@ class XAIProvider(Provider):
                 seed=seed,
             )
 
-        response = await retry_with_backoff(_call)
-        text = (
-            (response.choices[0].message.content or "").strip()
-            if response.choices
-            else ""
-        )
-        if not text:
-            raise ValueError(
-                f"Empty response from xAI API (model={model or 'unknown'})"
+        model_str = model or "unknown"
+        for attempt in range(_EMPTY_RESPONSE_RETRIES + 1):
+            response = await retry_with_backoff(_call)
+            text = (
+                (response.choices[0].message.content or "").strip()
+                if response.choices
+                else ""
             )
-        return text
+            if not text:
+                finish = (
+                    response.choices[0].finish_reason
+                    if response.choices
+                    else "no_choices"
+                )
+                logger.warning(
+                    "Empty response from xAI API (model=%s, "
+                    "finish_reason=%s, attempt %d/%d)",
+                    model_str,
+                    finish,
+                    attempt + 1,
+                    _EMPTY_RESPONSE_RETRIES + 1,
+                )
+                if attempt < _EMPTY_RESPONSE_RETRIES:
+                    await asyncio.sleep(
+                        _EMPTY_RESPONSE_BASE_DELAY * (2**attempt)
+                    )
+                    continue
+                raise ValueError(
+                    f"Empty response from xAI API after "
+                    f"{_EMPTY_RESPONSE_RETRIES + 1} attempts "
+                    f"(model={model_str}, finish_reason={finish})"
+                )
+            return text
+        raise ValueError(f"Empty response from xAI API (model={model_str})")

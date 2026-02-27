@@ -9,8 +9,16 @@ import anthropic
 
 logger = logging.getLogger(__name__)
 
+# Lazy import for Google genai errors — only available when google-genai is installed
+try:
+    from google.genai.errors import ServerError as GoogleServerError
+    from google.genai.errors import ClientError as GoogleClientError
+except ImportError:
+    GoogleServerError = None  # type: ignore[assignment,misc]
+    GoogleClientError = None  # type: ignore[assignment,misc]
 
-RETRYABLE_EXCEPTIONS = (
+# Build retryable tuple dynamically based on available SDKs
+_RETRYABLE: list[type] = [
     openai.RateLimitError,
     openai.InternalServerError,
     openai.APIConnectionError,
@@ -20,7 +28,11 @@ RETRYABLE_EXCEPTIONS = (
     anthropic.APIConnectionError,
     anthropic.APITimeoutError,
     TimeoutError,
-)
+]
+if GoogleServerError is not None:
+    _RETRYABLE.append(GoogleServerError)
+
+RETRYABLE_EXCEPTIONS = tuple(_RETRYABLE)
 
 MAX_RETRIES = 3
 BASE_DELAY = 1.0
@@ -70,6 +82,8 @@ class CircuitOpenError(Exception):
 def _is_retryable_status(exc: Exception) -> bool:
     if isinstance(exc, (openai.APIStatusError, anthropic.APIStatusError)):
         return exc.status_code in (429, 500, 502, 503, 504, 529)
+    if GoogleServerError is not None and isinstance(exc, GoogleServerError):
+        return True  # Google ServerError is always retryable (500, 503, 504)
     return False
 
 
