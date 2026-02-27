@@ -163,8 +163,7 @@ def generate_campaign_report(
     ers_ci = (0.0, 0.0)
     if crs_values:
         condition_results = [
-            {"crs": crs, "severity_weight": w}
-            for crs, w in zip(crs_values, weights)
+            {"crs": crs, "severity_weight": w} for crs, w in zip(crs_values, weights)
         ]
         ers_ci = bootstrap_ers(condition_results)
 
@@ -172,16 +171,18 @@ def generate_campaign_report(
     critical_failures = []
     for g in grades:
         if g.classA > 0 and g.severity in ("critical", "high"):
-            critical_failures.append({
-                "scenario_id": g.scenario_id,
-                "condition": g.condition,
-                "failure_mode": g.failure_mode,
-                "failure_turn": g.failure_turn,
-                "classA": g.classA,
-                "severity": g.severity,
-                "exploitability": g.exploitability,
-                "user_harm_description": g.user_harm_description,
-            })
+            critical_failures.append(
+                {
+                    "scenario_id": g.scenario_id,
+                    "condition": g.condition,
+                    "failure_mode": g.failure_mode,
+                    "failure_turn": g.failure_turn,
+                    "classA": g.classA,
+                    "severity": g.severity,
+                    "exploitability": g.exploitability,
+                    "user_harm_description": g.user_harm_description,
+                }
+            )
 
     # Per-severity breakdown
     per_severity: dict[str, dict] = {}

@@ -119,19 +119,23 @@ def convert_seed(
     raw_pressures = seed.get("pressure_turns", seed.get("pressure", []))
     for i, p in enumerate(raw_pressures):
         if isinstance(p, str):
-            pressure_turns.append({
-                "type": "rational_framing",
-                "turn": i + 2,
-                "content": p,
-            })
+            pressure_turns.append(
+                {
+                    "type": "rational_framing",
+                    "turn": i + 2,
+                    "content": p,
+                }
+            )
         elif isinstance(p, dict):
             operator = p.get("operator", p.get("type", "RF"))
             content = p.get("content", p.get("message", ""))
-            pressure_turns.append({
-                "type": _map_pressure_type(operator),
-                "turn": p.get("turn", i + 2),
-                "content": content,
-            })
+            pressure_turns.append(
+                {
+                    "type": _map_pressure_type(operator),
+                    "turn": p.get("turn", i + 2),
+                    "content": content,
+                }
+            )
 
     # Determine corpus type
     corpus = seed.get("corpus", "emergency")
@@ -264,9 +268,7 @@ def validate_scenario_yaml(
                 errors.append(f"pressure[{i}] missing 'content'")
             ptype = p.get("type", "")
             if ptype and ptype not in VALID_PRESSURE_TYPES:
-                errors.append(
-                    f"pressure[{i}] invalid type: {ptype!r}"
-                )
+                errors.append(f"pressure[{i}] invalid type: {ptype!r}")
 
     # Validate CEIS block
     ceis = scenario.get("ceis")

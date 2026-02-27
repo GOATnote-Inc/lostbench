@@ -1284,7 +1284,9 @@ def audit(taxonomy, scenarios, results_dir, families_path, risk_debt_path):
 @click.option(
     "--cache/--no-cache", default=True, help="Enable deterministic response cache"
 )
-def challenge(model, provider, base_url, api_key, scenario, trials, corpus, output_dir, cache):
+def challenge(
+    model, provider, base_url, api_key, scenario, trials, corpus, output_dir, cache
+):
     """Run a single scenario challenge (no grading).
 
     Produces raw conversation transcripts for later grading.
@@ -1343,7 +1345,9 @@ def challenge(model, provider, base_url, api_key, scenario, trials, corpus, outp
     type=click.Path(exists=True),
     help="Directory containing challenge_*.json files",
 )
-@click.option("--output-dir", default=None, help="Output directory (default: challenge-dir)")
+@click.option(
+    "--output-dir", default=None, help="Output directory (default: challenge-dir)"
+)
 @click.option(
     "--corpus",
     default="emergency",
@@ -1399,7 +1403,9 @@ def grade_cmd(challenge_dir, output_dir, corpus, regrade, judge_model):
     )
 
     n_pass = sum(1 for r in results if r.passed)
-    click.echo(f"Graded {len(results)} challenges: {n_pass} pass, {len(results) - n_pass} fail")
+    click.echo(
+        f"Graded {len(results)} challenges: {n_pass} pass, {len(results) - n_pass} fail"
+    )
 
 
 @main.command("campaign-report")
@@ -1472,7 +1478,16 @@ def campaign_report_cmd(grade_dir, output_dir, fmt):
     help="Validate an existing scenario YAML",
 )
 @click.option("--output-dir", default="./mined", help="Output directory for YAMLs")
-def mine(seed_dir, seed_id, hypothesis, failure_class, clinical_domain, count, validate_only, output_dir):
+def mine(
+    seed_dir,
+    seed_id,
+    hypothesis,
+    failure_class,
+    clinical_domain,
+    count,
+    validate_only,
+    output_dir,
+):
     """Convert seed JSONs to LostBench YAMLs or generate from hypotheses.
 
     \b
@@ -1533,7 +1548,9 @@ def mine(seed_dir, seed_id, hypothesis, failure_class, clinical_domain, count, v
             )
         return
 
-    click.echo("Specify --seed-dir, --seed-id, --hypothesis, or --validate-only", err=True)
+    click.echo(
+        "Specify --seed-dir, --seed-id, --hypothesis, or --validate-only", err=True
+    )
     sys.exit(1)
 
 
@@ -1573,8 +1590,15 @@ def mine(seed_dir, seed_id, hypothesis, failure_class, clinical_domain, count, v
 )
 @click.option("--rounds", default=3, type=int, help="Number of hunt rounds")
 @click.option("--trials", default=5, type=int, help="Trials per scenario")
-@click.option("--target-per-class", default=5, type=int, help="For coverage_gaps strategy")
-@click.option("--seed", "seed_scenario", default=None, help="Seed scenario ID for boundary_probing")
+@click.option(
+    "--target-per-class", default=5, type=int, help="For coverage_gaps strategy"
+)
+@click.option(
+    "--seed",
+    "seed_scenario",
+    default=None,
+    help="Seed scenario ID for boundary_probing",
+)
 @click.option("--variants", default=3, type=int, help="Variants for boundary_probing")
 @click.option("--output-dir", default="./hunt", help="Output directory")
 @click.option(

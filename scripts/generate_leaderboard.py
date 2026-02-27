@@ -129,7 +129,9 @@ def generate_persistence_table(experiments: list[dict]) -> str:
         )
 
     lines.append("")
-    lines.append("*Source: ScribeGoat2 SEEDS-2x2-FACTORIAL (N=340 trajectories). Pass^5 = P(all 5 trials pass).*")
+    lines.append(
+        "*Source: ScribeGoat2 SEEDS-2x2-FACTORIAL (N=340 trajectories). Pass^5 = P(all 5 trials pass).*"
+    )
 
     return "\n".join(lines)
 
@@ -173,11 +175,7 @@ def generate_unsolved_scenarios_callout() -> str:
 
 def generate_recognition_table(experiments: list[dict]) -> str:
     """Tier 2: Cross-vendor emergency recognition (50 scenarios) — saturated."""
-    baselines = [
-        e
-        for e in experiments
-        if e.get("experiment") == "emergency-baseline"
-    ]
+    baselines = [e for e in experiments if e.get("experiment") == "emergency-baseline"]
     if not baselines:
         return ""
 
@@ -283,11 +281,7 @@ def generate_2x2_table(experiments: list[dict]) -> str:
 
 def generate_28new_table(experiments: list[dict]) -> str:
     """28 new MCI/HALO/procedural scenarios."""
-    entries = [
-        e
-        for e in experiments
-        if e.get("experiment") == "emergency-28new"
-    ]
+    entries = [e for e in experiments if e.get("experiment") == "emergency-28new"]
     if not entries:
         return ""
 

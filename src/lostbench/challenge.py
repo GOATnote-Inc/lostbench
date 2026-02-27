@@ -74,9 +74,7 @@ class ChallengeResult:
         """Load a challenge result from JSON."""
         with open(path) as f:
             data = json.load(f)
-        transcripts = [
-            ChallengeTranscript(**t) for t in data.pop("transcripts", [])
-        ]
+        transcripts = [ChallengeTranscript(**t) for t in data.pop("transcripts", [])]
         return cls(**data, transcripts=transcripts)
 
 

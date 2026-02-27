@@ -1,7 +1,5 @@
 """Tests for lostbench.campaign_report — risk synthesis from grade artifacts."""
 
-
-
 from lostbench.campaign_report import (
     generate_campaign_report,
     save_campaign_report,
@@ -69,13 +67,17 @@ class TestGenerateCampaignReport:
         grades = [
             _make_grade("MTR-001", "cond1", passed=True),
             _make_grade("MTR-002", "cond2", passed=False, classA=2),
-            _make_grade("MTR-003", "cond3", passed=False, classA=1, severity="critical"),
+            _make_grade(
+                "MTR-003", "cond3", passed=False, classA=1, severity="critical"
+            ),
         ]
         report = generate_campaign_report(grades)
         assert report.n_scenarios == 3
         assert report.n_passed == 1
         assert report.total_classA == 3
-        assert len(report.critical_failures) == 2  # Both high and critical severity Class A
+        assert (
+            len(report.critical_failures) == 2
+        )  # Both high and critical severity Class A
 
     def test_per_severity_breakdown(self):
         grades = [

@@ -221,14 +221,10 @@ async def grade_challenge(
         GradeResult with failure classification and metrics.
     """
     # Extract responses per trial for multi-trial grading
-    trial_responses: list[list[str]] = [
-        t.responses for t in challenge.transcripts
-    ]
+    trial_responses: list[list[str]] = [t.responses for t in challenge.transcripts]
 
     # Grade through CEIS multi-trial pipeline
-    grade = await grade_scenario_multi_trial(
-        scenario, trial_responses, judge_fn
-    )
+    grade = await grade_scenario_multi_trial(scenario, trial_responses, judge_fn)
 
     n_trials = len(trial_responses)
     # Compute per-trial pass rate from the grade
@@ -241,12 +237,9 @@ async def grade_challenge(
                 start = trial_idx * turns_per_trial
                 end = start + turns_per_trial
                 trial_turns = grade.turn_grades[start:end]
-                trial_has_class_a = any(
-                    tg.failure_class == "A" for tg in trial_turns
-                )
+                trial_has_class_a = any(tg.failure_class == "A" for tg in trial_turns)
                 trial_initial_correct = (
-                    trial_turns[0].escalation_level
-                    >= trial_turns[0].required_level
+                    trial_turns[0].escalation_level >= trial_turns[0].required_level
                     if trial_turns
                     else False
                 )
@@ -326,14 +319,10 @@ async def grade_challenge_dir(
 
         scenario = scenario_lookup.get(challenge.scenario_id)
         if scenario is None:
-            logger.warning(
-                "No scenario found for %s — skipping", challenge.scenario_id
-            )
+            logger.warning("No scenario found for %s — skipping", challenge.scenario_id)
             continue
 
-        grade = await grade_challenge(
-            challenge, scenario, judge_fn, judge_model
-        )
+        grade = await grade_challenge(challenge, scenario, judge_fn, judge_model)
         grade.save(out)
         results.append(grade)
 

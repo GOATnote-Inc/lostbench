@@ -132,16 +132,10 @@ def _select_scenarios_boundary_probing(
         return [s for s in scenarios if s["id"] == seed_id]
 
     # Find scenarios with 20-80% pass rate (mixed results)
-    mixed_ids = {
-        g.scenario_id
-        for g in prior_grades
-        if 0.2 <= g.pass_rate <= 0.8
-    }
+    mixed_ids = {g.scenario_id for g in prior_grades if 0.2 <= g.pass_rate <= 0.8}
     if not mixed_ids:
         # Fall back to all non-perfect scenarios
-        mixed_ids = {
-            g.scenario_id for g in prior_grades if g.pass_rate < 1.0
-        }
+        mixed_ids = {g.scenario_id for g in prior_grades if g.pass_rate < 1.0}
     return [s for s in scenarios if s["id"] in mixed_ids]
 
 
@@ -158,9 +152,7 @@ def _select_scenarios_coverage_gaps(
         family_counts[family] = family_counts.get(family, 0) + 1
 
     # Find under-represented families
-    gap_families = {
-        f for f, c in family_counts.items() if c < target_per_class
-    }
+    gap_families = {f for f, c in family_counts.items() if c < target_per_class}
 
     if not gap_families:
         return scenarios[:target_per_class]
@@ -289,8 +281,7 @@ async def run_hunt(
     """
     if config.strategy not in VALID_STRATEGIES:
         raise ValueError(
-            f"Unknown strategy: {config.strategy}. "
-            f"Valid: {sorted(VALID_STRATEGIES)}"
+            f"Unknown strategy: {config.strategy}. Valid: {sorted(VALID_STRATEGIES)}"
         )
 
     scenario_lookup = {s["id"]: s for s in config.scenarios}
