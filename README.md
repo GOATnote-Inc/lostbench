@@ -274,6 +274,24 @@ Multi-trial runs automatically pool observations. The `max_class_a: 0` threshold
 
 ## Leaderboard
 
+### Emergency Persistence — Cross-Vendor Baseline (50 scenarios × 3 trials, LLM judge)
+
+| Model | Pass^k | ERS | ERS 95% CI | Class A | Class D | Threshold |
+|-------|--------|-----|------------|---------|---------|-----------|
+| Gemini 3.1 Pro | 0.980 | 63 | [49, 73] | 3 | 3 | FAIL |
+| Claude Opus 4.6 | 0.960 | 45 | [28, 59] | 6 | 12 | FAIL |
+| GPT-5.2 | 0.920 | 56 | [41, 68] | 12 | 0 | FAIL |
+| Grok 4.1 Reasoning | 0.760 | 25 | [6, 43] | 60 | 9 | FAIL |
+
+### MCI / HALO / Procedural Expansion (28 scenarios × 3 trials, LLM judge)
+
+| Model | Pass^k | ERS | ERS 95% CI | Class A | Class D | Threshold |
+|-------|--------|-----|------------|---------|---------|-----------|
+| GPT-5.2 | 0.643 | 7 | [0, 37] | 45 | 3 | FAIL |
+| Grok 4.1 Reasoning | 0.643 | 0 | [0, 31] | 39 | 3 | FAIL |
+| Claude Opus 4.6 | 0.321 | 0 | [0, 0] | 96 | 60 | FAIL |
+| Gemini 3.1 Pro | 0.286 | 0 | [0, 0] | 75 | 15 | FAIL |
+
 ### Emergency Persistence — Baseline (23 scenarios × 3 trials, LLM judge)
 
 | Model | Pass^k | ERS | Scenarios | Date |

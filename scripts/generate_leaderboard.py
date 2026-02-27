@@ -31,6 +31,8 @@ MODEL_DISPLAY = {
     "claude-sonnet-4-5-20250929": "Claude Sonnet 4.5",
     "claude-sonnet-4-6": "Claude Sonnet 4.6",
     "claude-opus-4-6": "Claude Opus 4.6",
+    "grok-4-1-fast-reasoning-latest": "Grok 4.1 Reasoning",
+    "gemini-3.1-pro-preview": "Gemini 3.1 Pro",
 }
 
 MODE_ORDER = ["baseline", "preamble_only", "enforce_only", "full_wrapper"]
@@ -125,6 +127,72 @@ def generate_2x2_table(experiments: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def generate_emergency_baseline_table(experiments: list[dict]) -> str:
+    """Cross-vendor emergency baseline (50 scenarios)."""
+    baselines = [
+        e
+        for e in experiments
+        if e.get("experiment") == "emergency-baseline"
+    ]
+    if not baselines:
+        return ""
+
+    baselines.sort(key=lambda e: e.get("pass_k", 0), reverse=True)
+
+    lines = [
+        "### Emergency Persistence — Cross-Vendor Baseline (50 scenarios × 3 trials, LLM judge)",
+        "",
+        "| Model | Pass^k | ERS | ERS 95% CI | Class A | Class D | Threshold |",
+        "|-------|--------|-----|------------|---------|---------|-----------|",
+    ]
+    for e in baselines:
+        ci = e.get("ers_ci", ["-", "-"])
+        threshold = "PASS" if e.get("meets_threshold") else "FAIL"
+        lines.append(
+            f"| {display_model(e['model'])} "
+            f"| {e['pass_k']:.3f} "
+            f"| {e.get('ers', 'N/A')} "
+            f"| [{ci[0]}, {ci[1]}] "
+            f"| {e.get('class_a', 0)} "
+            f"| {e.get('class_d', 0)} "
+            f"| {threshold} |"
+        )
+    return "\n".join(lines)
+
+
+def generate_28new_table(experiments: list[dict]) -> str:
+    """28 new MCI/HALO/procedural scenarios."""
+    entries = [
+        e
+        for e in experiments
+        if e.get("experiment") == "emergency-28new"
+    ]
+    if not entries:
+        return ""
+
+    entries.sort(key=lambda e: e.get("pass_k", 0), reverse=True)
+
+    lines = [
+        "### MCI / HALO / Procedural Expansion (28 scenarios × 3 trials, LLM judge)",
+        "",
+        "| Model | Pass^k | ERS | ERS 95% CI | Class A | Class D | Threshold |",
+        "|-------|--------|-----|------------|---------|---------|-----------|",
+    ]
+    for e in entries:
+        ci = e.get("ers_ci", ["-", "-"])
+        threshold = "PASS" if e.get("meets_threshold") else "FAIL"
+        lines.append(
+            f"| {display_model(e['model'])} "
+            f"| {e['pass_k']:.3f} "
+            f"| {e.get('ers', 'N/A')} "
+            f"| [{ci[0]}, {ci[1]}] "
+            f"| {e.get('class_a', 0)} "
+            f"| {e.get('class_d', 0)} "
+            f"| {threshold} |"
+        )
+    return "\n".join(lines)
+
+
 def generate_ceis_table(experiments: list[dict]) -> str:
     """CEIS deep-dive results."""
     ceis = [e for e in experiments if e.get("experiment") == "ceis-n5"]
@@ -154,6 +222,8 @@ def generate_ceis_table(experiments: list[dict]) -> str:
 
 def generate_full_leaderboard(experiments: list[dict]) -> str:
     sections = [
+        generate_emergency_baseline_table(experiments),
+        generate_28new_table(experiments),
         generate_baseline_table(experiments),
         generate_2x2_table(experiments),
         generate_ceis_table(experiments),
