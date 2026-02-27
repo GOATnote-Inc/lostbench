@@ -1250,6 +1250,422 @@ def audit(taxonomy, scenarios, results_dir, families_path, risk_debt_path):
     click.echo(report.to_text())
 
 
+# ---------------------------------------------------------------------------
+# Campaign Engine commands (v3)
+# ---------------------------------------------------------------------------
+
+
+@main.command()
+@click.option("--model", required=True, help="Full model version string")
+@click.option("--provider", required=True, type=click.Choice(PROVIDER_CHOICES))
+@click.option(
+    "--base-url", default=None, help="Base URL for openai-compatible provider"
+)
+@click.option("--api-key", default=None, help="API key for openai-compatible provider")
+@click.option("--scenario", required=True, help="Scenario ID (e.g., MTR-001)")
+@click.option("--trials", default=5, type=int, help="Number of trials (default: 5)")
+@click.option(
+    "--corpus",
+    default="emergency",
+    type=click.Choice(
+        [
+            "emergency",
+            "crisis-resource",
+            "defer",
+            "adversarial",
+            "tool-use",
+            "code-agent",
+            "multimodal",
+            "integrated",
+        ]
+    ),
+)
+@click.option("--output-dir", default="./challenges", help="Output directory")
+@click.option(
+    "--cache/--no-cache", default=True, help="Enable deterministic response cache"
+)
+def challenge(model, provider, base_url, api_key, scenario, trials, corpus, output_dir, cache):
+    """Run a single scenario challenge (no grading).
+
+    Produces raw conversation transcripts for later grading.
+
+    \b
+    Example:
+        lostbench challenge --model gpt-5.2 --provider openai --scenario MTR-001 --trials 5
+    """
+    from lostbench.challenge import run_challenge
+    from lostbench.scenarios.loader import load_scenarios
+    from lostbench.providers import get_provider as get_prov
+    from lostbench.cache import ResponseCache
+    from lostbench.providers.cached import CachedProvider
+
+    _check_api_key(provider)
+
+    scenarios = load_scenarios(corpus, conditions=[scenario])
+    if not scenarios:
+        click.echo(f"Error: Scenario {scenario} not found in corpus {corpus}", err=True)
+        sys.exit(1)
+
+    scenario_data = scenarios[0]
+
+    provider_kwargs = {}
+    if provider == "openai-compatible":
+        if not base_url:
+            raise click.UsageError("--base-url is required for openai-compatible")
+        provider_kwargs["base_url"] = base_url
+        if api_key:
+            provider_kwargs["api_key"] = api_key
+
+    raw_provider = get_prov(provider, **provider_kwargs)
+    if cache:
+        resp_cache = ResponseCache(output_dir)
+        prov = CachedProvider(raw_provider, resp_cache)
+    else:
+        prov = raw_provider
+
+    click.echo(f"Challenge: {scenario} x {trials} trials ({model})", err=True)
+    result = asyncio.run(
+        run_challenge(
+            scenario=scenario_data,
+            provider=prov,
+            model=model,
+            n_trials=trials,
+        )
+    )
+    path = result.save(output_dir)
+    click.echo(f"Saved: {path}")
+
+
+@main.command("grade")
+@click.option(
+    "--challenge-dir",
+    required=True,
+    type=click.Path(exists=True),
+    help="Directory containing challenge_*.json files",
+)
+@click.option("--output-dir", default=None, help="Output directory (default: challenge-dir)")
+@click.option(
+    "--corpus",
+    default="emergency",
+    type=click.Choice(
+        [
+            "emergency",
+            "crisis-resource",
+            "defer",
+            "adversarial",
+            "tool-use",
+            "code-agent",
+            "multimodal",
+            "integrated",
+        ]
+    ),
+)
+@click.option(
+    "--regrade", is_flag=True, default=False, help="Force re-grade after rubric update"
+)
+@click.option("--judge-model", default=None, help="Override judge model")
+def grade_cmd(challenge_dir, output_dir, corpus, regrade, judge_model):
+    """Grade challenge transcripts via CEIS pipeline.
+
+    Re-gradable without model API calls — only needs judge API access.
+
+    \b
+    Example:
+        lostbench grade --challenge-dir ./challenges --output-dir ./grades
+        lostbench grade --challenge-dir ./challenges --regrade
+    """
+    from lostbench.grader import grade_challenge_dir
+    from lostbench.scenarios.loader import load_scenarios
+
+    scenarios = load_scenarios(corpus)
+    scenario_lookup = {s["id"]: s for s in scenarios}
+
+    out_dir = output_dir or challenge_dir
+    jm = judge_model or ""
+
+    click.echo(f"Grading challenges in {challenge_dir}", err=True)
+    if regrade:
+        click.echo("  Re-grade mode: overwriting existing grades", err=True)
+
+    results = asyncio.run(
+        grade_challenge_dir(
+            challenge_dir=challenge_dir,
+            scenario_lookup=scenario_lookup,
+            judge_fn=None,  # Pattern-only for now; LLM judge requires provider setup
+            judge_model=jm,
+            regrade=regrade,
+            output_dir=out_dir,
+        )
+    )
+
+    n_pass = sum(1 for r in results if r.passed)
+    click.echo(f"Graded {len(results)} challenges: {n_pass} pass, {len(results) - n_pass} fail")
+
+
+@main.command("campaign-report")
+@click.option(
+    "--grade-dir",
+    required=True,
+    type=click.Path(exists=True),
+    help="Directory containing grade_*.json files",
+)
+@click.option("--output-dir", default=".", help="Output directory")
+@click.option(
+    "--format",
+    "fmt",
+    default="both",
+    type=click.Choice(["json", "text", "both"]),
+    help="Output format",
+)
+def campaign_report_cmd(grade_dir, output_dir, fmt):
+    """Generate campaign risk report from grade artifacts.
+
+    Pure computation — no API calls needed.
+
+    \b
+    Example:
+        lostbench campaign-report --grade-dir ./grades --format both
+    """
+    from lostbench.grader import GradeResult
+    from lostbench.campaign_report import generate_campaign_report, save_campaign_report
+
+    grade_dir = Path(grade_dir)
+    grades = []
+    for path in sorted(grade_dir.glob("grade_*.json")):
+        try:
+            grades.append(GradeResult.load(path))
+        except Exception as e:
+            click.echo(f"Warning: skipping {path.name}: {e}", err=True)
+
+    if not grades:
+        click.echo("No grade files found.", err=True)
+        sys.exit(1)
+
+    report = generate_campaign_report(grades)
+    paths = save_campaign_report(report, output_dir, fmt)
+
+    click.echo(report.to_text(), err=True)
+    for p in paths:
+        click.echo(f"Report: {p}")
+
+
+@main.command()
+@click.option(
+    "--seed-dir",
+    default=None,
+    type=click.Path(exists=True),
+    help="Batch convert seed JSONs from this directory",
+)
+@click.option("--seed-id", default=None, help="Convert a specific seed by ID")
+@click.option(
+    "--hypothesis",
+    default=None,
+    help="Generate from failure hypothesis (v1: stub)",
+)
+@click.option("--failure-class", default=None, help="Target failure class (A/B/C/D)")
+@click.option("--clinical-domain", default=None, help="Target clinical domain")
+@click.option("--count", default=1, type=int, help="Number of scenarios to generate")
+@click.option(
+    "--validate-only",
+    default=None,
+    type=click.Path(exists=True),
+    help="Validate an existing scenario YAML",
+)
+@click.option("--output-dir", default="./mined", help="Output directory for YAMLs")
+def mine(seed_dir, seed_id, hypothesis, failure_class, clinical_domain, count, validate_only, output_dir):
+    """Convert seed JSONs to LostBench YAMLs or generate from hypotheses.
+
+    \b
+    Examples:
+        lostbench mine --seed-dir ~/scribegoat2/.../seeds/ --output-dir ./mined
+        lostbench mine --validate-only ./mined/seed_013_pe_code_agent.yaml
+        lostbench mine --hypothesis "Models capitulate on acute limb ischemia"
+    """
+    from lostbench.mine import (
+        convert_seed,
+        convert_seed_dir,
+        generate_from_hypothesis,
+        validate_scenario_yaml,
+    )
+
+    if validate_only:
+        errors = validate_scenario_yaml(validate_only)
+        if errors:
+            click.echo(f"Validation FAILED ({len(errors)} errors):", err=True)
+            for err in errors:
+                click.echo(f"  - {err}", err=True)
+            sys.exit(1)
+        else:
+            click.echo(f"Validation PASSED: {validate_only}")
+        return
+
+    if seed_dir:
+        results = convert_seed_dir(seed_dir, output_dir)
+        click.echo(f"Converted {len(results)} seeds -> {output_dir}")
+        return
+
+    if seed_id:
+        # Look for seed file by ID pattern
+        import glob
+
+        pattern = f"*{seed_id}*"
+        matches = glob.glob(str(Path(output_dir).parent / pattern))
+        if matches:
+            scenario = convert_seed(matches[0], output_dir)
+            click.echo(f"Converted: {scenario['id']}")
+        else:
+            click.echo(f"Error: No seed file matching {seed_id} found", err=True)
+            sys.exit(1)
+        return
+
+    if hypothesis:
+        results = generate_from_hypothesis(
+            hypothesis=hypothesis,
+            failure_class=failure_class,
+            clinical_domain=clinical_domain,
+            count=count,
+            output_dir=output_dir,
+        )
+        if not results:
+            click.echo(
+                "LLM generation not yet implemented — use --seed-dir for format conversion",
+                err=True,
+            )
+        return
+
+    click.echo("Specify --seed-dir, --seed-id, --hypothesis, or --validate-only", err=True)
+    sys.exit(1)
+
+
+@main.command()
+@click.option("--model", required=True, help="Full model version string")
+@click.option("--provider", required=True, type=click.Choice(PROVIDER_CHOICES))
+@click.option(
+    "--base-url", default=None, help="Base URL for openai-compatible provider"
+)
+@click.option("--api-key", default=None, help="API key for openai-compatible provider")
+@click.option(
+    "--strategy",
+    required=True,
+    type=click.Choice(
+        [
+            "adversarial_escalation",
+            "boundary_probing",
+            "coverage_gaps",
+            "regression_testing",
+        ]
+    ),
+    help="Hunting strategy",
+)
+@click.option(
+    "--corpus",
+    default="emergency",
+    type=click.Choice(
+        [
+            "emergency",
+            "adversarial",
+            "tool-use",
+            "code-agent",
+            "multimodal",
+            "integrated",
+        ]
+    ),
+)
+@click.option("--rounds", default=3, type=int, help="Number of hunt rounds")
+@click.option("--trials", default=5, type=int, help="Trials per scenario")
+@click.option("--target-per-class", default=5, type=int, help="For coverage_gaps strategy")
+@click.option("--seed", "seed_scenario", default=None, help="Seed scenario ID for boundary_probing")
+@click.option("--variants", default=3, type=int, help="Variants for boundary_probing")
+@click.option("--output-dir", default="./hunt", help="Output directory")
+@click.option(
+    "--cache/--no-cache", default=True, help="Enable deterministic response cache"
+)
+def hunt(
+    model,
+    provider,
+    base_url,
+    api_key,
+    strategy,
+    corpus,
+    rounds,
+    trials,
+    target_per_class,
+    seed_scenario,
+    variants,
+    output_dir,
+    cache,
+):
+    """Adaptive vulnerability discovery campaign.
+
+    Four strategies: adversarial_escalation (find ceiling),
+    boundary_probing (find decision boundary), coverage_gaps (fill blind spots),
+    regression_testing (verify fixes).
+
+    \b
+    Examples:
+        lostbench hunt --model gpt-5.2 --provider openai --strategy adversarial_escalation --rounds 3
+        lostbench hunt --model gpt-5.2 --provider openai --strategy coverage_gaps --target-per-class 5
+        lostbench hunt --model gpt-5.2 --provider openai --strategy boundary_probing --seed SEED-014
+    """
+    from lostbench.hunt import HuntConfig, run_hunt
+    from lostbench.scenarios.loader import load_scenarios
+    from lostbench.providers import get_provider as get_prov
+    from lostbench.cache import ResponseCache
+    from lostbench.providers.cached import CachedProvider
+
+    _check_api_key(provider)
+
+    scenarios = load_scenarios(corpus)
+
+    provider_kwargs = {}
+    if provider == "openai-compatible":
+        if not base_url:
+            raise click.UsageError("--base-url is required for openai-compatible")
+        provider_kwargs["base_url"] = base_url
+        if api_key:
+            provider_kwargs["api_key"] = api_key
+
+    raw_provider = get_prov(provider, **provider_kwargs)
+    if cache:
+        resp_cache = ResponseCache(output_dir)
+        prov = CachedProvider(raw_provider, resp_cache)
+    else:
+        prov = raw_provider
+
+    config = HuntConfig(
+        model=model,
+        provider_name=provider,
+        strategy=strategy,
+        scenarios=scenarios,
+        n_trials=trials,
+        rounds=rounds,
+        output_dir=output_dir,
+        target_per_class=target_per_class,
+        seed_scenario_id=seed_scenario,
+        n_variants=variants,
+    )
+
+    click.echo(f"Hunt: {strategy} x {rounds} rounds ({model})", err=True)
+    click.echo(f"  Corpus: {corpus} ({len(scenarios)} scenarios)", err=True)
+    click.echo(f"  Trials per scenario: {trials}", err=True)
+
+    result = asyncio.run(run_hunt(config, prov))
+
+    # Save result
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    result_path = Path(output_dir) / "hunt_result.json"
+    with open(result_path, "w") as f:
+        json.dump(result.to_dict(), f, indent=2)
+
+    click.echo(f"\nHunt complete: {result.rounds_completed} rounds", err=True)
+    click.echo(
+        f"  Scenarios tested: {result.total_scenarios} | "
+        f"Failures found: {result.total_failures}",
+        err=True,
+    )
+    click.echo(f"Result: {result_path}")
+
+
 def _check_api_key(provider: str) -> None:
     """Validate that the required API key exists before starting a run."""
     key_map = {

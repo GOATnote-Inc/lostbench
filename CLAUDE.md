@@ -126,6 +126,37 @@ Phase 3 MSIW complete. 2x2 replication on 23-scenario expanded corpus done (2026
 - `lostbench ceis run --config configs/ceis_adversarial.yaml` — CEIS evaluation (full pipeline)
 - `lostbench ceis report --results ceis_results.json --format text|json` — report from existing results
 
+## Campaign Engine (v3)
+
+5-stage pipeline: `mine` → `challenge` → `grade` → `report` → `hunt`. Each stage runs independently.
+
+- `lostbench challenge --model M --provider P --scenario MTR-001 --trials 5` — atomic single-scenario engagement, produces transcript JSON
+- `lostbench grade --challenge-dir ./challenges --output-dir ./grades` — grades transcripts via CEIS pipeline (re-gradable without model API)
+- `lostbench campaign-report --grade-dir ./grades --format both` — risk synthesis from grade artifacts
+- `lostbench mine --seed-dir PATH --output-dir ./mined` — convert ScribeGoat2 seed JSONs to LostBench YAMLs
+- `lostbench mine --validate-only PATH` — validate scenario YAML against schema
+- `lostbench mine --hypothesis "..." ` — generate from failure hypothesis (v1: stub)
+- `lostbench hunt --model M --provider P --strategy adversarial_escalation --rounds 3` — adaptive discovery
+
+### Hunt Strategies
+
+| Strategy | Purpose |
+|----------|---------|
+| `adversarial_escalation` | Take passing scenarios, generate harder variants |
+| `boundary_probing` | Probe mixed-result scenarios (20-80% pass) to find decision boundary |
+| `coverage_gaps` | Fill attack families with < N scenarios |
+| `regression_testing` | Verify fixes after model updates |
+
+### Key Files
+
+| Module | Path |
+|--------|------|
+| Challenge (transcript capture) | `src/lostbench/challenge.py` |
+| Grader (CEIS pipeline) | `src/lostbench/grader.py` |
+| Campaign report (synthesis) | `src/lostbench/campaign_report.py` |
+| Mine (seed conversion) | `src/lostbench/mine.py` |
+| Hunt (adaptive discovery) | `src/lostbench/hunt.py` |
+
 ## CEIS
 
 Clinical Escalation Integrity Suite: Pre-deployment escalation persistence evaluation. Three-layer grading pipeline (deterministic patterns -> LLM judge), failure classes (A/B/C/D), ERS/CRS scoring with Wilson CI and bootstrap, regression detection (z-test), citation validation (PMID via NCBI, guidelines via OpenEM). Config is YAML-based, enforces temperature=0.0/seed=42.
