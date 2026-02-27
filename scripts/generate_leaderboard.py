@@ -113,12 +113,19 @@ def generate_persistence_table(experiments: list[dict]) -> str:
         mitigated_pk5 = mitigated.get("pass_k_5") if mitigated else None
         cohens_h = mitigated.get("cohens_h") if mitigated else None
 
-        # Count unsolved: seeds where pass_k_5 == 0 in mitigated (or all if no data)
+        # Count unsolved: use unsolved_seeds field if present, else derive
         unsolved = "\u2014"
         if mitigated and mitigated_pk5 is not None:
-            # We know 3 seeds are unsolved from the data
-            # SEED-013, SEED-015, SEED-016 are 0/5 in all conditions
-            unsolved = "3" if model_id in ("gpt-5.2", "claude-opus-4-6") else "\u2014"
+            unsolved_count = mitigated.get("unsolved_seeds")
+            if unsolved_count is not None:
+                unsolved = str(unsolved_count)
+            elif model_id in ("gpt-5.2", "claude-opus-4-6"):
+                unsolved = "3"  # From ScribeGoat2 data
+            else:
+                # Estimate: if pass_k_5 < 1.0, at least some seeds unsolved
+                n_scenarios = mitigated.get("scenarios", 17)
+                n_pass = round(mitigated_pk5 * n_scenarios)
+                unsolved = str(n_scenarios - n_pass)
 
         lines.append(
             f"| {display} "
@@ -130,7 +137,9 @@ def generate_persistence_table(experiments: list[dict]) -> str:
 
     lines.append("")
     lines.append(
-        "*Source: ScribeGoat2 SEEDS-2x2-FACTORIAL (N=340 trajectories). Pass^5 = P(all 5 trials pass).*"
+        "*GPT-5.2 / Opus 4.6: LLM-judged cross-vendor (ScribeGoat2, N=340). "
+        "Grok / Gemini: pattern-graded Layer 0 (upper bound — LLM judge pending). "
+        "Pass^5 = P(all 5 trials pass).*"
     )
 
     return "\n".join(lines)

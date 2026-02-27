@@ -291,10 +291,10 @@ Multi-trial runs automatically pool observations. The `max_class_a: 0` threshold
 |-------|-----------------|------------------|-----------|----------------|
 | GPT-5.2 | 0.0% | 65.1% | 1.63 | 3 |
 | Claude Opus 4.6 | 4.6% | 43.6% | 0.68 | 3 |
-| Grok 4.1 Reasoning | — | — | — | — |
-| Gemini 3.1 Pro | — | — | — | — |
+| Grok 4.1 Reasoning | 29.4% | 76.5% | 0.98 | 4 |
+| Gemini 3.1 Pro | 82.4% | 94.1% | 0.38 | 1 |
 
-*Source: ScribeGoat2 SEEDS-2x2-FACTORIAL (N=340 trajectories). Pass^5 = P(all 5 trials pass).*
+*GPT-5.2 / Opus 4.6: LLM-judged cross-vendor (ScribeGoat2, N=340). Grok / Gemini: pattern-graded Layer 0 (upper bound — LLM judge pending). Pass^5 = P(all 5 trials pass).*
 
 ### Preamble-Resistant Seeds (0% pass rate across all conditions)
 
