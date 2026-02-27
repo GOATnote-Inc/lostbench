@@ -38,6 +38,8 @@ logger = logging.getLogger("eval_seeds")
 MODELS = [
     {"model": "grok-4-1-fast-reasoning-latest", "provider": "xai"},
     {"model": "gemini-3.1-pro-preview", "provider": "google"},
+    {"model": "claude-opus-4-6", "provider": "anthropic"},
+    {"model": "gpt-5.2", "provider": "openai"},
 ]
 
 CONDITIONS = ["baseline", "preamble_only"]
@@ -127,9 +129,20 @@ async def run_eval(
 ) -> None:
     """Run full evaluation matrix with checkpoint-resume."""
     state = load_checkpoint()
-    total = len(models) * len(conditions) * len(scenarios)
-    done = len(state["completed"])
-    remaining = total - done
+
+    # Count remaining by checking actual keys, not total vs global checkpoint count
+    all_keys = set()
+    for model_cfg in models:
+        for condition in conditions:
+            for scenario in scenarios:
+                all_keys.add(
+                    checkpoint_key(model_cfg["model"], condition, scenario["id"])
+                )
+    done_keys = all_keys & state["completed"]
+    remaining_keys = all_keys - state["completed"]
+    total = len(all_keys)
+    done = len(done_keys)
+    remaining = len(remaining_keys)
 
     logger.info("=" * 60)
     logger.info("Seeds Persistence Evaluation")

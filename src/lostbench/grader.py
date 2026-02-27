@@ -29,6 +29,41 @@ from lostbench.scoring import parse_time_to_harm_hours
 logger = logging.getLogger(__name__)
 
 
+def _serialize_turn_grade(tg) -> dict:
+    """Serialize a TurnGrade with full judge provenance chain."""
+    d = {
+        "turn_index": tg.turn_index,
+        "escalation_level": tg.escalation_level,
+        "required_level": tg.required_level,
+        "maintained": tg.maintained,
+        "failure_class": tg.failure_class,
+        "detection_layer": tg.detection_layer,
+        "confidence": tg.confidence,
+    }
+
+    # Layer 0 pattern result (always present)
+    if tg.pattern_result is not None:
+        d["pattern"] = {
+            "level": tg.pattern_result.level,
+            "confidence": tg.pattern_result.confidence,
+            "level_3_present": tg.pattern_result.level_3_present,
+            "deescalation_present": tg.pattern_result.deescalation_present,
+            "conditional_weakening": tg.pattern_result.conditional_weakening,
+        }
+
+    # Layer 2 LLM judge result (present when judge was invoked)
+    if tg.judge_result is not None:
+        d["judge"] = {
+            "escalation_level": tg.judge_result.escalation_level,
+            "failure_class": tg.judge_result.failure_class,
+            "confidence": tg.judge_result.confidence,
+            "evidence_snippet": tg.judge_result.evidence_snippet,
+            "raw_output": tg.judge_result.raw_output,
+        }
+
+    return d
+
+
 @dataclass
 class GradeResult:
     """Grading result for a challenge transcript."""
@@ -54,6 +89,8 @@ class GradeResult:
     rubric_version: str
     reproduction: dict = field(default_factory=dict)
     timestamp: str = ""
+    turn_details: list[dict] = field(default_factory=list)
+    challenge_hash: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -78,6 +115,8 @@ class GradeResult:
             "rubric_version": self.rubric_version,
             "reproduction": self.reproduction,
             "timestamp": self.timestamp,
+            "turn_details": self.turn_details,
+            "challenge_hash": self.challenge_hash,
         }
 
     def save(self, output_dir: str | Path) -> Path:
@@ -99,6 +138,11 @@ class GradeResult:
         # Handle 'pass' key mapping to 'passed'
         if "pass" in data:
             data["passed"] = data.pop("pass")
+        # Backward compat: older grade files lack turn_details/challenge_hash
+        if "turn_details" not in data:
+            data["turn_details"] = []
+        if "challenge_hash" not in data:
+            data["challenge_hash"] = ""
         return cls(**data)
 
 
@@ -236,6 +280,13 @@ async def grade_challenge(
     # Extract responses per trial for multi-trial grading
     trial_responses: list[list[str]] = [t.responses for t in challenge.transcripts]
 
+    # Compute challenge hash for input provenance
+    challenge_content = json.dumps(
+        {"transcripts": [t.responses for t in challenge.transcripts]},
+        sort_keys=True,
+    )
+    challenge_hash = hashlib.sha256(challenge_content.encode()).hexdigest()[:32]
+
     # Grade through CEIS multi-trial pipeline
     grade = await grade_scenario_multi_trial(scenario, trial_responses, judge_fn)
 
@@ -260,6 +311,10 @@ async def grade_challenge(
                     per_trial_passes += 1
     pass_rate = per_trial_passes / n_trials if n_trials > 0 else 0.0
 
+    # Serialize full judge chain per turn for provenance
+    turn_details = [_serialize_turn_grade(tg) for tg in grade.turn_grades]
+
+    rubric_ver = _compute_rubric_version()
     return GradeResult(
         scenario_id=challenge.scenario_id,
         condition=challenge.condition,
@@ -279,7 +334,7 @@ async def grade_challenge(
         exploitability=_classify_exploitability(scenario),
         user_harm_description=_generate_harm_description(scenario),
         judge_model=judge_model,
-        rubric_version=_compute_rubric_version(),
+        rubric_version=rubric_ver,
         reproduction={
             "model": challenge.model,
             "scenario_id": challenge.scenario_id,
@@ -288,9 +343,11 @@ async def grade_challenge(
             "temperature": challenge.temperature,
             "seed": challenge.seed,
             "judge_model": judge_model,
-            "rubric_version": _compute_rubric_version(),
+            "rubric_version": rubric_ver,
         },
         timestamp=datetime.now(timezone.utc).isoformat(),
+        turn_details=turn_details,
+        challenge_hash=challenge_hash,
     )
 
 
