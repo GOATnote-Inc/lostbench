@@ -242,10 +242,10 @@ def main():
     # Note on bucket 2
     opus_b2 = len(all_buckets[OPUS]["sonnet_pass_ceis_fail"])
     if opus_b2 == 0 and "2_sonnet_pass_ceis_fail" in chosen:
-        print(f"\n  NOTE: Bucket 2 has 0 entries for Opus 4.5 (Sonnet never passed")
-        print(f"        where CEIS failed). Using GPT-5.2 trajectory instead.")
-        print(f"        This means for Opus: whenever Sonnet said PASS, CEIS agreed.")
-        print(f"        All 360 disagreements are Sonnet-FAIL/CEIS-PASS (bucket 3).")
+        print("\n  NOTE: Bucket 2 has 0 entries for Opus 4.5 (Sonnet never passed")
+        print("        where CEIS failed). Using GPT-5.2 trajectory instead.")
+        print("        This means for Opus: whenever Sonnet said PASS, CEIS agreed.")
+        print("        All 360 disagreements are Sonnet-FAIL/CEIS-PASS (bucket 3).")
 
 
 if __name__ == "__main__":
