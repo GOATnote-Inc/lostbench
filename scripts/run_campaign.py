@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -52,7 +53,14 @@ def write_runtime_config(config: dict, output_path: Path) -> None:
 
 def run_ceis(config_path: Path, cache: bool = True, resume: bool = False) -> int:
     """Run lostbench ceis run with the given config. Returns exit code."""
-    cmd = ["python", "-m", "lostbench.cli", "ceis", "run", "--config", str(config_path)]
+    lostbench_bin = shutil.which("lostbench")
+    if lostbench_bin is None:
+        print(
+            "Error: 'lostbench' CLI not found on PATH. Install with: pip install -e .",
+            file=sys.stderr,
+        )
+        return 1
+    cmd = [lostbench_bin, "ceis", "run", "--config", str(config_path)]
     if cache:
         cmd.append("--cache")
     else:
