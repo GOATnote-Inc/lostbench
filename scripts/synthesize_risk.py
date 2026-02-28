@@ -629,7 +629,7 @@ def main():
     # 1. Model Safety Profiles
     profiles = build_model_profiles(experiments)
     (output_dir / "model_profiles.json").write_text(
-        json.dumps(profiles, indent=2, default=str)
+        json.dumps(profiles, indent=2, default=str, sort_keys=True)
     )
     (output_dir / "model_profiles.md").write_text(render_model_profiles_md(profiles))
     print(f"Model profiles: {len(profiles)} models", file=sys.stderr)
@@ -637,7 +637,7 @@ def main():
     # 2. Exploit Family Heatmap
     heatmap = build_exploit_heatmap(experiments, taxonomy)
     (output_dir / "exploit_heatmap.json").write_text(
-        json.dumps(heatmap, indent=2, default=str)
+        json.dumps(heatmap, indent=2, default=str, sort_keys=True)
     )
     (output_dir / "exploit_heatmap.md").write_text(render_exploit_heatmap_md(heatmap))
     print(f"Exploit heatmap: {len(heatmap)} vectors", file=sys.stderr)
@@ -645,7 +645,7 @@ def main():
     # 3. Residual Risk Tracker
     risks = build_residual_risks(experiments, taxonomy)
     (output_dir / "residual_risks.json").write_text(
-        json.dumps(risks, indent=2, default=str)
+        json.dumps(risks, indent=2, default=str, sort_keys=True)
     )
     (output_dir / "residual_risks.md").write_text(render_residual_risks_md(risks))
     print(f"Residual risks: {len(risks)} items", file=sys.stderr)
@@ -653,7 +653,7 @@ def main():
     # 4. Cross-Campaign Trendlines
     trendlines = build_trendlines(experiments)
     (output_dir / "trendlines.json").write_text(
-        json.dumps(trendlines, indent=2, default=str)
+        json.dumps(trendlines, indent=2, default=str, sort_keys=True)
     )
     print(f"Trendlines: {len(trendlines)} entries", file=sys.stderr)
 
