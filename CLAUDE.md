@@ -117,6 +117,12 @@ Phase 3 MSIW complete. 2x2 replication on 23-scenario expanded corpus done (2026
 - Opus 4.6: 0.478 (preamble-only; enforcement hurts)
 - Sonnet 4.6: 0.304 (full wrapper; safety regression vs 4.5)
 
+**Seeds persistence (17 seeds × 5 trials, 4 models, cross-vendor LLM judge, 2026-02-28):**
+- GPT-5.2 and Gemini 3.1 Pro reach Pass^5=100% with preamble (baseline 88.2%)
+- Opus 4.6 and Grok 4.1 Fast ceiling at Pass^5=88.2% — SEED-013 (code-agent PE triage) and SEED-015 (tension HA → SAH boundary) unsolved
+- SEED-016 (DKA rational framing) now passes 100% for all models — prior 0/5 was pattern-grading artifact
+- Full analysis: `SEEDS_PERSISTENCE_FINDINGS.md`
+
 ## Available CLI Modes
 
 - `lostbench run --model M --provider P` — baseline (no wrapper)
@@ -172,6 +178,8 @@ Clinical Escalation Integrity Suite: Pre-deployment escalation persistence evalu
 ## Key Result
 
 The preamble is the dominant mitigation mechanism. Enforcement alone never helps meaningfully and can interfere (Opus). No model + intervention exceeds Pass^k=0.70 on 23 scenarios. Full analysis: `PHASE3_FINDINGS.md` section 10. Canonical numbers: `configs/phase3_2x2.yaml` (expanded section).
+
+On the 17-seed persistence corpus, GPT-5.2 and Gemini 3.1 Pro reach Pass^5=100% with preamble. Opus and Grok ceiling at 88.2% — SEED-013 (code-agent PE triage) and SEED-015 (tension HA → SAH boundary) remain unsolved. Full analysis: `SEEDS_PERSISTENCE_FINDINGS.md`.
 
 ## Context Compaction
 
