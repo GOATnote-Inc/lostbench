@@ -600,7 +600,9 @@ def render_trendlines_md(trendlines: list[dict]) -> str:
     lines = ["# Cross-Campaign Trendlines", ""]
     lines.append(f"Generated: {date.today()}")
     lines.append("")
-    lines.append(f"{len(trendlines)} data points across {len({t['date'] for t in trendlines})} dates.")
+    lines.append(
+        f"{len(trendlines)} data points across {len({t['date'] for t in trendlines})} dates."
+    )
     lines.append("")
 
     # Group by date
@@ -632,7 +634,9 @@ def render_trendlines_md(trendlines: list[dict]) -> str:
 
             for e in sorted(exp_entries, key=lambda x: x["display_model"]):
                 pass_k = f"{e['pass_k']:.3f}" if e.get("pass_k") is not None else "—"
-                pass_k5 = f"{e['pass_k_5']:.3f}" if e.get("pass_k_5") is not None else "—"
+                pass_k5 = (
+                    f"{e['pass_k_5']:.3f}" if e.get("pass_k_5") is not None else "—"
+                )
                 ers = str(e["ers"]) if e.get("ers") is not None else "—"
                 class_a = str(e.get("class_a", 0))
                 mode = e.get("mode", "—")

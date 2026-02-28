@@ -128,16 +128,18 @@ def scan_study3(model):
 
 
 def print_entry(label, entry):
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"  BUCKET: {label}")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
     print(f"  scenario_id:            {entry['scenario_id']}")
     print(f"  condition:              {entry['condition']}")
     print(f"  model:                  {entry['model']}")
     print(f"  original classification: {entry['original_classification']}")
     if "sonnet_detected_failure" in entry:
         sonnet_str = "PASS" if not entry["sonnet_detected_failure"] else "FAIL"
-        print(f"  Sonnet 4.5 grading:     {sonnet_str} (hard_failure.detected={entry['sonnet_detected_failure']})")
+        print(
+            f"  Sonnet 4.5 grading:     {sonnet_str} (hard_failure.detected={entry['sonnet_detected_failure']})"
+        )
     print(f"  CEIS grade:             {'PASS' if entry['ceis_pass'] else 'FAIL'}")
     print(f"  Class A failures:       {entry['classA']}")
     print(f"  Class B failures:       {entry['classB']}")
@@ -173,10 +175,18 @@ def main():
 
         total = sum(len(v) for v in buckets.values())
         print(f"\n  Study 2 [{model}]: {total} trajectories")
-        print(f"    Agree-pass   (Sonnet PASS + CEIS PASS):  {len(buckets['agree_pass']):>3}")
-        print(f"    Sonnet-pass  (Sonnet PASS + CEIS FAIL):  {len(buckets['sonnet_pass_ceis_fail']):>3}")
-        print(f"    Sonnet-fail  (Sonnet FAIL + CEIS PASS):  {len(buckets['sonnet_fail_ceis_pass']):>3}")
-        print(f"    Agree-fail   (Sonnet FAIL + CEIS FAIL):  {len(buckets['agree_fail']):>3}")
+        print(
+            f"    Agree-pass   (Sonnet PASS + CEIS PASS):  {len(buckets['agree_pass']):>3}"
+        )
+        print(
+            f"    Sonnet-pass  (Sonnet PASS + CEIS FAIL):  {len(buckets['sonnet_pass_ceis_fail']):>3}"
+        )
+        print(
+            f"    Sonnet-fail  (Sonnet FAIL + CEIS PASS):  {len(buckets['sonnet_fail_ceis_pass']):>3}"
+        )
+        print(
+            f"    Agree-fail   (Sonnet FAIL + CEIS FAIL):  {len(buckets['agree_fail']):>3}"
+        )
 
     # Pick one example per bucket, preferring Opus 4.5
     chosen = {}
@@ -192,7 +202,9 @@ def main():
 
     # Bucket 2: sonnet-pass + CEIS-fail (prefer Opus, fall back to GPT)
     for model in [OPUS, GPT]:
-        cand = pick_best(all_buckets[model]["sonnet_pass_ceis_fail"], prefer_classA=True)
+        cand = pick_best(
+            all_buckets[model]["sonnet_pass_ceis_fail"], prefer_classA=True
+        )
         if cand:
             chosen["2_sonnet_pass_ceis_fail"] = cand
             break
@@ -209,7 +221,9 @@ def main():
         s3 = scan_study3(model)
         s3_fails = [e for e in s3 if not e["ceis_pass"]]
         s3_passes = [e for e in s3 if e["ceis_pass"]]
-        print(f"\n  Study 3 [{model}]: {len(s3)} trajectories (PASS: {len(s3_passes)}, FAIL: {len(s3_fails)})")
+        print(
+            f"\n  Study 3 [{model}]: {len(s3)} trajectories (PASS: {len(s3_passes)}, FAIL: {len(s3_fails)})"
+        )
         if s3_fails:
             s3_fails.sort(key=lambda x: x["classA"], reverse=True)
             chosen["4_study3_fail"] = s3_fails[0]
@@ -229,15 +243,22 @@ def main():
             print(f"\n  [!] No trajectory found for: {label}")
 
     # Summary
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print("  SUMMARY: 4 Forensic Trajectory IDs")
-    print(f"{'='*70}")
-    for key in ["1_agree_pass", "2_sonnet_pass_ceis_fail", "3_sonnet_fail_ceis_pass", "4_study3_fail"]:
+    print(f"{'=' * 70}")
+    for key in [
+        "1_agree_pass",
+        "2_sonnet_pass_ceis_fail",
+        "3_sonnet_fail_ceis_pass",
+        "4_study3_fail",
+    ]:
         if key in chosen:
             e = chosen[key]
             short_label = labels[key].split("(")[0].strip()
             model_short = "Opus 4.5" if "opus" in e["model"] else "GPT-5.2"
-            print(f"  {short_label:45s}  {e['scenario_id']:20s}  ({e['condition']}, {model_short})")
+            print(
+                f"  {short_label:45s}  {e['scenario_id']:20s}  ({e['condition']}, {model_short})"
+            )
 
     # Note on bucket 2
     opus_b2 = len(all_buckets[OPUS]["sonnet_pass_ceis_fail"])
