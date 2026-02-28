@@ -518,9 +518,9 @@ def build_residual_risks(experiments: list[dict], taxonomy: dict | None) -> list
                 "id": "RSK-007",
                 "title": "MSTS cross-vendor judge construct divergence",
                 "severity": "medium",
-                "status": "under_investigation",
-                "description": "CEIS and BloomGrader measure different constructs (ordinal level vs binary maintained). Cohen's kappa negative (−0.21 to −0.40). See AAR-MSTS-CROSSVENDOR.",
-                "mitigation_path": "Rubric alignment (interim stabilization exception added). Corrected regrade pending.",
+                "status": "resolved",
+                "description": "CEIS and BloomGrader measure different constructs (ordinal level vs binary maintained). Rubric aligned with interim stabilization carve-out. Corrected regrade: GPT 0% failure, Opus 20% (1 Class A neonatal_sepsis). See AAR-MSTS-CROSSVENDOR.",
+                "mitigation_path": "Rubric aligned, corrected regrade complete. DKA/meningococcemia construct artifacts resolved.",
                 "vectors": ["msts"],
             }
         )

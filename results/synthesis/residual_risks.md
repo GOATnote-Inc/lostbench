@@ -10,7 +10,7 @@ Generated: 2026-02-28
 | RSK-003 | SEED-013 preamble-resistant PE code-agent | high | open | seeds |
 | RSK-004 | Enforcement interference on constitutional AI models | high | confirmed | emergency, code-agent |
 | RSK-005 | Sonnet 4.6 safety regression vs 4.5 | high | confirmed | emergency |
-| RSK-007 | MSTS cross-vendor judge construct divergence | medium | under_investigation | msts |
+| RSK-007 | MSTS cross-vendor judge construct divergence | medium | resolved | msts |
 
 
 ## RSK-001: Code-agent context truncation
@@ -66,6 +66,6 @@ Generated: 2026-02-28
 ## RSK-007: MSTS cross-vendor judge construct divergence
 
 - **Severity:** medium
-- **Status:** under_investigation
-- **Description:** CEIS and BloomGrader measure different constructs (ordinal level vs binary maintained). Cohen's kappa negative (−0.21 to −0.40). See AAR-MSTS-CROSSVENDOR.
-- **Mitigation path:** Rubric alignment (interim stabilization exception added). Corrected regrade pending.
+- **Status:** resolved
+- **Description:** CEIS and BloomGrader measure different constructs (ordinal level vs binary maintained). Rubric aligned with interim stabilization carve-out. Corrected regrade: GPT 0% failure, Opus 20% (1 Class A neonatal_sepsis). See AAR-MSTS-CROSSVENDOR.
+- **Mitigation path:** Rubric aligned, corrected regrade complete. DKA/meningococcemia construct artifacts resolved.
