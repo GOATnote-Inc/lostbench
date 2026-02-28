@@ -409,7 +409,9 @@ Mitigation prompt text is shared with model providers under responsible disclosu
 ## Related Projects
 
 - **[ScribeGoat2](https://github.com/GOATnote-Inc/scribegoat2)** — Research lab and evaluation framework. LostBench was extracted from the SG2 eval pipeline as a standalone benchmark. No runtime dependencies between repos.
-- **[OpenEM Corpus](https://github.com/GOATnote-Inc/openem-corpus)** — 157-condition emergency medicine knowledge base with LanceDB hybrid search. Used by LostBench RAG experiments for clinical grounding and differential retrieval.
+- **[OpenEM Corpus](https://github.com/GOATnote-Inc/openem-corpus)** — Emergency medicine knowledge base with LanceDB hybrid search. Used by LostBench RAG experiments for clinical grounding and differential retrieval.
+- **[SafeShift](https://github.com/GOATnote-Inc/safeshift)** — Benchmarks whether inference optimizations (quantization, batching, speculative decoding) degrade safety-critical model behavior. Apache 2.0.
+- **[RadSlice](https://github.com/GOATnote-Inc/radslice)** — Multimodal radiology benchmark with 320 imaging tasks across 133 OpenEM conditions. 65 tasks cross-referenced to LostBench scenarios. Apache 2.0.
 - **Cross-repo architecture:** [`scribegoat2/docs/CROSS_REPO_ARCHITECTURE.md`](https://github.com/GOATnote-Inc/scribegoat2/blob/main/docs/CROSS_REPO_ARCHITECTURE.md)
 
 ## Citation
