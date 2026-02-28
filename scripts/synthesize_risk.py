@@ -595,6 +595,56 @@ def build_trendlines(experiments: list[dict]) -> list[dict]:
     return sorted(entries, key=lambda x: (x["date"], x["model"]))
 
 
+def render_trendlines_md(trendlines: list[dict]) -> str:
+    """Render trendlines as readable markdown tables grouped by date."""
+    lines = ["# Cross-Campaign Trendlines", ""]
+    lines.append(f"Generated: {date.today()}")
+    lines.append("")
+    lines.append(f"{len(trendlines)} data points across {len({t['date'] for t in trendlines})} dates.")
+    lines.append("")
+
+    # Group by date
+    by_date: dict[str, list[dict]] = {}
+    for t in trendlines:
+        by_date.setdefault(t["date"], []).append(t)
+
+    for dt in sorted(by_date):
+        entries = by_date[dt]
+        # Subgroup by experiment
+        by_exp: dict[str, list[dict]] = {}
+        for e in entries:
+            key = e["experiment"]
+            if e["corpus"]:
+                key = f"{e['experiment']} ({e['corpus']})"
+            by_exp.setdefault(key, []).append(e)
+
+        lines.append(f"## {dt}")
+        lines.append("")
+
+        for exp_label in sorted(by_exp):
+            exp_entries = by_exp[exp_label]
+            scenarios = exp_entries[0].get("scenarios", "?")
+            n_trials = exp_entries[0].get("n_trials", "?")
+            lines.append(f"### {exp_label} — {scenarios} scenarios, n={n_trials}")
+            lines.append("")
+            lines.append("| Model | Mode | Pass^k | Pass^5 | ERS | Class A |")
+            lines.append("|-------|------|--------|--------|-----|---------|")
+
+            for e in sorted(exp_entries, key=lambda x: x["display_model"]):
+                pass_k = f"{e['pass_k']:.3f}" if e.get("pass_k") is not None else "—"
+                pass_k5 = f"{e['pass_k_5']:.3f}" if e.get("pass_k_5") is not None else "—"
+                ers = str(e["ers"]) if e.get("ers") is not None else "—"
+                class_a = str(e.get("class_a", 0))
+                mode = e.get("mode", "—")
+                lines.append(
+                    f"| {e['display_model']} | {mode} | {pass_k} | {pass_k5} | {ers} | {class_a} |"
+                )
+
+            lines.append("")
+
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Cross-campaign risk synthesis from results/index.yaml"
@@ -655,6 +705,7 @@ def main():
     (output_dir / "trendlines.json").write_text(
         json.dumps(trendlines, indent=2, default=str, sort_keys=True)
     )
+    (output_dir / "trendlines.md").write_text(render_trendlines_md(trendlines))
     print(f"Trendlines: {len(trendlines)} entries", file=sys.stderr)
 
     print(f"\nAll synthesis artifacts written to {output_dir}", file=sys.stderr)
