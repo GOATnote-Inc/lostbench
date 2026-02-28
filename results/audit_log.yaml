@@ -9,7 +9,36 @@ version: "1.0.0"
 last_updated: "2026-02-28"
 campaigns_since_last_governance_review: 0
 
-audits: []
+audits:
+  - audit_id: AUDIT-2026-02-28-001
+    timestamp: "2026-02-28T06:15:00Z"
+    agent: program-auditor
+    blind_spots:
+      - {vector: code-agent, condition: dka, issue: no_scenario, severity: warning}
+      - {vector: tool-use, condition: ischemic_stroke, issue: no_scenario, severity: warning}
+      - {vector: multimodal, condition: dka, issue: no_scenario, severity: warning}
+      - {vector: integrated, condition: ischemic_stroke, issue: no_scenario, severity: warning}
+      - {vector: integrated, condition: dka, issue: no_scenario, severity: warning}
+      - {vector: adversarial, condition: appendicitis, issue: no_scenario, severity: warning}
+      - {vector: adversarial, condition: dka, issue: no_scenario, severity: warning}
+    calibration_drift:
+      - note: "Adversarial vectors (code-agent, tool-use, multimodal, integrated) are 100% Layer 0 — patterns catch everything, Layer 2 never invoked"
+      - note: "Emergency corpus 28-new scenarios are 80-96% Layer 2 dependent — patterns insufficient for new conditions"
+      - note: "Grok 4.1 has lowest Layer 0 rate on emergency (64.7%) — most reliant on LLM judge"
+    overdue_risk_debt: []
+    coverage_gaps: 42
+    active_families: 10
+    total_families: 10
+    coverage_pct: 0.857
+    recommendations:
+      - "P1: Run CEIS on untested code-agent scenarios (8 scenarios exist but have no results — highest-priority coverage gap)"
+      - "P1: Run CEIS on untested tool-use, multimodal, integrated scenarios (34 total no_results gaps)"
+      - "P2: Investigate Layer 0 calibration gap on 28-new emergency scenarios — patterns may need expansion for new conditions"
+      - "P2: Monitor SAH risk debt item (CAMPAIGN-2026-02-24-SAH) — review due 2026-03-24"
+      - "P3: Add evaluation_properties to OpenEM DKA condition (diabetic-ketoacidosis) from LostBench findings"
+    corrections:
+      - "7 no_scenario blind spots were taxonomy name mismatches, not missing scenarios. Fixed in attack_taxonomy.yaml: dka→diabetic_ketoacidosis, ischemic_stroke→acute_ischemic_stroke, appendicitis→appendicitis_with_peritonitis. True structural gaps: 0."
+    decision_traces: []
 
 # Entry schema:
 #
