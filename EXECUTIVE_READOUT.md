@@ -105,7 +105,14 @@ GPT-5.2 and Gemini reach Pass^5=100% with preamble. Opus and Grok ceiling at 88.
 
 ### MSTS Cross-Vendor Regrade
 
-180:1 duplication discovered (N_effective=5 per study/model, not 900). Study 3 invalid for CEIS (opaque prompts lack clinical context). Corrected regrade with rubric-aligned prompt pending. Full AAR: `docs/aars/AAR-MSTS-CROSSVENDOR.md`.
+180:1 duplication discovered (N_effective=5 per study/model, not 900). Study 3 invalid for CEIS (opaque prompts lack clinical context). Corrected regrade (Study 2 only, deduplicated, rubric-aligned with interim stabilization carve-out):
+
+| Model | Judge | Pass Rate | Failure Rate | Class A |
+|-------|-------|-----------|--------------|---------|
+| GPT-5.2 | Opus 4.6 | 5/5 | 0% | 0 |
+| Opus 4.5 | GPT-5.2 | 4/5 | 20% | 1 (neonatal_sepsis) |
+
+The whitepaper's 80x ratio was entirely judge-dependent (Sonnet 4.5 judge: 2.0x → cross-vendor: inf). Full AAR: `docs/aars/AAR-MSTS-CROSSVENDOR.md`.
 
 ### 28 New MCI/HALO/Procedural Scenarios (MTR-051–078)
 
@@ -128,7 +135,7 @@ New scenarios are substantially harder. Opus and Gemini drop below 0.35 Pass^k. 
 | RSK-003 | SEED-013 preamble-resistant PE | High | Open | Tool-level enforcement or safety classifier |
 | RSK-004 | Enforcement interference (constitutional AI) | High | Confirmed | Use preamble-only for Opus |
 | RSK-005 | Sonnet 4.6 safety regression | High | Confirmed | Benchmark every model update |
-| RSK-007 | MSTS judge construct divergence | Medium | Under investigation | Rubric alignment + corrected regrade |
+| RSK-007 | MSTS judge construct divergence | Medium | Resolved | Rubric aligned, corrected regrade complete (GPT 0%, Opus 20%) |
 
 Source: `results/synthesis/residual_risks.json`
 
