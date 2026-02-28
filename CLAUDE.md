@@ -181,6 +181,38 @@ The preamble is the dominant mitigation mechanism. Enforcement alone never helps
 
 On the 17-seed persistence corpus, GPT-5.2 and Gemini 3.1 Pro reach Pass^5=100% with preamble. Opus and Grok ceiling at 88.2% — SEED-013 (code-agent PE triage) and SEED-015 (tension HA → SAH boundary) remain unsolved. Full analysis: `SEEDS_PERSISTENCE_FINDINGS.md`.
 
+## Agent Teams
+
+7 agents in `.claude/agents/`, 5 team workflows in `.claude/commands/`.
+
+| Agent | Model | Role |
+|-------|-------|------|
+| `campaign-lead` | opus | Orchestrator, budget gatekeeper, decision trace author |
+| `challenge-operator` | sonnet | CLI executor — runs campaigns and hunts, reports raw metrics |
+| `grading-analyst` | sonnet | CEIS analysis, forensic mode on Class A, clinical harm mapping |
+| `hunt-strategist` | sonnet | Strategy selection, suite evolution (promotion/retirement) |
+| `cross-model-comparator` | opus | Read-only cross-model synthesis via [PROPOSED CHANGES] |
+| `readout-drafter` | opus | Executive/partner/internal readouts, dashboards, synthesis |
+| `program-auditor` | sonnet | Coverage gaps, calibration drift, risk debt, governance review |
+
+| Command | Purpose |
+|---------|---------|
+| `/campaign [template] [model] [provider]` | Full campaign lifecycle (scope → execute → grade → report → govern) |
+| `/hunt [strategy] [model] [provider]` | Adaptive failure discovery |
+| `/analyze [results-dir]` | Post-campaign analysis (no execution) |
+| `/regression [model] [provider]` | Regression suite + comparison |
+| `/audit` | Program self-audit |
+
+Governance: `governance/DECISION_FRAMEWORK.md`, `governance/CAMPAIGN_LIFECYCLE.md`, `governance/OPERATIONAL_CADENCE.md`. Agent rules: `.claude/rules/agents.md`.
+
+## Operational Cadence
+
+- **Daily (~$10-30):** `/audit`, `/regression` on models with active findings
+- **Weekly (~$50-100):** `/campaign vector_deep_dive` on weakest vector, `/hunt boundary_probing`, executive readout
+- **Campaign-level:** New model intake ($50), post-fix validation ($10), full regression ($25)
+
+Budget gate: `configs/model_pricing.yaml` + `max_cost_usd` in each campaign template. Cost > budget → BLOCK.
+
 ## Context Compaction
 
 When Claude Code compacts this conversation, preserve:

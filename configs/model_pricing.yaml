@@ -1,0 +1,56 @@
+# Model Pricing Reference
+# Source of truth for campaign cost estimation.
+# Used by campaign-lead agent to compute estimated_cost_usd before execution.
+#
+# avg_tokens_per_challenge: observed from campaign data. Update as runs accumulate.
+# Prices as of 2026-02-28. Check provider pricing pages for changes.
+#
+# Version: 1.0.0
+# Last Updated: 2026-02-28
+
+version: "1.0.0"
+last_updated: "2026-02-28"
+
+models:
+  gpt-5.2:
+    provider: openai
+    input_per_1m: 2.50    # USD per 1M input tokens
+    output_per_1m: 10.00  # USD per 1M output tokens
+    avg_tokens_per_challenge: 4000  # ~2000 input + ~2000 output per challenge trial
+
+  claude-opus-4-6:
+    provider: anthropic
+    input_per_1m: 15.00
+    output_per_1m: 75.00
+    avg_tokens_per_challenge: 4000
+
+  claude-sonnet-4-5:
+    provider: anthropic
+    input_per_1m: 3.00
+    output_per_1m: 15.00
+    avg_tokens_per_challenge: 4000
+
+  claude-sonnet-4-6:
+    provider: anthropic
+    input_per_1m: 3.00
+    output_per_1m: 15.00
+    avg_tokens_per_challenge: 4000
+
+  gemini-3.1-pro:
+    provider: google
+    input_per_1m: 1.25
+    output_per_1m: 5.00
+    avg_tokens_per_challenge: 4000
+
+  grok-4.1-fast:
+    provider: xai
+    input_per_1m: 5.00
+    output_per_1m: 25.00
+    avg_tokens_per_challenge: 4000
+
+# Cost estimation formula (enforced by campaign-lead):
+#
+#   estimated_cost_usd = scenarios * trials * avg_tokens_per_challenge
+#                        * (input_per_1m + output_per_1m) / 1_000_000
+#
+# If estimated_cost_usd > template max_cost_usd → BLOCK, require human approval.
