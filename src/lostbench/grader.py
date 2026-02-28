@@ -29,7 +29,7 @@ from lostbench.scoring import parse_time_to_harm_hours
 logger = logging.getLogger(__name__)
 
 
-def _serialize_turn_grade(tg) -> dict:
+def _serialize_turn_grade(tg, response_text: str = "") -> dict:
     """Serialize a TurnGrade with full judge provenance chain."""
     d = {
         "turn_index": tg.turn_index,
@@ -40,6 +40,9 @@ def _serialize_turn_grade(tg) -> dict:
         "detection_layer": tg.detection_layer,
         "confidence": tg.confidence,
     }
+
+    if response_text:
+        d["response_text"] = response_text
 
     # Layer 0 pattern result (always present)
     if tg.pattern_result is not None:
@@ -59,6 +62,11 @@ def _serialize_turn_grade(tg) -> dict:
             "confidence": tg.judge_result.confidence,
             "evidence_snippet": tg.judge_result.evidence_snippet,
             "raw_output": tg.judge_result.raw_output,
+            # Provenance fields (populated when using call_escalation_judge_rich)
+            "judge_request": getattr(tg.judge_result, "judge_request", ""),
+            "judge_model_version": getattr(tg.judge_result, "model_version", ""),
+            "judge_api_request_id": getattr(tg.judge_result, "request_id", ""),
+            "judge_usage": getattr(tg.judge_result, "usage", {}),
         }
 
     return d
@@ -91,9 +99,13 @@ class GradeResult:
     timestamp: str = ""
     turn_details: list[dict] = field(default_factory=list)
     challenge_hash: str = ""
+    # Provenance fields (populated by cross-vendor regrade scripts)
+    grading_methodology: str = ""
+    cross_vendor_routing: dict = field(default_factory=dict)
+    rubric_text: str = ""
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "scenario_id": self.scenario_id,
             "condition": self.condition,
             "model": self.model,
@@ -118,6 +130,14 @@ class GradeResult:
             "turn_details": self.turn_details,
             "challenge_hash": self.challenge_hash,
         }
+        # Only include provenance fields if set (backward compat)
+        if self.grading_methodology:
+            d["grading_methodology"] = self.grading_methodology
+        if self.cross_vendor_routing:
+            d["cross_vendor_routing"] = self.cross_vendor_routing
+        if self.rubric_text:
+            d["rubric_text"] = self.rubric_text
+        return d
 
     def save(self, output_dir: str | Path) -> Path:
         """Write grade result to JSON file."""
@@ -138,11 +158,16 @@ class GradeResult:
         # Handle 'pass' key mapping to 'passed'
         if "pass" in data:
             data["passed"] = data.pop("pass")
-        # Backward compat: older grade files lack turn_details/challenge_hash
-        if "turn_details" not in data:
-            data["turn_details"] = []
-        if "challenge_hash" not in data:
-            data["challenge_hash"] = ""
+        # Backward compat: older grade files may lack these fields
+        for key, default in [
+            ("turn_details", []),
+            ("challenge_hash", ""),
+            ("grading_methodology", ""),
+            ("cross_vendor_routing", {}),
+            ("rubric_text", ""),
+        ]:
+            if key not in data:
+                data[key] = default
         return cls(**data)
 
 
@@ -312,7 +337,14 @@ async def grade_challenge(
     pass_rate = per_trial_passes / n_trials if n_trials > 0 else 0.0
 
     # Serialize full judge chain per turn for provenance
-    turn_details = [_serialize_turn_grade(tg) for tg in grade.turn_grades]
+    # Flatten responses across trials to align with turn_grades
+    all_responses: list[str] = []
+    for t in challenge.transcripts:
+        all_responses.extend(t.responses)
+    turn_details = [
+        _serialize_turn_grade(tg, all_responses[i] if i < len(all_responses) else "")
+        for i, tg in enumerate(grade.turn_grades)
+    ]
 
     rubric_ver = _compute_rubric_version()
     return GradeResult(

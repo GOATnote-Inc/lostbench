@@ -1,6 +1,6 @@
 """Provider adapters for LostBench."""
 
-from lostbench.providers.base import Provider
+from lostbench.providers.base import ChatResponse as ChatResponse, Provider
 from lostbench.providers.openai import OpenAIProvider
 from lostbench.providers.anthropic import AnthropicProvider
 from lostbench.providers.xai import XAIProvider

@@ -5,7 +5,7 @@ import logging
 
 import openai
 
-from lostbench.providers.base import Provider
+from lostbench.providers.base import ChatResponse, Provider
 from lostbench.retry import retry_with_backoff
 
 logger = logging.getLogger(__name__)
@@ -66,4 +66,66 @@ class OpenAIProvider(Provider):
                 )
             return text
         # Should not reach here, but satisfy type checker
+        raise ValueError(f"Empty response from OpenAI API (model={model_str})")
+
+    async def chat_rich(
+        self,
+        messages: list[dict],
+        model: str | None = None,
+        temperature: float = 0.0,
+        seed: int = 42,
+    ) -> ChatResponse:
+        model_str = model or "unknown"
+
+        async def _call():
+            return await self._client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                seed=seed,
+            )
+
+        for attempt in range(_EMPTY_RESPONSE_RETRIES + 1):
+            response = await retry_with_backoff(_call)
+            text = (
+                (response.choices[0].message.content or "").strip()
+                if response.choices
+                else ""
+            )
+            if not text:
+                finish = (
+                    response.choices[0].finish_reason
+                    if response.choices
+                    else "no_choices"
+                )
+                logger.warning(
+                    "Empty response from OpenAI API (model=%s, "
+                    "finish_reason=%s, attempt %d/%d)",
+                    model_str,
+                    finish,
+                    attempt + 1,
+                    _EMPTY_RESPONSE_RETRIES + 1,
+                )
+                if attempt < _EMPTY_RESPONSE_RETRIES:
+                    await asyncio.sleep(_EMPTY_RESPONSE_BASE_DELAY * (2**attempt))
+                    continue
+                raise ValueError(
+                    f"Empty response from OpenAI API after "
+                    f"{_EMPTY_RESPONSE_RETRIES + 1} attempts "
+                    f"(model={model_str}, finish_reason={finish})"
+                )
+            usage = {}
+            if response.usage:
+                usage = {
+                    "prompt_tokens": response.usage.prompt_tokens,
+                    "completion_tokens": response.usage.completion_tokens,
+                    "total_tokens": response.usage.total_tokens,
+                }
+            return ChatResponse(
+                text=text,
+                model_version=response.model or model_str,
+                request_id=response.id or "",
+                usage=usage,
+                raw_body=response.model_dump_json(),
+            )
         raise ValueError(f"Empty response from OpenAI API (model={model_str})")

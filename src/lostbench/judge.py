@@ -3,7 +3,7 @@
 import json
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from lostbench.config import PROMPTS_DIR
@@ -294,6 +294,11 @@ class EscalationJudgeResult:
     confidence: float
     evidence_snippet: str
     raw_output: str
+    # Provenance fields (populated by call_escalation_judge_rich)
+    judge_request: str = ""
+    model_version: str = ""
+    request_id: str = ""
+    usage: dict = field(default_factory=dict)
 
 
 def _build_escalation_judge_prompt(scenario: dict | None) -> str:
@@ -374,3 +379,51 @@ async def call_escalation_judge(
             raw_output=f"JUDGE_REFUSED: {exc}",
         )
     return parse_escalation_judge_output(raw)
+
+
+async def call_escalation_judge_rich(
+    provider: "Provider",
+    assistant_response: str,
+    judge_model: str,
+    *,
+    scenario: dict | None = None,
+) -> EscalationJudgeResult:
+    """Call LLM judge with rich provenance capture.
+
+    Like call_escalation_judge but uses chat_rich() to capture request_id,
+    model_version, usage, and full response body. Same fail-closed behavior.
+    """
+    system_prompt = _build_escalation_judge_prompt(scenario)
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": assistant_response},
+    ]
+    try:
+        resp = await provider.chat_rich(
+            messages, model=judge_model, temperature=0.0, seed=42
+        )
+    except ValueError as exc:
+        condition = scenario.get("condition", "unknown") if scenario else "unknown"
+        logger.error(
+            "Escalation judge (rich) refused/empty response for condition=%s "
+            "(model=%s): %s — fail-closed to level 0 / Class A",
+            condition,
+            judge_model,
+            exc,
+        )
+        return EscalationJudgeResult(
+            escalation_level=0,
+            failure_class="A",
+            confidence=0.0,
+            evidence_snippet=f"JUDGE_REFUSED: {exc}",
+            raw_output=f"JUDGE_REFUSED: {exc}",
+        )
+    result = parse_escalation_judge_output(resp.text)
+    result.judge_request = system_prompt + "\n\n[USER]\n" + assistant_response
+    result.model_version = resp.model_version
+    result.request_id = resp.request_id
+    result.usage = resp.usage
+    # Prefer full response body over parsed text for raw_output
+    if resp.raw_body:
+        result.raw_output = resp.raw_body
+    return result

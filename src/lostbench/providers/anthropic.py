@@ -1,11 +1,12 @@
 """Anthropic provider adapter."""
 
 import asyncio
+import json
 import logging
 
 import anthropic
 
-from lostbench.providers.base import Provider
+from lostbench.providers.base import ChatResponse, Provider
 from lostbench.retry import retry_with_backoff
 
 logger = logging.getLogger(__name__)
@@ -99,4 +100,98 @@ class AnthropicProvider(Provider):
                 )
             return text
         # Should not reach here, but satisfy type checker
+        raise ValueError(f"Empty response from Anthropic API (model={model_str})")
+
+    async def chat_rich(
+        self,
+        messages: list[dict],
+        model: str | None = None,
+        temperature: float = 0.0,
+        seed: int = 42,
+    ) -> ChatResponse:
+        system_content = None
+        chat_messages = []
+        for m in messages:
+            if m["role"] == "system":
+                system_content = m["content"]
+            else:
+                chat_messages.append(m)
+
+        kwargs = dict(
+            model=model,
+            max_tokens=4096,
+            messages=chat_messages,
+            temperature=temperature,
+        )
+        if system_content:
+            kwargs["system"] = system_content
+
+        model_str = model or "unknown"
+
+        async def _call():
+            return await self._client.messages.create(**kwargs)
+
+        for attempt in range(_EMPTY_RESPONSE_RETRIES + 1):
+            response = await retry_with_backoff(_call)
+            if not response.content:
+                logger.warning(
+                    "Empty response.content from Anthropic API (model=%s, "
+                    "stop_reason=%s, attempt %d/%d)",
+                    model_str,
+                    getattr(response, "stop_reason", "unknown"),
+                    attempt + 1,
+                    _EMPTY_RESPONSE_RETRIES + 1,
+                )
+                if attempt < _EMPTY_RESPONSE_RETRIES:
+                    await asyncio.sleep(_EMPTY_RESPONSE_BASE_DELAY * (2**attempt))
+                    continue
+                raise ValueError(
+                    f"Empty response from Anthropic API after "
+                    f"{_EMPTY_RESPONSE_RETRIES + 1} attempts "
+                    f"(model={model_str}, stop_reason="
+                    f"{getattr(response, 'stop_reason', 'unknown')})"
+                )
+            if not hasattr(response.content[0], "text"):
+                raise ValueError(
+                    f"Unexpected response format from Anthropic API (model={model_str})"
+                )
+            text = (response.content[0].text or "").strip()
+            if not text:
+                logger.warning(
+                    "Empty text in response from Anthropic API (model=%s, "
+                    "stop_reason=%s, attempt %d/%d)",
+                    model_str,
+                    response.stop_reason,
+                    attempt + 1,
+                    _EMPTY_RESPONSE_RETRIES + 1,
+                )
+                if attempt < _EMPTY_RESPONSE_RETRIES:
+                    await asyncio.sleep(_EMPTY_RESPONSE_BASE_DELAY * (2**attempt))
+                    continue
+                raise ValueError(
+                    f"Empty response from Anthropic API after "
+                    f"{_EMPTY_RESPONSE_RETRIES + 1} attempts "
+                    f"(model={model_str}, stop_reason={response.stop_reason})"
+                )
+            # Serialize full content blocks (includes thinking blocks)
+            raw_blocks = []
+            for block in response.content:
+                if hasattr(block, "text"):
+                    raw_blocks.append({"type": "text", "text": block.text})
+                elif hasattr(block, "thinking"):
+                    raw_blocks.append({"type": "thinking", "thinking": block.thinking})
+                else:
+                    raw_blocks.append({"type": str(type(block).__name__)})
+
+            usage = {
+                "input_tokens": response.usage.input_tokens,
+                "output_tokens": response.usage.output_tokens,
+            }
+            return ChatResponse(
+                text=text,
+                model_version=response.model or model_str,
+                request_id=response.id or "",
+                usage=usage,
+                raw_body=json.dumps(raw_blocks),
+            )
         raise ValueError(f"Empty response from Anthropic API (model={model_str})")
