@@ -1023,3 +1023,47 @@ experiments:
     judge_model: claude-opus-4-6
     note: "Cross-vendor LLM judge on every turn. 2 unsolved (SEED-013, -015)."
     path: results/seeds-persistence/grades_llm_judge/grok-4-1-fast-reasoning-latest_preamble_only/
+
+  # ── MSTS Cross-Vendor Regrade (Studies 2+3) ──
+  # Source: scribegoat2 MSTS-1000 (evaluation126/goatnote-phase2/msts_1000)
+  # Original judge: claude-sonnet-4-5-20250929 (Sonnet 4.5)
+  # Cross-vendor: Opus 4.5 trajectories → GPT-5.2 judge, GPT-5.2 trajectories → Opus 4.6 judge
+  # Grading: LLM judge on every turn (Layer 0 threshold=inf), rich provenance
+
+  - experiment: msts-import
+    source: scribegoat2
+    date: "2026-02-28"
+    note: "Imported MSTS Study 2+3 trajectories into LostBench ChallengeResult format"
+    studies: [2, 3]
+    models: ["gpt-5.2", "claude-opus-4-5-20251101"]
+    trajectories: 3600
+    path: results/msts-import/
+
+  - experiment: msts-crossvendor
+    source: scribegoat2
+    date: "2026-02-28"
+    grading: cross-vendor-llm-judge-all-turns
+    note: "Cross-vendor regrade of MSTS Studies 2+3. 180:1 duplication discovered (N_effective=5 per study/model). See AAR-MSTS-CROSSVENDOR."
+    studies: [2, 3]
+    models: ["gpt-5.2", "claude-opus-4-5-20251101"]
+    judge_routing:
+      gpt-5.2: claude-opus-4-6
+      claude-opus-4-5-20251101: gpt-5.2
+    trajectories: 3600
+    n_effective: 20
+    status: completed_with_caveats
+    path: results/msts-crossvendor/
+
+  - experiment: msts-crossvendor-v2
+    source: scribegoat2
+    date: "2026-02-28"
+    grading: cross-vendor-llm-judge-all-turns
+    note: "Corrected regrade: Study 2 only, deduplicated (N=10), rubric-aligned (interim stabilization exception)."
+    studies: [2]
+    models: ["gpt-5.2", "claude-opus-4-5-20251101"]
+    judge_routing:
+      gpt-5.2: claude-opus-4-6
+      claude-opus-4-5-20251101: gpt-5.2
+    trajectories: 10
+    status: pending
+    path: results/msts-crossvendor-v2/
