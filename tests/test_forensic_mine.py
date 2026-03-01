@@ -354,8 +354,7 @@ class TestLoadScribeGoat2Checkpoints:
         d.mkdir()
         fp = d / "checkpoint_lfs.jsonl"
         fp.write_text(
-            "version https://git-lfs.github.com/spec/v1\n"
-            "oid sha256:abc\nsize 999\n"
+            "version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 999\n"
         )
         obs = forensic_mine.load_scribegoat2_checkpoints(d)
         assert obs == []
@@ -443,13 +442,21 @@ class TestClassifyFailureType:
         assert forensic_mine._classify_failure_type(None) is None
 
     def test_capitulation_maps_to_a(self):
-        assert forensic_mine._classify_failure_type("Tier 1 — Complete capitulation") == "A"
+        assert (
+            forensic_mine._classify_failure_type("Tier 1 — Complete capitulation")
+            == "A"
+        )
 
     def test_operational_substitution_maps_to_b(self):
-        assert forensic_mine._classify_failure_type("Tier 3 — Operational substitution") == "B"
+        assert (
+            forensic_mine._classify_failure_type("Tier 3 — Operational substitution")
+            == "B"
+        )
 
     def test_partial_maps_to_c(self):
-        assert forensic_mine._classify_failure_type("Tier 2 — Partial maintenance") == "C"
+        assert (
+            forensic_mine._classify_failure_type("Tier 2 — Partial maintenance") == "C"
+        )
 
     def test_citation_maps_to_d(self):
         assert forensic_mine._classify_failure_type("Citation hallucination") == "D"
@@ -636,9 +643,7 @@ class TestFailureTrajectories:
 
 
 class TestMiningHypotheses:
-    def test_generates_hypotheses(
-        self, mock_persistence, mock_seeds, mock_forensics
-    ):
+    def test_generates_hypotheses(self, mock_persistence, mock_seeds, mock_forensics):
         pressure_matrix = forensic_mine.build_pressure_vulnerability_matrix(
             [], mock_persistence, mock_seeds
         )
@@ -829,9 +834,7 @@ class TestModelFailureProfiles:
                 "turns": [],
             },
         ]
-        profiles = forensic_mine.build_model_failure_profiles(
-            sg2_obs, [], {}, []
-        )
+        profiles = forensic_mine.build_model_failure_profiles(sg2_obs, [], {}, [])
         assert "test-model" in profiles
         assert "failure_concentration_gini" in profiles["test-model"]
 
@@ -888,7 +891,12 @@ class TestRendering:
             "pattern_stricter": 10,
             "judge_stricter": 15,
             "by_condition": {
-                "stemi": {"agree": 8, "disagree": 2, "pattern_stricter": 1, "judge_stricter": 1}
+                "stemi": {
+                    "agree": 8,
+                    "disagree": 2,
+                    "pattern_stricter": 1,
+                    "judge_stricter": 1,
+                }
             },
             "sg2_pattern_vs_judge": {"maintained_by_pattern": 5, "failed_by_judge": 5},
             "sg2_fn_note": "Test note",
@@ -986,9 +994,7 @@ class TestForensicsReportParsing:
         assert cases[1]["scenario_id"] == "MTR-002"
 
     def test_handles_missing_file(self, tmp_path):
-        cases = forensic_mine.load_scribegoat2_forensics(
-            tmp_path / "nonexistent.md"
-        )
+        cases = forensic_mine.load_scribegoat2_forensics(tmp_path / "nonexistent.md")
         assert cases == []
 
 
@@ -999,9 +1005,11 @@ class TestForensicsReportParsing:
 
 class TestIntegration:
     @pytest.mark.skipif(
-        not Path.home().joinpath(
+        not Path.home()
+        .joinpath(
             "lostbench/results/seeds-persistence/grades_llm_judge/persistence_summary_llm_judge.json"
-        ).exists(),
+        )
+        .exists(),
         reason="Real persistence summary not available",
     )
     def test_loads_real_persistence(self):

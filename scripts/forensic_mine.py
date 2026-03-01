@@ -649,9 +649,7 @@ def build_model_failure_profiles(
         p["source_counts"]["lostbench"] += 1
         cond = scenario.get("condition", scenario.get("scenario_id", ""))
         if not scenario.get("pass_k", True):
-            p["failing_conditions"][cond] = (
-                p["failing_conditions"].get(cond, 0) + 1
-            )
+            p["failing_conditions"][cond] = p["failing_conditions"].get(cond, 0) + 1
 
     # Compute failure concentration (Gini coefficient)
     for p in profiles.values():
@@ -701,7 +699,12 @@ def build_judge_agreement(
                 condition = grade.get("condition", seed_id)
                 cond_stats = by_condition.setdefault(
                     condition,
-                    {"agree": 0, "disagree": 0, "pattern_stricter": 0, "judge_stricter": 0},
+                    {
+                        "agree": 0,
+                        "disagree": 0,
+                        "pattern_stricter": 0,
+                        "judge_stricter": 0,
+                    },
                 )
                 for td in grade.get("turn_details", []):
                     pattern = td.get("pattern", {})
@@ -898,7 +901,9 @@ def _classify_trajectory(levels: list[dict]) -> str:
     # Check for oscillation: alternating maintained/failed
     maintained_seq = [lv.get("maintained", True) for lv in levels]
     transitions = sum(
-        1 for i in range(1, len(maintained_seq)) if maintained_seq[i] != maintained_seq[i - 1]
+        1
+        for i in range(1, len(maintained_seq))
+        if maintained_seq[i] != maintained_seq[i - 1]
     )
     if transitions >= 3:
         return "oscillating"
@@ -1227,16 +1232,22 @@ def render_model_failure_profiles_md(profiles: dict) -> str:
         total = p["total_observations"]
         failures = p["failures"]
         rate = failures / total if total > 0 else 0.0
-        lines.append(f"- **Observations:** {total} (SG2: {p['source_counts']['scribegoat2']}, LB: {p['source_counts']['lostbench']})")
+        lines.append(
+            f"- **Observations:** {total} (SG2: {p['source_counts']['scribegoat2']}, LB: {p['source_counts']['lostbench']})"
+        )
         lines.append(f"- **Failures:** {failures} ({rate:.1%})")
-        lines.append(f"- **Failure classes:** A={p['failure_classes']['A']}, B={p['failure_classes']['B']}, C={p['failure_classes']['C']}, D={p['failure_classes']['D']}")
+        lines.append(
+            f"- **Failure classes:** A={p['failure_classes']['A']}, B={p['failure_classes']['B']}, C={p['failure_classes']['C']}, D={p['failure_classes']['D']}"
+        )
         if p.get("baseline_pass_rate") is not None:
             lines.append(f"- **Baseline pass rate:** {p['baseline_pass_rate']:.3f}")
         if p.get("preamble_pass_rate") is not None:
             lines.append(f"- **Preamble pass rate:** {p['preamble_pass_rate']:.3f}")
         if p.get("preamble_lift") is not None:
             lines.append(f"- **Preamble lift:** {p['preamble_lift']:+.3f}")
-        lines.append(f"- **Failure concentration (Gini):** {p.get('failure_concentration_gini', 0.0):.3f}")
+        lines.append(
+            f"- **Failure concentration (Gini):** {p.get('failure_concentration_gini', 0.0):.3f}"
+        )
         lines.append("")
 
         # Turn histogram
@@ -1310,7 +1321,9 @@ def render_judge_agreement_md(agreement: dict) -> str:
         sg2 = agreement["sg2_pattern_vs_judge"]
         lines.append("## ScribeGoat2 Pattern vs Judge")
         lines.append("")
-        lines.append(f"- Pattern said 'persistence' but judge said 'failed': {sg2['failed_by_judge']}")
+        lines.append(
+            f"- Pattern said 'persistence' but judge said 'failed': {sg2['failed_by_judge']}"
+        )
         lines.append(f"- {agreement.get('sg2_fn_note', '')}")
         lines.append("")
 
@@ -1397,7 +1410,9 @@ def render_mining_hypotheses_md(hypotheses: list[dict]) -> str:
         "",
     ]
     for h in hypotheses:
-        lines.append(f"## {h['id']} — {h['pattern_type']} (priority: {h['priority_score']:.2f})")
+        lines.append(
+            f"## {h['id']} — {h['pattern_type']} (priority: {h['priority_score']:.2f})"
+        )
         lines.append("")
         lines.append(f"**{h['hypothesis']}**")
         lines.append("")
@@ -1547,9 +1562,7 @@ def main():
         seeds = load_seed_yamls(LB_SEEDS_MINED)
         two_x_two = load_2x2_results(LB_RESULTS)
         campaign = load_campaign_results(LB_RESULTS)
-        persistence_models = len(
-            [k for k in persistence if not k.startswith("_")]
-        )
+        persistence_models = len([k for k in persistence if not k.startswith("_")])
         print(
             f"LostBench: {persistence_models} models in persistence, "
             f"{len(seeds)} seeds, {len(two_x_two)} 2x2 scenarios, "
