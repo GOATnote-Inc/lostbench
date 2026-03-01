@@ -46,8 +46,8 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
   # Run mining session (non-interactive)
   LOG_FILE="seeds_generated/iteration_${i}.log"
   echo "Running mining session... (log: $LOG_FILE)"
-  claude --print \
-    --prompt "/mine-seeds --strategy $STRATEGY --budget $BUDGET_PER_ITERATION" \
+  claude -p \
+    "/mine-seeds --strategy $STRATEGY --budget $BUDGET_PER_ITERATION" --print \
     2>&1 | tee "$LOG_FILE"
 
   # Count new seeds from this iteration
