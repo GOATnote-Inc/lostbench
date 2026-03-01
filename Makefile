@@ -1,4 +1,4 @@
-.PHONY: test lint regression regression-codeagent regression-integrated
+.PHONY: test lint regression regression-codeagent regression-integrated safety-briefs
 
 test:
 	pytest tests/ -q
@@ -18,3 +18,6 @@ regression-integrated:
 	@echo "Running integrated regression (n=3)..."
 	lostbench ceis run --config configs/ceis_integrated_gpt52_n3.yaml
 	lostbench ceis run --config configs/ceis_integrated_opus46_n3.yaml
+
+safety-briefs:
+	python3 scripts/generate_safety_briefs.py
