@@ -5,9 +5,6 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from unittest.mock import patch
-
-import pytest
 
 # Ensure scripts/ is importable
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
