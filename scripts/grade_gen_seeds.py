@@ -21,11 +21,15 @@ import sys
 import time
 from pathlib import Path
 
+import yaml
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import lostbench.ceis as ceis_module
 from lostbench.cache import ResponseCache
+from lostbench.challenge import ChallengeResult
 from lostbench.grader import grade_challenge
+from lostbench.judge import EscalationJudgeResult, call_escalation_judge
 from lostbench.providers import get_provider
 from lostbench.providers.cached import CachedProvider
 
@@ -37,6 +41,7 @@ ceis_module.LAYER_0_CONFIDENCE_THRESHOLD = float("inf")
 RESULTS_BASE = Path(__file__).parent.parent / "results" / "seeds-gen-eval"
 GRADES_DIR = RESULTS_BASE / "grades_llm_judge"
 CHECKPOINT_FILE = GRADES_DIR / "regrade_checkpoint.json"
+SEEDS_DIR = Path(__file__).parent.parent / "seeds_generated"
 
 # Cross-vendor judge routing: no model judges itself
 JUDGE_ROUTING = {
@@ -49,6 +54,33 @@ DEFAULT_JUDGE = ("claude-opus-4-6", "anthropic")
 
 def get_judge(target_model: str) -> tuple[str, str]:
     return JUDGE_ROUTING.get(target_model, DEFAULT_JUDGE)
+
+
+def make_judge_fn(provider: CachedProvider, judge_model: str) -> callable:
+    """Create a JudgeFn closure for CEIS Layer 2."""
+
+    async def judge_fn(response: str, scenario: dict | None) -> EscalationJudgeResult:
+        return await call_escalation_judge(
+            provider=provider,
+            assistant_response=response,
+            judge_model=judge_model,
+            scenario=scenario,
+        )
+
+    return judge_fn
+
+
+def load_scenarios() -> dict[str, dict]:
+    """Load all generated seed YAMLs into a scenario_id -> dict map."""
+    scenarios = {}
+    if not SEEDS_DIR.exists():
+        return scenarios
+    for path in sorted(SEEDS_DIR.glob("gen-*.yaml")):
+        with open(path) as f:
+            data = yaml.safe_load(f)
+        if data and "id" in data:
+            scenarios[data["id"]] = data
+    return scenarios
 
 
 def load_checkpoint() -> set[str]:
@@ -92,51 +124,21 @@ def discover_challenges() -> list[tuple[Path, str, str]]:
     return challenges
 
 
-async def grade_one(
-    challenge_path: Path,
-    judge_provider: CachedProvider,
-    judge_model: str,
-    target_model: str,
-    output_dir: Path,
-) -> dict:
-    """Grade a single challenge JSON."""
-    with open(challenge_path) as f:
-        challenge_data = json.load(f)
-
-    result = await grade_challenge(
-        challenge_data=challenge_data,
-        judge_provider=judge_provider,
-        judge_model=judge_model,
-    )
-
-    # Add cross-vendor metadata
-    result["grading_methodology"] = "cross_vendor_llm_judge"
-    result["cross_vendor_routing"] = {
-        "target_model": target_model,
-        "judge_model": judge_model,
-    }
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    scenario_id = challenge_data.get("scenario_id", "unknown")
-    msafe = target_model.replace("/", "-").replace(" ", "_")
-    filename = f"grade_{scenario_id}_{msafe}.json"
-    with open(output_dir / filename, "w") as f:
-        json.dump(result, f, indent=2)
-
-    return result
-
-
 async def run_grading(
     model_filter: str | None = None,
     condition_filter: str | None = None,
     dry_run: bool = False,
 ) -> None:
+    scenarios = load_scenarios()
+    logger.info("Loaded %d seed scenarios", len(scenarios))
+
     completed = load_checkpoint()
     challenges = discover_challenges()
 
     if not challenges:
         logger.info(
-            "No challenge files found in %s — run eval_gen_seeds.py first", RESULTS_BASE
+            "No challenge files found in %s — run eval_gen_seeds.py first",
+            RESULTS_BASE,
         )
         return
 
@@ -149,9 +151,10 @@ async def run_grading(
     # Filter already graded
     pending = []
     for path, model_safe, condition in challenges:
-        key = f"{model_safe}|{condition}|{path.name}"
+        challenge = ChallengeResult.load(path)
+        key = f"{model_safe}|{condition}|{challenge.scenario_id}"
         if key not in completed:
-            pending.append((path, model_safe, condition, key))
+            pending.append((path, model_safe, condition, key, challenge))
 
     logger.info("=" * 60)
     logger.info("Cross-Vendor LLM Grading — Generated Seeds")
@@ -162,26 +165,27 @@ async def run_grading(
     logger.info("=" * 60)
 
     if dry_run:
-        for path, model_safe, condition, key in pending:
-            target = path.parent.name.rsplit("_", 1)[0]
-            judge_model, judge_provider = get_judge(
-                target.replace("-", ".").replace("_", "-")
-            )
+        for path, model_safe, condition, key, challenge in pending:
+            judge_model, _ = get_judge(challenge.model)
             logger.info("  WOULD GRADE: %s [judge: %s]", path.name, judge_model)
         return
 
     if not pending:
         logger.info("All challenges already graded!")
     else:
-        # Group by target model for provider reuse
-        judge_cache = {}
+        # Cache judge providers and judge_fn closures
+        judge_cache: dict[str, tuple[CachedProvider, str, callable]] = {}
         done = len(challenges) - len(pending)
 
-        for path, model_safe_name, condition, key in pending:
-            # Resolve actual model name from challenge JSON
-            with open(path) as f:
-                cdata = json.load(f)
-            target_model = cdata.get("model", model_safe_name)
+        for path, model_safe_name, condition, key, challenge in pending:
+            target_model = challenge.model
+            scenario_id = challenge.scenario_id
+
+            # Look up scenario YAML
+            scenario = scenarios.get(scenario_id)
+            if not scenario:
+                logger.warning("No scenario YAML for %s — skipping", scenario_id)
+                continue
 
             judge_model, judge_prov_name = get_judge(target_model)
 
@@ -191,28 +195,48 @@ async def run_grading(
                 cache_dir = RESULTS_BASE / "cache"
                 raw = get_provider(judge_prov_name)
                 cache = ResponseCache(str(cache_dir))
-                judge_cache[cache_key] = CachedProvider(raw, cache)
+                provider = CachedProvider(raw, cache)
+                jfn = make_judge_fn(provider, judge_model)
+                judge_cache[cache_key] = (provider, judge_model, jfn)
 
-            provider = judge_cache[cache_key]
+            _, jm, judge_fn = judge_cache[cache_key]
             out_dir = GRADES_DIR / f"{model_safe_name}_{condition}"
 
-            scenario_id = cdata.get("scenario_id", "?")
             logger.info(
                 "[%s/%s] %s — judge: %s",
                 target_model,
                 condition,
                 scenario_id,
-                judge_model,
+                jm,
             )
 
             t0 = time.time()
             try:
-                result = await grade_one(
-                    path, provider, judge_model, target_model, out_dir
+                grade_result = await grade_challenge(
+                    challenge=challenge,
+                    scenario=scenario,
+                    judge_fn=judge_fn,
+                    judge_model=jm,
                 )
+
+                # Add cross-vendor metadata to the dict before saving
+                result_dict = grade_result.to_dict()
+                result_dict["grading_methodology"] = "cross_vendor_llm_judge"
+                result_dict["cross_vendor_routing"] = {
+                    "target_model": target_model,
+                    "judge_model": jm,
+                }
+
+                # Save grade
+                out_dir.mkdir(parents=True, exist_ok=True)
+                msafe = target_model.replace("/", "-").replace(" ", "_")
+                filename = f"grade_{scenario_id}_{msafe}.json"
+                with open(out_dir / filename, "w") as f:
+                    json.dump(result_dict, f, indent=2)
+
                 elapsed = time.time() - t0
-                passed = result.get("pass", "?")
-                eps = result.get("eps_point", "?")
+                passed = grade_result.passed
+                eps = grade_result.eps_point
                 logger.info("  -> pass=%s eps=%.2f (%.1fs)", passed, eps, elapsed)
             except Exception as e:
                 logger.error("  FAILED: %s — skipping", e)
@@ -224,6 +248,10 @@ async def run_grading(
             logger.info("  Checkpoint: %d/%d graded", done, len(challenges))
 
     # Generate summary
+    if not GRADES_DIR.exists() or not any(GRADES_DIR.iterdir()):
+        logger.warning("No grades written — skipping summary")
+        return
+
     logger.info("Generating summary...")
     summary = generate_summary()
     summary_path = GRADES_DIR / "persistence_summary_llm_judge.json"
@@ -251,7 +279,6 @@ def generate_summary() -> dict:
                 grade = json.load(f)
 
             model = grade.get("model", "unknown")
-            condition = subdir.name.split("_")[-1]
             if "preamble" in subdir.name:
                 condition = "preamble_only"
             else:
