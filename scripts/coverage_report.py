@@ -244,7 +244,9 @@ def build_coverage_report(
         by_priority[priority] += 1
 
     total = len(conditions_report)
-    covered_count = sum(1 for c in conditions_report if c["coverage_status"] != "uncovered")
+    covered_count = sum(
+        1 for c in conditions_report if c["coverage_status"] != "uncovered"
+    )
     uncovered_count = total - covered_count
 
     summary = {
@@ -277,12 +279,8 @@ def format_text(report: dict) -> str:
         f"Coverage: {summary['covered']}/{summary['total_conditions']} "
         f"({summary['coverage_pct']}%)"
     )
-    lines.append(
-        f"P0 uncovered (risk tier A): {summary['p0_uncovered']}"
-    )
-    lines.append(
-        f"P1 uncovered (risk tier B): {summary['p1_uncovered']}"
-    )
+    lines.append(f"P0 uncovered (risk tier A): {summary['p0_uncovered']}")
+    lines.append(f"P1 uncovered (risk tier B): {summary['p1_uncovered']}")
     lines.append("")
 
     # Category breakdown

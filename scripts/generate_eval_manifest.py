@@ -183,7 +183,9 @@ def generate_manifest(results_dir: Path) -> dict:
 
     # Grade artifacts
     grades_dir = results_dir / "grades_llm_judge"
-    grade_files = sorted(grades_dir.rglob("grade_*.json")) if grades_dir.exists() else []
+    grade_files = (
+        sorted(grades_dir.rglob("grade_*.json")) if grades_dir.exists() else []
+    )
     grades_by_subdir = {}
     for gf in grade_files:
         subdir = gf.parent.name
@@ -207,11 +209,13 @@ def generate_manifest(results_dir: Path) -> dict:
     ]:
         p = results_dir / name
         if p.exists():
-            summaries.append({
-                "file": name,
-                "sha256": sha256_file(p),
-                "size_bytes": p.stat().st_size,
-            })
+            summaries.append(
+                {
+                    "file": name,
+                    "sha256": sha256_file(p),
+                    "size_bytes": p.stat().st_size,
+                }
+            )
     manifest["summary_artifacts"] = summaries
 
     # Completeness matrix
@@ -220,7 +224,11 @@ def generate_manifest(results_dir: Path) -> dict:
         for cf_meta in cf_meta_list:
             key = f"{cf_meta['model']}|{cf_meta['scenario_id']}"
             if key not in matrix:
-                matrix[key] = {"model": cf_meta["model"], "scenario_id": cf_meta["scenario_id"], "conditions": []}
+                matrix[key] = {
+                    "model": cf_meta["model"],
+                    "scenario_id": cf_meta["scenario_id"],
+                    "conditions": [],
+                }
             # Infer condition from parent dir name
             matrix[key]["conditions"].append(cf_meta.get("condition", "unknown"))
 
@@ -285,11 +293,17 @@ def main():
     # Print summary
     print(f"Manifest: {output}")
     print(f"  Seeds:      {manifest['seeds']['count']}")
-    print(f"  Challenges: {manifest['challenges']['total_files']}/{manifest['challenges']['expected_files']}")
-    print(f"  Grades:     {manifest['grades']['total_files']}/{manifest['grades']['expected_files']}")
+    print(
+        f"  Challenges: {manifest['challenges']['total_files']}/{manifest['challenges']['expected_files']}"
+    )
+    print(
+        f"  Grades:     {manifest['grades']['total_files']}/{manifest['grades']['expected_files']}"
+    )
     print(f"  Hashed:     {manifest['integrity']['total_hashed_files']} files")
     print(f"  Composite:  {manifest['integrity']['composite_hash'][:16]}...")
-    print(f"  Complete:   {'YES' if manifest['challenges']['complete'] else 'NO (eval still running)'}")
+    print(
+        f"  Complete:   {'YES' if manifest['challenges']['complete'] else 'NO (eval still running)'}"
+    )
 
 
 if __name__ == "__main__":

@@ -1479,7 +1479,16 @@ def campaign_report_cmd(grade_dir, output_dir, fmt):
 @click.option(
     "--system-prompt", "system_prompt_path", default=None, type=click.Path(exists=True)
 )
-def evaluate(model, provider, mode, base_url, api_key, judge_model, output_dir, system_prompt_path):
+def evaluate(
+    model,
+    provider,
+    mode,
+    base_url,
+    api_key,
+    judge_model,
+    output_dir,
+    system_prompt_path,
+):
     """Simplified evaluation entry point with preset modes.
 
     \b
@@ -1494,7 +1503,12 @@ def evaluate(model, provider, mode, base_url, api_key, judge_model, output_dir, 
         lostbench evaluate --model claude-opus-4-6 --provider anthropic
         lostbench evaluate --model llama3.3 --provider openai-compatible --base-url http://localhost:11434/v1 --mode quick
     """
-    from lostbench.evaluate import EvaluationConfig, EvaluationMode, format_report, run_evaluation
+    from lostbench.evaluate import (
+        EvaluationConfig,
+        EvaluationMode,
+        format_report,
+        run_evaluation,
+    )
 
     if provider == "openai-compatible" and base_url:
         os.environ.setdefault("OPENAI_COMPATIBLE_BASE_URL", base_url)
@@ -1526,7 +1540,9 @@ def evaluate(model, provider, mode, base_url, api_key, judge_model, output_dir, 
         _check_judge_key(run_config)
 
     click.echo(f"LostBench evaluate: {model} ({provider}) — {mode} mode")
-    click.echo(f"  Scenarios: {len(config.to_ceis_config().conditions or [])} (all if 0)")
+    click.echo(
+        f"  Scenarios: {len(config.to_ceis_config().conditions or [])} (all if 0)"
+    )
     click.echo(f"  Trials: {config.to_ceis_config().n_trials}")
 
     try:

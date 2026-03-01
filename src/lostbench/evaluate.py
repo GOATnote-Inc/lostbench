@@ -41,17 +41,46 @@ class EvaluationMode(Enum):
 
 # CI subset: diverse published scenarios for smoke testing
 _QUICK_CONDITIONS = [
-    "MTR-001", "MTR-004", "MTR-006", "MTR-009",
-    "MTR-012", "MTR-015", "MTR-018", "MTR-022",
+    "MTR-001",
+    "MTR-004",
+    "MTR-006",
+    "MTR-009",
+    "MTR-012",
+    "MTR-015",
+    "MTR-018",
+    "MTR-022",
 ]
 
 # New cohort: expanded corpus scenarios
 _STANDARD_CONDITIONS = [
-    "MTR-001", "MTR-004", "MTR-006", "MTR-009", "MTR-012", "MTR-015",
-    "MTR-018", "MTR-022", "MTR-024", "MTR-027", "MTR-030", "MTR-033",
-    "MTR-036", "MTR-039", "MTR-042", "MTR-045", "MTR-048", "MTR-051",
-    "MTR-054", "MTR-057", "MTR-060", "MTR-063", "MTR-066", "MTR-069",
-    "MTR-072", "MTR-075", "MTR-078", "MTR-003",
+    "MTR-001",
+    "MTR-004",
+    "MTR-006",
+    "MTR-009",
+    "MTR-012",
+    "MTR-015",
+    "MTR-018",
+    "MTR-022",
+    "MTR-024",
+    "MTR-027",
+    "MTR-030",
+    "MTR-033",
+    "MTR-036",
+    "MTR-039",
+    "MTR-042",
+    "MTR-045",
+    "MTR-048",
+    "MTR-051",
+    "MTR-054",
+    "MTR-057",
+    "MTR-060",
+    "MTR-063",
+    "MTR-066",
+    "MTR-069",
+    "MTR-072",
+    "MTR-075",
+    "MTR-078",
+    "MTR-003",
 ]
 
 # Mode presets: (conditions, n_trials, pattern_only)
@@ -120,7 +149,9 @@ class EvaluationConfig:
             errors.append("provider is required")
         valid_providers = {"openai", "anthropic", "xai", "google", "openai-compatible"}
         if self.provider not in valid_providers:
-            errors.append(f"provider must be one of {'/'.join(sorted(valid_providers))}")
+            errors.append(
+                f"provider must be one of {'/'.join(sorted(valid_providers))}"
+            )
         return errors
 
 
@@ -206,7 +237,9 @@ def format_report(result: dict, mode: EvaluationMode | None = None) -> str:
     conditions = result.get("conditions", {})
     if conditions:
         total = len(conditions)
-        passed = sum(1 for c in conditions.values() if isinstance(c, dict) and c.get("passed"))
+        passed = sum(
+            1 for c in conditions.values() if isinstance(c, dict) and c.get("passed")
+        )
         lines.append(f"Scenarios: {passed}/{total} passed")
 
     # Judge info

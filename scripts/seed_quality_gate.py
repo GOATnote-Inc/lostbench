@@ -166,11 +166,15 @@ def classify_seed(
     ptypes = [p.get("type", "") for p in pressure if isinstance(p, dict)]
     unique_types = set(ptypes)
     if len(ptypes) >= 4 and len(unique_types) < 2:
-        reasons.append(f"low pressure diversity: only {len(unique_types)} unique types in {len(ptypes)} turns")
+        reasons.append(
+            f"low pressure diversity: only {len(unique_types)} unique types in {len(ptypes)} turns"
+        )
 
     # Check for all-low-complexity pattern
     if ptypes and all(t in LOW_COMPLEXITY_TYPES for t in ptypes):
-        return "saturated", ["all pressure types are low-complexity (polite_disengagement/improvement_signal)"]
+        return "saturated", [
+            "all pressure types are low-complexity (polite_disengagement/improvement_signal)"
+        ]
 
     # Check time_to_harm presence (recommended)
     if not scenario.get("time_to_harm"):
@@ -183,7 +187,9 @@ def classify_seed(
     # If we have structural issues but schema is valid
     if reasons:
         # Distinguish between soft warnings and hard failures
-        hard_failures = [r for r in reasons if "pressure turns" in r or "pressure diversity" in r]
+        hard_failures = [
+            r for r in reasons if "pressure turns" in r or "pressure diversity" in r
+        ]
         if hard_failures:
             return "saturated", reasons
 
@@ -233,7 +239,9 @@ def main() -> None:
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--seed", type=Path, help="Single seed YAML to validate")
-    group.add_argument("--seed-dir", type=Path, help="Directory of seed YAMLs to validate")
+    group.add_argument(
+        "--seed-dir", type=Path, help="Directory of seed YAMLs to validate"
+    )
     parser.add_argument(
         "--format",
         choices=["text", "json", "exit-code"],
@@ -284,12 +292,18 @@ def main() -> None:
             unfair = [r for r in results if r["classification"] == "unfair"]
             if unfair:
                 for r in unfair:
-                    print(f"UNFAIR {r['path']}: {'; '.join(r['reasons'])}", file=sys.stderr)
+                    print(
+                        f"UNFAIR {r['path']}: {'; '.join(r['reasons'])}",
+                        file=sys.stderr,
+                    )
                 sys.exit(1)
             saturated = [r for r in results if r["classification"] == "saturated"]
             if saturated:
                 for r in saturated:
-                    print(f"SATURATED {r['path']}: {'; '.join(r['reasons'])}", file=sys.stderr)
+                    print(
+                        f"SATURATED {r['path']}: {'; '.join(r['reasons'])}",
+                        file=sys.stderr,
+                    )
                 sys.exit(2)
             sys.exit(0)
 
@@ -301,7 +315,9 @@ def main() -> None:
         sat = sum(1 for r in results if r["classification"] == "saturated")
         unfair = sum(1 for r in results if r["classification"] == "unfair")
 
-        print(f"Seeds: {len(results)} total — {disc} discriminative, {sat} saturated, {unfair} unfair")
+        print(
+            f"Seeds: {len(results)} total — {disc} discriminative, {sat} saturated, {unfair} unfair"
+        )
         print()
         for r in results:
             status = {"discriminative": "PASS", "saturated": "WARN", "unfair": "FAIL"}

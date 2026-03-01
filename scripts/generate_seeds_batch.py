@@ -39,13 +39,27 @@ logger = logging.getLogger(__name__)
 
 # ABEM categories for coverage mode distribution tracking
 ABEM_CATEGORIES = [
-    "cardiovascular", "respiratory", "neurological", "traumatic",
-    "gastrointestinal", "endocrine-metabolic", "infectious",
-    "obstetric-gynecologic", "pediatric", "toxicological",
-    "ophthalmologic", "genitourinary", "dermatologic",
-    "hematologic", "allergic-immunologic", "psychiatric",
-    "musculoskeletal", "procedural", "disaster-mci",
-    "presentations", "environmental",
+    "cardiovascular",
+    "respiratory",
+    "neurological",
+    "traumatic",
+    "gastrointestinal",
+    "endocrine-metabolic",
+    "infectious",
+    "obstetric-gynecologic",
+    "pediatric",
+    "toxicological",
+    "ophthalmologic",
+    "genitourinary",
+    "dermatologic",
+    "hematologic",
+    "allergic-immunologic",
+    "psychiatric",
+    "musculoskeletal",
+    "procedural",
+    "disaster-mci",
+    "presentations",
+    "environmental",
 ]
 
 
@@ -53,6 +67,7 @@ def _load_openem_conditions() -> list[dict]:
     """Load OpenEM conditions with metadata for coverage mode."""
     try:
         from openem.conditions import load_condition_map
+
         cmap = load_condition_map()
         # Deduplicate by condition_id
         seen = set()
@@ -120,12 +135,14 @@ def _extract_failures(ceis_path: Path) -> list[dict]:
     conditions = data.get("conditions", {})
     for cond_id, cond_data in conditions.items():
         if isinstance(cond_data, dict) and cond_data.get("classA", 0) > 0:
-            failures.append({
-                "condition": cond_data.get("condition", cond_id),
-                "class_a_count": cond_data.get("classA", 0),
-                "failure_turns": cond_data.get("failure_turns", []),
-                "source": str(ceis_path),
-            })
+            failures.append(
+                {
+                    "condition": cond_data.get("condition", cond_id),
+                    "class_a_count": cond_data.get("classA", 0),
+                    "failure_turns": cond_data.get("failure_turns", []),
+                    "source": str(ceis_path),
+                }
+            )
 
     return failures
 
@@ -218,7 +235,7 @@ def mode_coverage(args: argparse.Namespace) -> None:
     print(f"Conditions processed: {len(completed)}")
     print(f"Scenarios attempted: {total}")
     print(f"Scenarios valid: {valid}")
-    print(f"Validation rate: {valid/total*100:.1f}%" if total > 0 else "N/A")
+    print(f"Validation rate: {valid / total * 100:.1f}%" if total > 0 else "N/A")
     print("\nCategory distribution:")
     for cat, count in sorted(category_dist.items(), key=lambda x: -x[1]):
         print(f"  {cat}: {count}")
@@ -268,7 +285,7 @@ def mode_from_failures(args: argparse.Namespace) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     total = 0
-    for failure in failures[:args.limit or len(failures)]:
+    for failure in failures[: args.limit or len(failures)]:
         condition = failure["condition"]
         count_a = failure["class_a_count"]
 
@@ -348,14 +365,22 @@ Examples:
         choices=["coverage", "hypothesis", "from-failures", "failure-class"],
         help="Generation mode",
     )
-    parser.add_argument("--output-dir", default="seeds_generated/", help="Output directory")
-    parser.add_argument("--count", type=int, default=5, help="Number of scenarios to generate")
-    parser.add_argument("--count-per-condition", type=int, default=3, help="For coverage mode")
+    parser.add_argument(
+        "--output-dir", default="seeds_generated/", help="Output directory"
+    )
+    parser.add_argument(
+        "--count", type=int, default=5, help="Number of scenarios to generate"
+    )
+    parser.add_argument(
+        "--count-per-condition", type=int, default=3, help="For coverage mode"
+    )
     parser.add_argument("--hypothesis", help="For hypothesis mode")
     parser.add_argument("--failure-class", help="Target failure class (A/B/C/D)")
     parser.add_argument("--clinical-domain", help="Target clinical domain")
     parser.add_argument("--results-dir", help="For from-failures mode")
-    parser.add_argument("--limit", type=int, help="Limit number of conditions to process")
+    parser.add_argument(
+        "--limit", type=int, help="Limit number of conditions to process"
+    )
     parser.add_argument("--resume", action="store_true", help="Resume from checkpoint")
     parser.add_argument(
         "--generation-model",

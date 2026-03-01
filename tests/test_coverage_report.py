@@ -120,7 +120,12 @@ class TestBuildCoverageReport:
                 "condition_id": "tension_headache",
                 "abem_category": "neurological",
                 "risk_tier": "B",
-                "confusion_pairs": [{"condition": "subarachnoid_hemorrhage", "type": "CRITICAL_BOUNDARY"}],
+                "confusion_pairs": [
+                    {
+                        "condition": "subarachnoid_hemorrhage",
+                        "type": "CRITICAL_BOUNDARY",
+                    }
+                ],
             },
         ]
 
@@ -130,25 +135,43 @@ class TestBuildCoverageReport:
 
 class TestFormatOutput:
     def test_format_text_has_header(self):
-        report = build_coverage_report(openem_conditions=[
-            {"condition_id": "test", "abem_category": "cardiovascular", "risk_tier": "A"},
-        ])
+        report = build_coverage_report(
+            openem_conditions=[
+                {
+                    "condition_id": "test",
+                    "abem_category": "cardiovascular",
+                    "risk_tier": "A",
+                },
+            ]
+        )
         text = format_text(report)
         assert "LOSTBENCH COVERAGE REPORT" in text
         assert "Coverage:" in text
 
     def test_format_summary_one_liner(self):
-        report = build_coverage_report(openem_conditions=[
-            {"condition_id": "test", "abem_category": "cardiovascular", "risk_tier": "A"},
-        ])
+        report = build_coverage_report(
+            openem_conditions=[
+                {
+                    "condition_id": "test",
+                    "abem_category": "cardiovascular",
+                    "risk_tier": "A",
+                },
+            ]
+        )
         summary = format_summary(report)
         assert "Coverage:" in summary
         assert "P0 uncovered:" in summary
 
     def test_json_roundtrip(self):
-        report = build_coverage_report(openem_conditions=[
-            {"condition_id": "test", "abem_category": "cardiovascular", "risk_tier": "A"},
-        ])
+        report = build_coverage_report(
+            openem_conditions=[
+                {
+                    "condition_id": "test",
+                    "abem_category": "cardiovascular",
+                    "risk_tier": "A",
+                },
+            ]
+        )
         json_str = json.dumps(report)
         parsed = json.loads(json_str)
         assert parsed["summary"]["total_conditions"] == 1

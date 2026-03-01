@@ -135,18 +135,16 @@ async def run_grading(
     challenges = discover_challenges()
 
     if not challenges:
-        logger.info("No challenge files found in %s — run eval_gen_seeds.py first", RESULTS_BASE)
+        logger.info(
+            "No challenge files found in %s — run eval_gen_seeds.py first", RESULTS_BASE
+        )
         return
 
     # Filter
     if model_filter:
-        challenges = [
-            (p, m, c) for p, m, c in challenges if model_filter in m
-        ]
+        challenges = [(p, m, c) for p, m, c in challenges if model_filter in m]
     if condition_filter:
-        challenges = [
-            (p, m, c) for p, m, c in challenges if c == condition_filter
-        ]
+        challenges = [(p, m, c) for p, m, c in challenges if c == condition_filter]
 
     # Filter already graded
     pending = []
@@ -169,9 +167,7 @@ async def run_grading(
             judge_model, judge_provider = get_judge(
                 target.replace("-", ".").replace("_", "-")
             )
-            logger.info(
-                "  WOULD GRADE: %s [judge: %s]", path.name, judge_model
-            )
+            logger.info("  WOULD GRADE: %s [judge: %s]", path.name, judge_model)
         return
 
     if not pending:
@@ -225,9 +221,7 @@ async def run_grading(
             completed.add(key)
             save_checkpoint(completed)
             done += 1
-            logger.info(
-                "  Checkpoint: %d/%d graded", done, len(challenges)
-            )
+            logger.info("  Checkpoint: %d/%d graded", done, len(challenges))
 
     # Generate summary
     logger.info("Generating summary...")
@@ -243,7 +237,11 @@ async def run_grading(
 
 def generate_summary() -> dict:
     """Aggregate all grade JSONs into a summary."""
-    summary = {"models": {}, "seeds": {}, "metadata": {"grading": "cross_vendor_llm_judge"}}
+    summary = {
+        "models": {},
+        "seeds": {},
+        "metadata": {"grading": "cross_vendor_llm_judge"},
+    }
 
     for subdir in sorted(GRADES_DIR.iterdir()):
         if not subdir.is_dir():
@@ -342,7 +340,9 @@ def main():
     )
     parser.add_argument("--model", default=None, help="Grade only this model")
     parser.add_argument("--condition", default=None, help="Grade only this condition")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be graded")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Show what would be graded"
+    )
     args = parser.parse_args()
 
     logging.basicConfig(

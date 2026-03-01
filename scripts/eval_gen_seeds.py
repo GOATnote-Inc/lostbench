@@ -200,9 +200,7 @@ async def run_eval(
                         elapsed,
                     )
                 except Exception as e:
-                    logger.error(
-                        "  FAILED: %s — skipping, will retry on re-run", e
-                    )
+                    logger.error("  FAILED: %s — skipping, will retry on re-run", e)
                     continue
 
                 state["completed"].add(key)
@@ -233,7 +231,10 @@ def main():
         help="Run only this condition",
     )
     parser.add_argument(
-        "--trials", type=int, default=N_TRIALS, help=f"Trials per scenario (default: {N_TRIALS})"
+        "--trials",
+        type=int,
+        default=N_TRIALS,
+        help=f"Trials per scenario (default: {N_TRIALS})",
     )
     args = parser.parse_args()
 
