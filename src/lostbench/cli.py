@@ -1456,6 +1456,93 @@ def campaign_report_cmd(grade_dir, output_dir, fmt):
 
 
 @main.command()
+@click.option("--model", required=True, help="Full model version string")
+@click.option("--provider", required=True, type=click.Choice(PROVIDER_CHOICES))
+@click.option(
+    "--mode",
+    default="standard",
+    type=click.Choice(["quick", "standard", "full"]),
+    help="Evaluation mode: quick (~30s), standard (~5min), full (~20min)",
+)
+@click.option(
+    "--base-url",
+    default=None,
+    help="Base URL for openai-compatible provider",
+)
+@click.option(
+    "--api-key",
+    default=None,
+    help="API key for openai-compatible provider",
+)
+@click.option("--judge-model", default=None, help="Override judge model")
+@click.option("--output-dir", default=".", help="Output directory for results")
+@click.option(
+    "--system-prompt", "system_prompt_path", default=None, type=click.Path(exists=True)
+)
+def evaluate(model, provider, mode, base_url, api_key, judge_model, output_dir, system_prompt_path):
+    """Simplified evaluation entry point with preset modes.
+
+    \b
+    Modes:
+      quick    - 8 CI scenarios, 1 trial, pattern-only (~30s, ~$0.10)
+      standard - 28 scenarios, 3 trials, full CEIS (~5 min, ~$5)
+      full     - 78 emergency scenarios, 3 trials, full CEIS (~20 min, ~$15)
+
+    \b
+    Examples:
+        lostbench evaluate --model gpt-5.2 --provider openai --mode quick
+        lostbench evaluate --model claude-opus-4-6 --provider anthropic
+        lostbench evaluate --model llama3.3 --provider openai-compatible --base-url http://localhost:11434/v1 --mode quick
+    """
+    from lostbench.evaluate import EvaluationConfig, EvaluationMode, format_report, run_evaluation
+
+    if provider == "openai-compatible" and base_url:
+        os.environ.setdefault("OPENAI_COMPATIBLE_BASE_URL", base_url)
+    if api_key:
+        os.environ.setdefault("OPENAI_COMPATIBLE_API_KEY", api_key)
+
+    eval_mode = EvaluationMode(mode)
+    config = EvaluationConfig(
+        model=model,
+        provider=provider,
+        mode=eval_mode,
+        base_url=base_url,
+        api_key=api_key,
+        judge_model=judge_model,
+        output_dir=output_dir,
+        system_prompt_path=system_prompt_path,
+    )
+
+    errors = config.validate()
+    if errors:
+        for err in errors:
+            click.echo(f"Error: {err}", err=True)
+        sys.exit(1)
+
+    _check_api_key(provider)
+    if mode != "quick":
+        ceis_config = config.to_ceis_config()
+        run_config = ceis_config.to_run_config()
+        _check_judge_key(run_config)
+
+    click.echo(f"LostBench evaluate: {model} ({provider}) — {mode} mode")
+    click.echo(f"  Scenarios: {len(config.to_ceis_config().conditions or [])} (all if 0)")
+    click.echo(f"  Trials: {config.to_ceis_config().n_trials}")
+
+    try:
+        result = run_evaluation(config)
+        report = format_report(result, eval_mode)
+        click.echo(f"\n{report}")
+    except (openai.OpenAIError, anthropic.APIError) as e:
+        if _handle_run_error(e, model, provider):
+            sys.exit(1)
+        raise
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@main.command()
 @click.option(
     "--seed-dir",
     default=None,
@@ -1466,11 +1553,11 @@ def campaign_report_cmd(grade_dir, output_dir, fmt):
 @click.option(
     "--hypothesis",
     default=None,
-    help="Generate from failure hypothesis (v1: stub)",
+    help="Generate scenarios from a failure hypothesis via LLM",
 )
 @click.option("--failure-class", default=None, help="Target failure class (A/B/C/D)")
 @click.option("--clinical-domain", default=None, help="Target clinical domain")
-@click.option("--count", default=1, type=int, help="Number of scenarios to generate")
+@click.option("--count", default=3, type=int, help="Number of scenarios to generate")
 @click.option(
     "--validate-only",
     default=None,
@@ -1478,6 +1565,17 @@ def campaign_report_cmd(grade_dir, output_dir, fmt):
     help="Validate an existing scenario YAML",
 )
 @click.option("--output-dir", default="./mined", help="Output directory for YAMLs")
+@click.option(
+    "--generation-model",
+    default=None,
+    help="Model for generation (default: claude-sonnet-4-6)",
+)
+@click.option(
+    "--generation-provider",
+    default="anthropic",
+    type=click.Choice(PROVIDER_CHOICES),
+    help="Provider for generation model",
+)
 def mine(
     seed_dir,
     seed_id,
@@ -1487,6 +1585,8 @@ def mine(
     count,
     validate_only,
     output_dir,
+    generation_model,
+    generation_provider,
 ):
     """Convert seed JSONs to LostBench YAMLs or generate from hypotheses.
 
@@ -1494,7 +1594,8 @@ def mine(
     Examples:
         lostbench mine --seed-dir ~/scribegoat2/.../seeds/ --output-dir ./mined
         lostbench mine --validate-only ./mined/seed_013_pe_code_agent.yaml
-        lostbench mine --hypothesis "Models capitulate on acute limb ischemia"
+        lostbench mine --hypothesis "Models capitulate on acute limb ischemia" --count 5
+        lostbench mine --hypothesis "PE under code-agent pressure" --failure-class A
     """
     from lostbench.mine import (
         convert_seed,
@@ -1534,16 +1635,23 @@ def mine(
         return
 
     if hypothesis:
+        click.echo(f"Generating {count} scenario(s) from hypothesis...")
         results = generate_from_hypothesis(
             hypothesis=hypothesis,
             failure_class=failure_class,
             clinical_domain=clinical_domain,
             count=count,
             output_dir=output_dir,
+            generation_model=generation_model,
+            provider=generation_provider,
         )
-        if not results:
+        if results:
+            click.echo(f"Generated {len(results)} scenario(s) -> {output_dir}")
+            for s in results:
+                click.echo(f"  {s['id']}: {s['condition']} ({s.get('corpus', '?')})")
+        else:
             click.echo(
-                "LLM generation not yet implemented — use --seed-dir for format conversion",
+                "No scenarios generated — check API key and model availability",
                 err=True,
             )
         return
