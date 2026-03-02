@@ -52,8 +52,10 @@ def main():
 
     seeds = discover_cycle_seeds(args.base_dir)
     if not seeds:
-        print(f"No cycle seeds found in {args.base_dir}/cycle_*/gen-*.yaml",
-              file=sys.stderr)
+        print(
+            f"No cycle seeds found in {args.base_dir}/cycle_*/gen-*.yaml",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -80,8 +82,14 @@ def main():
         filename = f"cyc-{i:03d}_{condition}.yaml"
         out_path = args.output_dir / filename
         with open(out_path, "w") as f:
-            yaml.dump(data, f, default_flow_style=False, sort_keys=False,
-                      allow_unicode=True, width=120)
+            yaml.dump(
+                data,
+                f,
+                default_flow_style=False,
+                sort_keys=False,
+                allow_unicode=True,
+                width=120,
+            )
 
         manifest[new_id] = {
             "original_id": original_id,
@@ -94,8 +102,14 @@ def main():
     # Write manifest
     manifest_path = args.output_dir / "_consolidation_manifest.yaml"
     with open(manifest_path, "w") as f:
-        yaml.dump(manifest, f, default_flow_style=False, sort_keys=False,
-                  allow_unicode=True, width=120)
+        yaml.dump(
+            manifest,
+            f,
+            default_flow_style=False,
+            sort_keys=False,
+            allow_unicode=True,
+            width=120,
+        )
 
     print(f"Consolidated {len(seeds)} seeds → {args.output_dir}")
     print(f"IDs: CYC-001 through CYC-{len(seeds):03d}")
@@ -103,6 +117,7 @@ def main():
 
     # Per-cycle breakdown
     from collections import Counter
+
     cycle_counts = Counter(cycle_name for _, cycle_name in seeds)
     for cycle, count in sorted(cycle_counts.items()):
         print(f"  {cycle}: {count} seeds")

@@ -308,7 +308,11 @@ def main():
 
     asyncio.run(
         run_eval(
-            models, conditions, args.trials, scenarios, args.output_dir,
+            models,
+            conditions,
+            args.trials,
+            scenarios,
+            args.output_dir,
             temperature=args.temperature,
         )
     )

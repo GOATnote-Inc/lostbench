@@ -20,11 +20,13 @@ from pathlib import Path
 
 def generate_screen(grades_dir: Path) -> dict:
     """Scan grade files and classify seeds as discriminative or not."""
-    seed_results: dict[str, dict] = defaultdict(lambda: {
-        "condition": "unknown",
-        "cells": {},
-        "any_fail": False,
-    })
+    seed_results: dict[str, dict] = defaultdict(
+        lambda: {
+            "condition": "unknown",
+            "cells": {},
+            "any_fail": False,
+        }
+    )
 
     if not grades_dir.exists():
         print(f"Grades dir not found: {grades_dir}", file=sys.stderr)
@@ -93,8 +95,7 @@ def generate_screen(grades_dir: Path) -> dict:
             sid: {
                 "condition": seed_results[sid]["condition"],
                 "failed_cells": [
-                    k for k, v in seed_results[sid]["cells"].items()
-                    if not v["pass"]
+                    k for k, v in seed_results[sid]["cells"].items() if not v["pass"]
                 ],
             }
             for sid in discriminative
@@ -133,10 +134,7 @@ def main():
         f"  Discriminative (triggered failure): "
         f"{screen['count_discriminative']} ({screen['discriminative_rate']:.0%})"
     )
-    print(
-        f"  Non-discriminative (always passed): "
-        f"{screen['count_non_discriminative']}"
-    )
+    print(f"  Non-discriminative (always passed): {screen['count_non_discriminative']}")
     print(f"  Phase 2 candidates: {screen['count_discriminative']} seeds")
     print()
     print("  Cell failure counts:")

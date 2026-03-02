@@ -502,9 +502,7 @@ class TestFuzzyConditionDuplicate:
 
     def test_fuzzy_no_false_positive_short(self):
         """Single-token existing condition does NOT fuzzy-match multi-token candidate."""
-        is_dupe, matched = _is_condition_duplicate(
-            "neonatal_sepsis", {"sepsis"}
-        )
+        is_dupe, matched = _is_condition_duplicate("neonatal_sepsis", {"sepsis"})
         assert is_dupe is False
         assert matched is None
 
@@ -519,8 +517,14 @@ class TestFuzzyConditionDuplicate:
     def test_dedup_condition_mode_fuzzy(self):
         """_deduplicate in condition mode catches suffix-variant duplicates."""
         scenarios = [
-            {"condition": "acute_angle_closure_glaucoma", "pressure": [{"type": "financial_barrier"}]},
-            {"condition": "acute_angle_closure_glaucoma_variant", "pressure": [{"type": "social_pressure"}]},
+            {
+                "condition": "acute_angle_closure_glaucoma",
+                "pressure": [{"type": "financial_barrier"}],
+            },
+            {
+                "condition": "acute_angle_closure_glaucoma_variant",
+                "pressure": [{"type": "social_pressure"}],
+            },
         ]
         kept, rejected = _deduplicate(scenarios, mode="condition")
         assert len(kept) == 1

@@ -198,10 +198,30 @@ def test_identify_gaps_sorts_by_priority():
     """P0 conditions come before P1, P1 before P2."""
     report = {
         "conditions": [
-            {"condition_id": "c-low", "priority": "P2", "coverage_status": "uncovered", "abem_category": "a"},
-            {"condition_id": "a-high", "priority": "P0", "coverage_status": "uncovered", "abem_category": "a"},
-            {"condition_id": "b-med", "priority": "P1", "coverage_status": "uncovered", "abem_category": "a"},
-            {"condition_id": "d-covered", "priority": "P2", "coverage_status": "covered_scenario", "abem_category": "a"},
+            {
+                "condition_id": "c-low",
+                "priority": "P2",
+                "coverage_status": "uncovered",
+                "abem_category": "a",
+            },
+            {
+                "condition_id": "a-high",
+                "priority": "P0",
+                "coverage_status": "uncovered",
+                "abem_category": "a",
+            },
+            {
+                "condition_id": "b-med",
+                "priority": "P1",
+                "coverage_status": "uncovered",
+                "abem_category": "a",
+            },
+            {
+                "condition_id": "d-covered",
+                "priority": "P2",
+                "coverage_status": "covered_scenario",
+                "abem_category": "a",
+            },
         ],
     }
     gaps = identify_gaps(report, top_n=10)
@@ -215,7 +235,12 @@ def test_identify_gaps_respects_top_n():
     """Limits results to top_n."""
     report = {
         "conditions": [
-            {"condition_id": f"c-{i}", "priority": "P0", "coverage_status": "uncovered", "abem_category": "a"}
+            {
+                "condition_id": f"c-{i}",
+                "priority": "P0",
+                "coverage_status": "uncovered",
+                "abem_category": "a",
+            }
             for i in range(10)
         ],
     }
@@ -227,7 +252,12 @@ def test_identify_gaps_empty_when_all_covered():
     """Returns empty list when nothing is uncovered."""
     report = {
         "conditions": [
-            {"condition_id": "c-1", "priority": "P2", "coverage_status": "covered_scenario", "abem_category": "a"},
+            {
+                "condition_id": "c-1",
+                "priority": "P2",
+                "coverage_status": "covered_scenario",
+                "abem_category": "a",
+            },
         ],
     }
     assert identify_gaps(report, top_n=10) == []

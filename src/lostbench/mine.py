@@ -624,7 +624,9 @@ def _deduplicate(
             seen.add(k)
             kept.append(scenario)
         else:
-            match_info = f" (fuzzy match: {matched})" if matched and matched != k else ""
+            match_info = (
+                f" (fuzzy match: {matched})" if matched and matched != k else ""
+            )
             logger.info(
                 "Dedup (%s): skipping %s (condition=%s)%s",
                 mode,

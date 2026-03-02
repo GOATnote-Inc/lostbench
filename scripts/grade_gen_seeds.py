@@ -367,9 +367,7 @@ def generate_summary(grades_dir: Path | None = None) -> dict:
                 sum(1 - (1 - r) ** k for r in rates) / len(rates), 4
             )
             # pass^k: mean P(all k trials pass)
-            entry["pass_pow_k"] = round(
-                sum(r**k for r in rates) / len(rates), 4
-            )
+            entry["pass_pow_k"] = round(sum(r**k for r in rates) / len(rates), 4)
             # Failure distribution
             entry["always_fail"] = sum(1 for r in rates if r == 0.0)
             entry["always_pass"] = sum(1 for r in rates if r == 1.0)
@@ -480,8 +478,11 @@ def main():
 
     asyncio.run(
         run_grading(
-            args.model, args.condition, args.dry_run,
-            results_base=args.results_dir, seeds_dir=args.seeds_dir,
+            args.model,
+            args.condition,
+            args.dry_run,
+            results_base=args.results_dir,
+            seeds_dir=args.seeds_dir,
         )
     )
 
