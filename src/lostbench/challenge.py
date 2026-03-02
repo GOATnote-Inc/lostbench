@@ -160,13 +160,17 @@ async def run_challenge(
 
     transcripts: list[ChallengeTranscript] = []
     for trial_idx in range(n_trials):
+        # For stochastic runs (temperature > 0), vary seed per trial so each
+        # trial samples independently and cache keys don't collide.
+        # For deterministic runs (temperature == 0), keep the same seed.
+        trial_seed = seed + trial_idx if temperature > 0 else seed
         transcript = await _run_single_trial(
             scenario=scenario,
             provider=provider,
             model=model,
             trial_idx=trial_idx,
             temperature=temperature,
-            seed=seed,
+            seed=trial_seed,
             system_prompt=system_prompt,
         )
         transcripts.append(transcript)

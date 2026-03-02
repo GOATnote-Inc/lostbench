@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate 20 generated seeds: GPT-5.2 + Opus 4.6, baseline + preamble, n=5.
+"""Evaluate generated seeds: GPT-5.2 + Opus 4.6, baseline + preamble, n=5.
 
 Checkpoint-resume: saves after every scenario. Re-run to resume.
 Caching: all API calls cached via ResponseCache.
@@ -9,6 +9,7 @@ Usage:
     python3 scripts/eval_gen_seeds.py --model gpt-5.2
     python3 scripts/eval_gen_seeds.py --condition baseline
     python3 scripts/eval_gen_seeds.py --trials 3
+    python3 scripts/eval_gen_seeds.py --seeds-dir seeds_generated/eval_batch --output-dir results/seeds-cycle-eval
 """
 
 from __future__ import annotations
@@ -44,37 +45,38 @@ CONDITIONS = ["baseline", "preamble_only"]
 
 N_TRIALS = 5
 
-SEEDS_DIR = Path(__file__).parent.parent / "seeds_generated"
-OUTPUT_BASE = Path(__file__).parent.parent / "results" / "seeds-gen-eval"
-CHECKPOINT_FILE = OUTPUT_BASE / "checkpoint.json"
+DEFAULT_SEEDS_DIR = Path(__file__).parent.parent / "seeds_generated"
+DEFAULT_OUTPUT_BASE = Path(__file__).parent.parent / "results" / "seeds-gen-eval"
 
 
 def load_seeds(seeds_dir: Path) -> list[dict]:
-    """Load generated seed YAMLs."""
+    """Load generated seed YAMLs (gen-*.yaml or cyc-*.yaml)."""
     if not seeds_dir.exists():
         logger.error("Seeds directory not found: %s", seeds_dir)
         sys.exit(1)
     scenarios = []
-    for path in sorted(seeds_dir.glob("gen-*.yaml")):
+    for path in sorted(seeds_dir.glob("*.yaml")):
+        if path.name.startswith("_"):
+            continue
         with open(path) as f:
             scenarios.append(yaml.safe_load(f))
     if not scenarios:
-        logger.error("No gen-*.yaml files found in %s", seeds_dir)
+        logger.error("No seed YAML files found in %s", seeds_dir)
         sys.exit(1)
     return scenarios
 
 
-def load_checkpoint() -> dict:
-    if CHECKPOINT_FILE.exists():
-        with open(CHECKPOINT_FILE) as f:
+def load_checkpoint(checkpoint_file: Path) -> dict:
+    if checkpoint_file.exists():
+        with open(checkpoint_file) as f:
             data = json.load(f)
         return {"completed": set(data.get("completed", []))}
     return {"completed": set()}
 
 
-def save_checkpoint(state: dict) -> None:
-    CHECKPOINT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(CHECKPOINT_FILE, "w") as f:
+def save_checkpoint(state: dict, checkpoint_file: Path) -> None:
+    checkpoint_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(checkpoint_file, "w") as f:
         json.dump({"completed": sorted(state["completed"])}, f, indent=2)
 
 
@@ -93,6 +95,7 @@ async def run_one_challenge(
     condition: str,
     n_trials: int,
     output_dir: Path,
+    temperature: float = 0.0,
 ) -> ChallengeResult:
     system_prompt = (
         MSIW_SYSTEM_PREAMBLE.strip() if condition == "preamble_only" else None
@@ -103,6 +106,7 @@ async def run_one_challenge(
         provider=provider,
         model=model,
         n_trials=n_trials,
+        temperature=temperature,
         system_prompt=system_prompt,
     )
 
@@ -120,8 +124,11 @@ async def run_eval(
     conditions: list[str],
     n_trials: int,
     scenarios: list[dict],
+    output_base: Path = DEFAULT_OUTPUT_BASE,
+    temperature: float = 0.0,
 ) -> None:
-    state = load_checkpoint()
+    checkpoint_file = output_base / "checkpoint.json"
+    state = load_checkpoint(checkpoint_file)
 
     all_keys = set()
     for model_cfg in models:
@@ -142,6 +149,7 @@ async def run_eval(
     logger.info("Conditions: %s", ", ".join(conditions))
     logger.info("Seeds: %d", len(scenarios))
     logger.info("Trials: %d", n_trials)
+    logger.info("Temperature: %.1f", temperature)
     logger.info(
         "Total challenges: %d (%d done, %d remaining)",
         total,
@@ -158,13 +166,13 @@ async def run_eval(
         model = model_cfg["model"]
         provider_name = model_cfg["provider"]
 
-        cache_dir = OUTPUT_BASE / "cache"
+        cache_dir = output_base / "cache"
         raw_provider = get_provider(provider_name)
         cache = ResponseCache(str(cache_dir))
         provider = CachedProvider(raw_provider, cache)
 
         for condition in conditions:
-            out_dir = OUTPUT_BASE / f"{model_safe(model)}_{condition}"
+            out_dir = output_base / f"{model_safe(model)}_{condition}"
 
             for scenario in scenarios:
                 seed_id = scenario["id"]
@@ -191,6 +199,7 @@ async def run_eval(
                         condition=condition,
                         n_trials=n_trials,
                         output_dir=out_dir,
+                        temperature=temperature,
                     )
                     elapsed = time.time() - t0
                     n_responses = sum(len(t.responses) for t in result.transcripts)
@@ -204,7 +213,7 @@ async def run_eval(
                     continue
 
                 state["completed"].add(key)
-                save_checkpoint(state)
+                save_checkpoint(state, checkpoint_file)
                 done += 1
                 logger.info(
                     "  Checkpoint: %d/%d complete (%.0f%%)",
@@ -215,7 +224,7 @@ async def run_eval(
 
     logger.info("=" * 60)
     logger.info("Evaluation complete: %d/%d challenges", done, total)
-    logger.info("Results: %s", OUTPUT_BASE)
+    logger.info("Results: %s", output_base)
     logger.info("=" * 60)
 
 
@@ -235,6 +244,30 @@ def main():
         type=int,
         default=N_TRIALS,
         help=f"Trials per scenario (default: {N_TRIALS})",
+    )
+    parser.add_argument(
+        "--seeds-dir",
+        type=Path,
+        default=DEFAULT_SEEDS_DIR,
+        help=f"Directory containing seed YAMLs (default: {DEFAULT_SEEDS_DIR})",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_BASE,
+        help=f"Output directory for results (default: {DEFAULT_OUTPUT_BASE})",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.0,
+        help="Sampling temperature (0.0=deterministic, 0.7=stochastic)",
+    )
+    parser.add_argument(
+        "--phase2-seeds",
+        type=str,
+        default=None,
+        help="Path to phase1_screen.json — only eval discriminative seeds",
     )
     args = parser.parse_args()
 
@@ -259,10 +292,26 @@ def main():
     if args.condition:
         conditions = [args.condition]
 
-    scenarios = load_seeds(SEEDS_DIR)
+    scenarios = load_seeds(args.seeds_dir)
     logger.info("Loaded %d generated seed scenarios", len(scenarios))
 
-    asyncio.run(run_eval(models, conditions, args.trials, scenarios))
+    if args.phase2_seeds:
+        with open(args.phase2_seeds) as f:
+            screen = json.load(f)
+        disc_ids = set(screen["discriminative_seeds"])
+        scenarios = [s for s in scenarios if s["id"] in disc_ids]
+        logger.info(
+            "Phase 2: %d discriminative seeds from %s",
+            len(scenarios),
+            args.phase2_seeds,
+        )
+
+    asyncio.run(
+        run_eval(
+            models, conditions, args.trials, scenarios, args.output_dir,
+            temperature=args.temperature,
+        )
+    )
 
 
 if __name__ == "__main__":
