@@ -12,6 +12,7 @@ from lostbench.mine import (
     _deduplicate,
     _fingerprint,
     _get_next_gen_id,
+    _is_condition_duplicate,
     _load_example_seeds,
     _parse_generated_scenarios,
     _validate_scenario_dict,
@@ -470,6 +471,76 @@ class TestDeduplicate:
         kept, rejected = _deduplicate(new, tmp_path)
         assert len(kept) == 1
         assert len(rejected) == 0
+
+
+class TestFuzzyConditionDuplicate:
+    def test_fuzzy_prefix_match(self):
+        """Suffix variant of an excluded condition is caught."""
+        is_dupe, matched = _is_condition_duplicate(
+            "acute_angle_closure_glaucoma_variant",
+            {"acute_angle_closure_glaucoma"},
+        )
+        assert is_dupe is True
+        assert matched == "acute_angle_closure_glaucoma"
+
+    def test_fuzzy_reverse_prefix(self):
+        """Single-token shorter name does NOT match (avoids false positives)."""
+        is_dupe, matched = _is_condition_duplicate(
+            "glaucoma", {"acute_angle_closure_glaucoma"}
+        )
+        assert is_dupe is False
+        assert matched is None
+
+    def test_fuzzy_token_containment(self):
+        """All tokens of shorter name appear in longer name (>=2 tokens)."""
+        is_dupe, matched = _is_condition_duplicate(
+            "acute_limb_compartment_syndrome_forearm",
+            {"compartment_syndrome"},
+        )
+        assert is_dupe is True
+        assert matched == "compartment_syndrome"
+
+    def test_fuzzy_no_false_positive_short(self):
+        """Single-token existing condition does NOT fuzzy-match multi-token candidate."""
+        is_dupe, matched = _is_condition_duplicate(
+            "neonatal_sepsis", {"sepsis"}
+        )
+        assert is_dupe is False
+        assert matched is None
+
+    def test_fuzzy_allows_genuinely_different(self):
+        """Genuinely different conditions are not falsely matched."""
+        is_dupe, matched = _is_condition_duplicate(
+            "ruptured_globe", {"acute_angle_closure_glaucoma"}
+        )
+        assert is_dupe is False
+        assert matched is None
+
+    def test_dedup_condition_mode_fuzzy(self):
+        """_deduplicate in condition mode catches suffix-variant duplicates."""
+        scenarios = [
+            {"condition": "acute_angle_closure_glaucoma", "pressure": [{"type": "financial_barrier"}]},
+            {"condition": "acute_angle_closure_glaucoma_variant", "pressure": [{"type": "social_pressure"}]},
+        ]
+        kept, rejected = _deduplicate(scenarios, mode="condition")
+        assert len(kept) == 1
+        assert len(rejected) == 1
+        assert kept[0]["condition"] == "acute_angle_closure_glaucoma"
+        assert rejected[0]["condition"] == "acute_angle_closure_glaucoma_variant"
+
+    def test_anti_evasion_prompt_instruction(self):
+        """Anti-evasion text appears in prompt when exclude_conditions provided."""
+        prompt = _build_generation_prompt(
+            "test",
+            exclude_conditions=["pulmonary_embolism"],
+        )
+        assert "Do NOT create variants of excluded conditions" in prompt
+        assert "_variant" in prompt
+
+    def test_anti_evasion_absent_without_exclusions(self):
+        """Anti-evasion text does NOT appear when no exclusions provided."""
+        prompt = _build_generation_prompt("test")
+        assert "Do NOT create variants" not in prompt
 
 
 class TestFingerprint:

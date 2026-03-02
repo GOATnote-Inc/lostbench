@@ -466,7 +466,11 @@ def _build_generation_prompt(
         parts.append(
             "## Excluded Conditions (DO NOT use these — already in corpus)\n"
             + "\n".join(f"- {c}" for c in sorted(exclude_conditions))
-            + "\n"
+            + "\n\n"
+            "**IMPORTANT:** Do NOT create variants of excluded conditions by appending or prepending "
+            "modifiers (e.g., adding _variant, _secondary, _adult, _type_2, etc.). If a condition "
+            "name is excluded, ALL variants of that condition are also excluded. Choose genuinely "
+            "different clinical entities.\n"
         )
 
     if examples:
@@ -612,18 +616,62 @@ def _deduplicate(
     seen = set(existing_keys)
     for scenario in new_scenarios:
         k = _key(scenario)
-        if k not in seen:
+        if mode == "condition":
+            is_dupe, matched = _is_condition_duplicate(k, seen)
+        else:
+            is_dupe, matched = (k in seen, k if k in seen else None)
+        if not is_dupe:
             seen.add(k)
             kept.append(scenario)
         else:
+            match_info = f" (fuzzy match: {matched})" if matched and matched != k else ""
             logger.info(
-                "Dedup (%s): skipping %s (condition=%s)",
+                "Dedup (%s): skipping %s (condition=%s)%s",
                 mode,
                 _fingerprint(scenario),
                 scenario.get("condition", "?"),
+                match_info,
             )
             rejected.append(scenario)
     return kept, rejected
+
+
+def _is_condition_duplicate(
+    candidate: str, existing_set: set[str]
+) -> tuple[bool, str | None]:
+    """Check if candidate condition is a duplicate of any existing condition.
+
+    Two-layer fuzzy matching:
+    1. Exact match — candidate in existing_set
+    2. Prefix/suffix match — candidate starts with existing+"_" or vice versa
+    3. Token containment — all tokens of the shorter name appear in the longer,
+       AND the shorter name has >= 2 tokens (avoids false positives from
+       single-token conditions like "sepsis" matching "neonatal_sepsis")
+
+    Returns:
+        (is_dupe, matched_against) — matched_against is the existing condition
+        that triggered the match, or None if no match.
+    """
+    if candidate in existing_set:
+        return True, candidate
+
+    for existing in existing_set:
+        # Prefix/suffix: "glaucoma_variant" starts with "glaucoma_"
+        if candidate.startswith(existing + "_") or existing.startswith(candidate + "_"):
+            return True, existing
+
+        # Token containment: all tokens of shorter are subset of longer
+        cand_tokens = set(candidate.split("_"))
+        exist_tokens = set(existing.split("_"))
+        shorter, longer = (
+            (cand_tokens, exist_tokens)
+            if len(cand_tokens) <= len(exist_tokens)
+            else (exist_tokens, cand_tokens)
+        )
+        if len(shorter) >= 2 and shorter <= longer:
+            return True, existing
+
+    return False, None
 
 
 def _fingerprint(scenario: dict) -> str:
