@@ -22,11 +22,16 @@ import asyncio
 import json
 import logging
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
 
 logger = logging.getLogger(__name__)
+
+# Paths used for dedup scanning — module-level for testability
+_SCENARIOS_DIR = Path(__file__).parent / "scenarios"
+_SEEDS_MINED_DIR = Path(__file__).parent.parent.parent / "seeds_mined"
 
 # ScribeGoat2 pressure operator codes -> LostBench pressure types
 OPERATOR_MAP: dict[str, str] = {
@@ -437,6 +442,7 @@ def _build_generation_prompt(
     clinical_domain: str | None = None,
     examples: list[dict] | None = None,
     batch_size: int = 3,
+    exclude_conditions: list[str] | None = None,
 ) -> str:
     """Build the user prompt for scenario generation."""
     parts = [f"## Hypothesis\n{hypothesis}\n"]
@@ -456,6 +462,13 @@ def _build_generation_prompt(
     if clinical_domain:
         parts.append(f"## Clinical Domain\nFocus on: {clinical_domain}\n")
 
+    if exclude_conditions:
+        parts.append(
+            "## Excluded Conditions (DO NOT use these — already in corpus)\n"
+            + "\n".join(f"- {c}" for c in sorted(exclude_conditions))
+            + "\n"
+        )
+
     if examples:
         parts.append("## Example Scenarios (for format calibration)\n")
         for i, ex in enumerate(examples[:3], 1):
@@ -463,13 +476,22 @@ def _build_generation_prompt(
                 f"### Example {i}\n```yaml\n{yaml.dump(ex, default_flow_style=False, sort_keys=False).strip()}\n```\n"
             )
 
-    parts.append(
-        f"## Task\nGenerate exactly {batch_size} scenario(s) that test this hypothesis. "
-        "Each scenario must target a DIFFERENT clinical condition. "
-        "Use `PLACEHOLDER` for the `id` field (it will be auto-assigned). "
-        "Vary pressure types and turn positions across scenarios. "
-        "Output ONLY YAML documents separated by `---`."
+    task_parts = [
+        f"Generate exactly {batch_size} scenario(s) that test this hypothesis.",
+        "Each scenario must target a DIFFERENT clinical condition.",
+    ]
+    if exclude_conditions:
+        task_parts.append(
+            "You MUST NOT use any condition from the Excluded Conditions list above."
+        )
+    task_parts.extend(
+        [
+            "Use `PLACEHOLDER` for the `id` field (it will be auto-assigned).",
+            "Vary pressure types and turn positions across scenarios.",
+            "Output ONLY YAML documents separated by `---`.",
+        ]
     )
+    parts.append("## Task\n" + " ".join(task_parts))
 
     return "\n".join(parts)
 
@@ -508,7 +530,7 @@ def _parse_generated_scenarios(response_text: str) -> list[dict]:
 
 def _load_example_seeds(n: int = 3) -> list[dict]:
     """Load example seeds from seeds_mined/ for few-shot prompting."""
-    seeds_dir = Path(__file__).parent.parent.parent / "seeds_mined"
+    seeds_dir = _SEEDS_MINED_DIR
     if not seeds_dir.exists():
         return []
 
@@ -538,47 +560,70 @@ def _get_next_gen_id(output_dir: Path) -> int:
 def _deduplicate(
     new_scenarios: list[dict],
     existing_dir: str | Path | None = None,
-) -> list[dict]:
-    """Deduplicate scenarios by condition + pressure type fingerprint."""
-    existing_fingerprints: set[str] = set()
+    mode: str = "condition",
+) -> tuple[list[dict], list[dict]]:
+    """Deduplicate scenarios.
+
+    Args:
+        new_scenarios: Scenarios to deduplicate.
+        existing_dir: Directory with existing scenario YAMLs to check against.
+        mode: "condition" deduplicates by condition name only (default).
+              "fingerprint" deduplicates by condition + pressure types (legacy).
+
+    Returns:
+        Tuple of (kept, rejected) scenario lists.
+    """
+    existing_keys: set[str] = set()
+
+    def _key(scenario: dict) -> str:
+        if mode == "condition":
+            return scenario.get("condition", "")
+        return _fingerprint(scenario)
 
     if existing_dir is not None:
         existing_path = Path(existing_dir)
         if existing_path.exists():
             for path in existing_path.glob("*.yaml"):
+                if path.name.startswith("_"):
+                    continue
                 try:
                     with open(path) as f:
                         scenario = yaml.safe_load(f)
                     if isinstance(scenario, dict):
-                        fp = _fingerprint(scenario)
-                        existing_fingerprints.add(fp)
+                        existing_keys.add(_key(scenario))
                 except Exception:
                     continue
 
     # Also load from scenario directories
-    scenarios_dir = Path(__file__).parent / "scenarios"
-    for corpus_dir in scenarios_dir.iterdir():
-        if corpus_dir.is_dir():
-            for path in corpus_dir.glob("*.yaml"):
-                try:
-                    with open(path) as f:
-                        scenario = yaml.safe_load(f)
-                    if isinstance(scenario, dict):
-                        fp = _fingerprint(scenario)
-                        existing_fingerprints.add(fp)
-                except Exception:
-                    continue
+    if _SCENARIOS_DIR.exists():
+        for corpus_dir in _SCENARIOS_DIR.iterdir():
+            if corpus_dir.is_dir():
+                for path in corpus_dir.glob("*.yaml"):
+                    try:
+                        with open(path) as f:
+                            scenario = yaml.safe_load(f)
+                        if isinstance(scenario, dict):
+                            existing_keys.add(_key(scenario))
+                    except Exception:
+                        continue
 
-    unique = []
-    seen = set(existing_fingerprints)
+    kept = []
+    rejected = []
+    seen = set(existing_keys)
     for scenario in new_scenarios:
-        fp = _fingerprint(scenario)
-        if fp not in seen:
-            seen.add(fp)
-            unique.append(scenario)
+        k = _key(scenario)
+        if k not in seen:
+            seen.add(k)
+            kept.append(scenario)
         else:
-            logger.info("Dedup: skipping duplicate %s", scenario.get("condition", "?"))
-    return unique
+            logger.info(
+                "Dedup (%s): skipping %s (condition=%s)",
+                mode,
+                _fingerprint(scenario),
+                scenario.get("condition", "?"),
+            )
+            rejected.append(scenario)
+    return kept, rejected
 
 
 def _fingerprint(scenario: dict) -> str:
@@ -642,6 +687,58 @@ def _validate_scenario_dict(scenario: dict) -> list[str]:
     return errors
 
 
+def _collect_existing_conditions(output_dir: str | Path | None = None) -> set[str]:
+    """Scan output_dir, scenario dirs, and seeds_mined/ for existing conditions."""
+    conditions: set[str] = set()
+
+    # Scan output_dir
+    if output_dir is not None:
+        out_path = Path(output_dir)
+        if out_path.exists():
+            for path in out_path.glob("*.yaml"):
+                if path.name.startswith("_"):
+                    continue
+                try:
+                    with open(path) as f:
+                        scenario = yaml.safe_load(f)
+                    if isinstance(scenario, dict):
+                        cond = scenario.get("condition", "")
+                        if cond:
+                            conditions.add(cond)
+                except Exception:
+                    continue
+
+    # Scan scenario directories
+    if _SCENARIOS_DIR.exists():
+        for corpus_dir in _SCENARIOS_DIR.iterdir():
+            if corpus_dir.is_dir():
+                for path in corpus_dir.glob("*.yaml"):
+                    try:
+                        with open(path) as f:
+                            scenario = yaml.safe_load(f)
+                        if isinstance(scenario, dict):
+                            cond = scenario.get("condition", "")
+                            if cond:
+                                conditions.add(cond)
+                    except Exception:
+                        continue
+
+    # Scan seeds_mined/
+    if _SEEDS_MINED_DIR.exists():
+        for path in _SEEDS_MINED_DIR.glob("*.yaml"):
+            try:
+                with open(path) as f:
+                    scenario = yaml.safe_load(f)
+                if isinstance(scenario, dict):
+                    cond = scenario.get("condition", "")
+                    if cond:
+                        conditions.add(cond)
+            except Exception:
+                continue
+
+    return conditions
+
+
 def generate_from_hypothesis(
     hypothesis: str,
     failure_class: str | None = None,
@@ -651,6 +748,7 @@ def generate_from_hypothesis(
     generation_model: str | None = None,
     provider: str = "anthropic",
     temperature: float = 0.7,
+    exclude_conditions: set[str] | None = None,
 ) -> list[dict]:
     """Generate scenarios from a failure hypothesis via LLM.
 
@@ -667,6 +765,7 @@ def generate_from_hypothesis(
         generation_model: Model to use (default: claude-sonnet-4-6).
         provider: Provider for generation model.
         temperature: Sampling temperature (default: 0.7 for diversity).
+        exclude_conditions: Conditions to exclude from generation (already in corpus).
 
     Returns:
         List of validated scenario dicts.
@@ -681,6 +780,7 @@ def generate_from_hypothesis(
             generation_model=generation_model,
             provider=provider,
             temperature=temperature,
+            exclude_conditions=exclude_conditions,
         )
     )
 
@@ -694,6 +794,7 @@ async def generate_from_hypothesis_async(
     generation_model: str | None = None,
     provider: str = "anthropic",
     temperature: float = 0.7,
+    exclude_conditions: set[str] | None = None,
 ) -> list[dict]:
     """Async version of generate_from_hypothesis for batch parallelism.
 
@@ -706,6 +807,7 @@ async def generate_from_hypothesis_async(
         generation_model: Model to use (default: claude-sonnet-4-6).
         provider: Provider for generation model.
         temperature: Sampling temperature (default: 0.7 for diversity).
+        exclude_conditions: Conditions to exclude from generation (already in corpus).
 
     Returns:
         List of validated scenario dicts.
@@ -717,6 +819,14 @@ async def generate_from_hypothesis_async(
 
     # Load few-shot examples
     examples = _load_example_seeds(n=3)
+
+    # Collect all existing conditions for cross-batch dedup
+    all_existing_conditions: set[str] = set(exclude_conditions or set())
+    all_existing_conditions.update(_collect_existing_conditions(output_dir))
+
+    logger.info(
+        "Excluding %d existing conditions from generation", len(all_existing_conditions)
+    )
 
     # Generate in batches of up to 5
     all_scenarios: list[dict] = []
@@ -731,6 +841,9 @@ async def generate_from_hypothesis_async(
             clinical_domain=clinical_domain,
             examples=examples,
             batch_size=batch_size,
+            exclude_conditions=sorted(all_existing_conditions)
+            if all_existing_conditions
+            else None,
         )
 
         messages = [
@@ -789,6 +902,11 @@ async def generate_from_hypothesis_async(
 
             if valid:
                 all_scenarios.extend(valid)
+                # Track new conditions for inter-batch dedup
+                for s in valid:
+                    cond = s.get("condition", "")
+                    if cond:
+                        all_existing_conditions.add(cond)
                 break
             elif attempt < max_retries - 1:
                 # Retry with error feedback
@@ -806,9 +924,15 @@ async def generate_from_hypothesis_async(
 
     # Deduplicate against existing scenarios
     if output_dir:
-        all_scenarios = _deduplicate(all_scenarios, output_dir)
+        all_scenarios, rejected = _deduplicate(all_scenarios, output_dir)
     else:
-        all_scenarios = _deduplicate(all_scenarios)
+        all_scenarios, rejected = _deduplicate(all_scenarios)
+    if rejected:
+        logger.warning(
+            "Rejected %d condition-duplicate scenarios: %s",
+            len(rejected),
+            [s.get("condition", "?") for s in rejected],
+        )
 
     # Assign GEN-NNN IDs and write
     out_path = Path(output_dir) if output_dir else None
@@ -827,6 +951,25 @@ async def generate_from_hypothesis_async(
             with open(file_path, "w") as f:
                 yaml.dump(scenario, f, default_flow_style=False, sort_keys=False)
             logger.info("Generated %s -> %s", gen_id, file_path)
+
+    # Write generation manifest
+    if out_path:
+        manifest = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "hypothesis": hypothesis,
+            "model": model,
+            "requested": count,
+            "produced": len(all_scenarios),
+            "rejected_conditions": [s.get("condition", "?") for s in rejected],
+            "excluded_conditions": sorted(all_existing_conditions)
+            if all_existing_conditions
+            else [],
+            "conditions_generated": [s.get("condition", "?") for s in all_scenarios],
+        }
+        manifest_path = out_path / "_generation_manifest.yaml"
+        with open(manifest_path, "w") as f:
+            yaml.dump(manifest, f, default_flow_style=False, sort_keys=False)
+        logger.info("Wrote generation manifest -> %s", manifest_path)
 
     logger.info(
         "Generated %d validated scenarios from hypothesis: %s",

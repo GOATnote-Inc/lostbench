@@ -37,6 +37,27 @@ from lostbench.mine import (
 
 logger = logging.getLogger(__name__)
 
+
+def _scan_existing_conditions(output_dir: Path) -> set[str]:
+    """Scan output directory for conditions already generated."""
+    conditions: set[str] = set()
+    if not output_dir.exists():
+        return conditions
+    for path in output_dir.glob("*.yaml"):
+        if path.name.startswith("_"):
+            continue
+        try:
+            with open(path) as f:
+                data = yaml.safe_load(f)
+            if isinstance(data, dict):
+                cond = data.get("condition", "")
+                if cond:
+                    conditions.add(cond)
+        except Exception:
+            continue
+    return conditions
+
+
 # ABEM categories for coverage mode distribution tracking
 ABEM_CATEGORIES = [
     "cardiovascular",
@@ -284,6 +305,10 @@ def mode_from_failures(args: argparse.Namespace) -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    existing_conditions = _scan_existing_conditions(output_dir)
+    if existing_conditions:
+        print(f"Found {len(existing_conditions)} existing conditions to exclude")
+
     total = 0
     for failure in failures[: args.limit or len(failures)]:
         condition = failure["condition"]
@@ -303,8 +328,14 @@ def mode_from_failures(args: argparse.Namespace) -> None:
             output_dir=str(output_dir),
             generation_model=args.generation_model,
             provider=args.provider,
+            exclude_conditions=existing_conditions,
         )
         total += len(scenarios)
+        # Track newly generated conditions for subsequent iterations
+        for s in scenarios:
+            cond = s.get("condition", "")
+            if cond:
+                existing_conditions.add(cond)
 
     print(f"Generated {total} scenarios from {len(failures)} failure patterns")
 
@@ -325,6 +356,10 @@ def mode_failure_class(args: argparse.Namespace) -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    existing_conditions = _scan_existing_conditions(output_dir)
+    if existing_conditions:
+        print(f"Found {len(existing_conditions)} existing conditions to exclude")
+
     scenarios = generate_from_hypothesis(
         hypothesis=hypothesis,
         failure_class=fc,
@@ -332,6 +367,7 @@ def mode_failure_class(args: argparse.Namespace) -> None:
         output_dir=str(output_dir),
         generation_model=args.generation_model,
         provider=args.provider,
+        exclude_conditions=existing_conditions,
     )
 
     print(f"Generated {len(scenarios)} Class {fc.upper()} targeting scenarios")

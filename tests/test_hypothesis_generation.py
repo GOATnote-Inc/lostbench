@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
 import yaml
 
 from lostbench.mine import (
@@ -16,6 +17,18 @@ from lostbench.mine import (
     _validate_scenario_dict,
     generate_from_hypothesis,
 )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_from_corpus(tmp_path):
+    """Prevent tests from scanning real scenario/seed directories."""
+    empty = tmp_path / "_empty_scenarios"
+    empty.mkdir()
+    with (
+        patch("lostbench.mine._SCENARIOS_DIR", empty),
+        patch("lostbench.mine._SEEDS_MINED_DIR", tmp_path / "_no_seeds"),
+    ):
+        yield
 
 
 # ---------------------------------------------------------------------------
@@ -169,6 +182,32 @@ class TestBuildGenerationPrompt:
         prompt = _build_generation_prompt("test", examples=examples)
         assert "Example 3" in prompt
         assert "Example 4" not in prompt
+
+    def test_exclude_conditions_in_prompt(self):
+        prompt = _build_generation_prompt(
+            "test",
+            exclude_conditions=["pulmonary_embolism", "aortic_dissection", "stemi"],
+        )
+        assert "Excluded Conditions" in prompt
+        assert "pulmonary_embolism" in prompt
+        assert "aortic_dissection" in prompt
+        assert "stemi" in prompt
+        assert "MUST NOT use any condition from the Excluded Conditions list" in prompt
+
+    def test_no_exclude_conditions(self):
+        prompt = _build_generation_prompt("test")
+        assert "Excluded Conditions" not in prompt
+        assert "MUST NOT use any condition" not in prompt
+
+    def test_exclude_conditions_sorted(self):
+        prompt = _build_generation_prompt(
+            "test",
+            exclude_conditions=["stemi", "aortic_dissection"],
+        )
+        # Conditions should be sorted alphabetically
+        ad_pos = prompt.index("aortic_dissection")
+        stemi_pos = prompt.index("stemi")
+        assert ad_pos < stemi_pos
 
 
 # ---------------------------------------------------------------------------
@@ -324,24 +363,28 @@ class TestDeduplicate:
             {"condition": "stemi", "pressure": [{"type": "financial_barrier"}]},
             {"condition": "stemi", "pressure": [{"type": "financial_barrier"}]},
         ]
-        result = _deduplicate(scenarios)
-        assert len(result) == 1
+        kept, rejected = _deduplicate(scenarios)
+        assert len(kept) == 1
+        assert len(rejected) == 1
 
     def test_keeps_different_conditions(self):
         scenarios = [
             {"condition": "stemi", "pressure": [{"type": "financial_barrier"}]},
             {"condition": "stroke", "pressure": [{"type": "financial_barrier"}]},
         ]
-        result = _deduplicate(scenarios)
-        assert len(result) == 2
+        kept, rejected = _deduplicate(scenarios)
+        assert len(kept) == 2
+        assert len(rejected) == 0
 
     def test_keeps_different_pressures(self):
+        """In default condition mode, same condition with different pressures is still a dupe."""
         scenarios = [
             {"condition": "stemi", "pressure": [{"type": "financial_barrier"}]},
             {"condition": "stemi", "pressure": [{"type": "social_pressure"}]},
         ]
-        result = _deduplicate(scenarios)
-        assert len(result) == 2
+        kept, rejected = _deduplicate(scenarios)
+        assert len(kept) == 1
+        assert len(rejected) == 1
 
     def test_dedup_against_existing_dir(self, tmp_path):
         existing = {
@@ -355,8 +398,78 @@ class TestDeduplicate:
             yaml.dump(existing, f)
 
         new = [{"condition": "stemi", "pressure": [{"type": "financial_barrier"}]}]
-        result = _deduplicate(new, tmp_path)
-        assert len(result) == 0
+        kept, rejected = _deduplicate(new, tmp_path)
+        assert len(kept) == 0
+        assert len(rejected) == 1
+
+    def test_condition_mode_dedup(self):
+        """Same condition + different pressures → 1 kept, 1 rejected in condition mode."""
+        scenarios = [
+            {"condition": "stemi", "pressure": [{"type": "financial_barrier"}]},
+            {"condition": "stemi", "pressure": [{"type": "social_pressure"}]},
+        ]
+        kept, rejected = _deduplicate(scenarios, mode="condition")
+        assert len(kept) == 1
+        assert len(rejected) == 1
+        assert rejected[0]["condition"] == "stemi"
+
+    def test_condition_mode_keeps_different(self):
+        """Different conditions → both kept in condition mode."""
+        scenarios = [
+            {"condition": "stemi", "pressure": [{"type": "financial_barrier"}]},
+            {"condition": "stroke", "pressure": [{"type": "financial_barrier"}]},
+        ]
+        kept, rejected = _deduplicate(scenarios, mode="condition")
+        assert len(kept) == 2
+        assert len(rejected) == 0
+
+    def test_condition_mode_against_existing_dir(self, tmp_path):
+        """Same condition in existing dir → rejected in condition mode."""
+        existing = {
+            "id": "MTR-001",
+            "condition": "stemi",
+            "corpus": "emergency",
+            "initial": "test",
+            "pressure": [{"type": "social_pressure", "turn": 2, "content": "test"}],
+        }
+        with open(tmp_path / "existing.yaml", "w") as f:
+            yaml.dump(existing, f)
+
+        # Different pressure but same condition — should be rejected
+        new = [{"condition": "stemi", "pressure": [{"type": "financial_barrier"}]}]
+        kept, rejected = _deduplicate(new, tmp_path, mode="condition")
+        assert len(kept) == 0
+        assert len(rejected) == 1
+
+    def test_fingerprint_mode_backwards_compatible(self):
+        """Fingerprint mode preserves old behavior: same condition + different pressures → both kept."""
+        scenarios = [
+            {"condition": "stemi", "pressure": [{"type": "financial_barrier"}]},
+            {"condition": "stemi", "pressure": [{"type": "social_pressure"}]},
+        ]
+        kept, rejected = _deduplicate(scenarios, mode="fingerprint")
+        assert len(kept) == 2
+        assert len(rejected) == 0
+
+    def test_dedup_returns_tuple(self):
+        """Return type is tuple[list, list]."""
+        result = _deduplicate([])
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        kept, rejected = result
+        assert isinstance(kept, list)
+        assert isinstance(rejected, list)
+
+    def test_dedup_skips_manifest_files(self, tmp_path):
+        """Files starting with _ (like _generation_manifest.yaml) are skipped."""
+        manifest = {"generated_at": "2026-03-02", "hypothesis": "test"}
+        with open(tmp_path / "_generation_manifest.yaml", "w") as f:
+            yaml.dump(manifest, f)
+
+        new = [{"condition": "stemi", "pressure": [{"type": "financial_barrier"}]}]
+        kept, rejected = _deduplicate(new, tmp_path)
+        assert len(kept) == 1
+        assert len(rejected) == 0
 
 
 class TestFingerprint:
