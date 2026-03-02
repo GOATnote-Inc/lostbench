@@ -1227,3 +1227,91 @@ experiments:
     note: "Preamble rescues GEN-010 and GEN-014. GEN-004 (PE ML training) remains unsolved — 0.84 EPS but still fails pass^5. Near-perfect EPS (0.984) on passing seeds."
     status: completed
     path: results/seeds-gen-eval/gpt-5.2_preamble_only/
+
+  # ── Coverage Cycle Seeds: Two-Phase Eval (279 seeds) ──
+
+  - experiment: seeds-cycle-eval-phase1
+    model: claude-opus-4-6
+    mode: baseline
+    date: "2026-03-03"
+    n_trials: 5
+    scenarios: 278
+    corpus: seeds-cycle-generated
+    temperature: 0.0
+    pass_rate: 0.881
+    grading: llm-judge-all-turns
+    judge_model: gpt-5.2
+    note: "Phase 1 deterministic screen. 33/278 seeds fail baseline (temp=0). 5 trials identical (deterministic). Binary discriminative filter for Phase 2."
+    status: completed
+    path: results/seeds-cycle-eval/claude-opus-4-6_baseline/
+
+  - experiment: seeds-cycle-eval-phase1
+    model: claude-opus-4-6
+    mode: preamble_only
+    date: "2026-03-03"
+    n_trials: 5
+    scenarios: 246
+    corpus: seeds-cycle-generated
+    temperature: 0.0
+    pass_rate: 0.947
+    grading: llm-judge-all-turns
+    judge_model: gpt-5.2
+    note: "Phase 1 deterministic screen. 13/246 seeds fail preamble (temp=0). 37 unique seeds discriminative across both cells → Phase 2."
+    status: completed
+    path: results/seeds-cycle-eval/claude-opus-4-6_preamble_only/
+
+  - experiment: seeds-cycle-eval-phase2
+    model: claude-opus-4-6
+    mode: baseline
+    date: "2026-03-03"
+    n_trials: 5
+    scenarios: 37
+    corpus: seeds-cycle-generated
+    temperature: 0.7
+    grading: llm-judge-all-turns
+    judge_model: gpt-5.2
+    note: "Phase 2 stochastic characterization. temp=0.7, per-trial seed variation for independent trials. Measures pass^k and intermittent failure rates."
+    status: in-progress
+    path: results/seeds-cycle-eval-stochastic/claude-opus-4-6_baseline/
+
+  - experiment: seeds-cycle-eval-phase2
+    model: claude-opus-4-6
+    mode: preamble_only
+    date: "2026-03-03"
+    n_trials: 5
+    scenarios: 37
+    corpus: seeds-cycle-generated
+    temperature: 0.7
+    grading: llm-judge-all-turns
+    judge_model: gpt-5.2
+    note: "Phase 2 stochastic characterization. Preamble cell."
+    status: in-progress
+    path: results/seeds-cycle-eval-stochastic/claude-opus-4-6_preamble_only/
+
+  - experiment: seeds-cycle-eval-phase2
+    model: gpt-5.2
+    mode: baseline
+    date: "2026-03-03"
+    n_trials: 5
+    scenarios: 37
+    corpus: seeds-cycle-generated
+    temperature: 0.7
+    grading: llm-judge-all-turns
+    judge_model: claude-opus-4-6
+    note: "Phase 2 stochastic characterization. GPT baseline cell."
+    status: in-progress
+    path: results/seeds-cycle-eval-stochastic/gpt-5.2_baseline/
+
+  - experiment: seeds-cycle-eval-phase2
+    model: gpt-5.2
+    mode: preamble_only
+    date: "2026-03-03"
+    n_trials: 5
+    scenarios: 37
+    corpus: seeds-cycle-generated
+    temperature: 0.7
+    grading: llm-judge-all-turns
+    judge_model: claude-opus-4-6
+    note: "Phase 2 stochastic characterization. GPT preamble cell."
+    status: in-progress
+    path: results/seeds-cycle-eval-stochastic/gpt-5.2_preamble_only/

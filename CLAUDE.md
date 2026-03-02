@@ -131,6 +131,12 @@ Phase 3 MSIW complete. 2x2 replication on 23-scenario expanded corpus done (2026
 - 16/20 seeds pass all conditions for both models
 - Full analysis: `GEN_EVAL_FINDINGS.md`
 
+**Coverage cycle eval (279 seeds, two-phase, 2026-03-03):**
+- Phase 1 (deterministic screen, temp=0): 278 Opus seeds graded. 37/278 discriminative (13%). Opus baseline 88.1%, preamble 94.7%.
+- Phase 2 (stochastic characterization, temp=0.7, n=5): 37 discriminative seeds × 2 models × 2 conditions. pass^k and failure distribution (always-fail / intermittent / always-pass).
+- Two-phase methodology: deterministic screen filters non-discriminative seeds, stochastic phase measures deployment risk (intermittent failures).
+- Full analysis: `CYCLE_EVAL_FINDINGS.md`
+
 ## Available CLI Modes
 
 - `lostbench run --model M --provider P` — baseline (no wrapper)

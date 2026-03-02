@@ -34,6 +34,15 @@ LostBench measures the gap. HealthBench measures response quality. LostBench mea
 | Claude Opus 4.6 | gpt-5.2 | 85.0% | **95.0%** | 0.680 / 0.840 |
 | GPT-5.2 | claude-opus-4-6 | 85.0% | **95.0%** | 0.802 / 0.984 |
 
+**279 coverage-cycle seeds — Phase 1 deterministic screen (Opus 4.6 only, temp=0):**
+
+| Model | Condition | Pass% | Discriminative Seeds |
+|-------|-----------|-------|---------------------|
+| Claude Opus 4.6 | baseline | 88.1% | 33/278 fail |
+| Claude Opus 4.6 | preamble | 94.7% | 13/246 fail |
+
+37 unique seeds (13%) triggered failure in at least one cell → promoted to Phase 2 stochastic characterization (temp=0.7, n=5, both models). Phase 2 results pending.
+
 The **preamble** is the dominant mitigation mechanism. Enforcement alone never helps meaningfully and can interfere (Opus). Hard seeds that resist preamble:
 
 - **SEED-013:** PE code-agent triage routing — GPT/Gemini refuse, Opus/Grok write the code
@@ -44,7 +53,7 @@ The **preamble** is the dominant mitigation mechanism. Enforcement alone never h
 
 - **Multi-turn persistence:** 5-turn conversations with escalating pressure, not single-turn Q&A
 - **Pass^k, not pass@k:** Every trial must succeed. 80% per-trial = 33% pass^5. Strict logical AND.
-- **Adaptive corpus:** 78 emergency + 17 original seeds + 20 generated seeds + 43 adversarial + 15 defer scenarios across 9 corpus types
+- **Adaptive corpus:** 78 emergency + 17 original seeds + 299 generated/cycle seeds + 43 adversarial + 15 defer scenarios across 9 corpus types
 - **Clinically grounded:** Scenarios linked to 363 OpenEM emergency medicine conditions with evidence-based time-to-harm windows
 - **Cross-vendor judged:** GPT-5.2 judges Anthropic models; Opus judges OpenAI. Target model never judges itself.
 - **Seed mining pipeline:** 7-agent team discovers new failure patterns from CEIS results, OpenEM coverage gaps, and cross-model asymmetries
@@ -224,6 +233,17 @@ Seed Mining ─→ 5 Miners ─→ Scorer ─→ Synthesizer ─→ [PROPOSED CH
 | Claude Opus 4.6 | 85.0% | **95.0%** | 0.680 / 0.840 |
 | GPT-5.2 | 85.0% | **95.0%** | 0.802 / 0.984 |
 
+### Persistence — Coverage Cycle Seeds (279 seeds, Phase 1 screen → Phase 2 stochastic)
+
+Phase 1 deterministic screen (temp=0, Opus only):
+
+| Model | Condition | Pass% | Seeds Failing | Discriminative |
+|-------|-----------|-------|---------------|----------------|
+| Claude Opus 4.6 | baseline | 88.1% | 33/278 | 37 unique (13%) |
+| Claude Opus 4.6 | preamble | 94.7% | 13/246 | → Phase 2 |
+
+Phase 2 (temp=0.7, n=5, both models) results pending — measuring pass^k, intermittent failure rates.
+
 ### Emergency Recognition (50 scenarios x 3 trials, LLM judge — Saturated)
 
 | Model | Pass^k | ERS | Class A | Class D |
@@ -282,10 +302,13 @@ Seed Mining ─→ 5 Miners ─→ Scorer ─→ Synthesizer ─→ [PROPOSED CH
 
 ```
 results/
-├── index.yaml                    # Machine-readable manifest (79+ experiments)
+├── index.yaml                    # Machine-readable manifest (89+ experiments)
 ├── 2x2/                          # Preamble/enforcement factorial (4 models x 4 modes)
 ├── 2x2-newcohort/                # Expanded corpus results
 ├── seeds-persistence/            # 4-model x 17-seed persistence data
+├── seeds-gen-eval/               # 20 generated seeds eval (2 models)
+├── seeds-cycle-eval/             # 279-seed Phase 1 deterministic screen
+├── seeds-cycle-eval-stochastic/  # Phase 2 stochastic characterization (temp=0.7)
 ├── ceis-n5/                      # GPT-5.2 n=5 deep dive
 ├── ceis-{vector}-{model}-n3/     # Adversarial baselines
 ├── rag-v2/                       # RAG experiment results
