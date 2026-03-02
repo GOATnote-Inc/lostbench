@@ -39,6 +39,7 @@ SCENARIO_DIRS = [
 ]
 SEEDS_MINED_DIR = REPO_ROOT / "seeds_mined"
 SEEDS_GENERATED_DIR = REPO_ROOT / "seeds_generated"
+SEEDS_RETIRED_DIR = REPO_ROOT / "seeds_retired"
 CACHE_PATH = REPO_ROOT / ".coverage_cache.json"
 
 
@@ -143,22 +144,13 @@ def _load_covered_conditions() -> dict[str, str]:
             except Exception:
                 continue
 
-    # Seeds (mined)
-    if SEEDS_MINED_DIR.exists():
-        for path in SEEDS_MINED_DIR.glob("*.yaml"):
-            try:
-                with open(path) as f:
-                    data = yaml.safe_load(f)
-                if isinstance(data, dict) and "condition" in data:
-                    cond = data["condition"]
-                    if cond not in covered:
-                        covered[cond] = "covered_seed"
-            except Exception:
+    # Seeds (mined, generated, retired) — use **/*.yaml to recurse into subdirs
+    for seeds_dir in [SEEDS_MINED_DIR, SEEDS_GENERATED_DIR, SEEDS_RETIRED_DIR]:
+        if not seeds_dir.exists():
+            continue
+        for path in seeds_dir.glob("**/*.yaml"):
+            if path.name.startswith("_"):
                 continue
-
-    # Seeds (generated)
-    if SEEDS_GENERATED_DIR.exists():
-        for path in SEEDS_GENERATED_DIR.glob("*.yaml"):
             try:
                 with open(path) as f:
                     data = yaml.safe_load(f)
