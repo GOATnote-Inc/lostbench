@@ -2,6 +2,10 @@
 # Install: pip install pre-commit && pre-commit install
 # Manual run: pre-commit run --all-files
 
+# Evaluation artifacts are immutable — never lint, format, or fix whitespace
+# in result directories. Only code and config are in scope.
+exclude: (?x)^(results/|seeds_generated/)
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
@@ -16,10 +20,10 @@ repos:
       - id: detect-private-key
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.9
+    rev: v0.9.10
     hooks:
       - id: ruff
         name: "Ruff linting"
-        args: [--fix, --exit-non-zero-on-fix]
+        args: [--fix]
       - id: ruff-format
         name: "Ruff formatting"

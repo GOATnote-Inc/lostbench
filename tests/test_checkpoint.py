@@ -78,7 +78,6 @@ class TestConfigHash:
 
 class TestSaveLoadCheckpoint:
     def test_roundtrip(self, tmp_path, cfg, dataset_hash, sample_results):
-
         save_checkpoint(
             str(tmp_path),
             dataset_hash,
@@ -95,13 +94,11 @@ class TestSaveLoadCheckpoint:
         assert in_progress is None
 
     def test_returns_none_when_no_file(self, tmp_path, cfg, dataset_hash):
-
         assert load_checkpoint(str(tmp_path), dataset_hash, cfg) is None
 
     def test_rejects_dataset_hash_mismatch(
         self, tmp_path, cfg, dataset_hash, sample_results
     ):
-
         save_checkpoint(str(tmp_path), dataset_hash, cfg, ["MTR-001"], sample_results)
         result = load_checkpoint(str(tmp_path), "wrong_hash", cfg)
         assert result is None
@@ -109,14 +106,12 @@ class TestSaveLoadCheckpoint:
     def test_rejects_config_hash_mismatch(
         self, tmp_path, cfg, dataset_hash, sample_results
     ):
-
         save_checkpoint(str(tmp_path), dataset_hash, cfg, ["MTR-001"], sample_results)
         cfg2 = RunConfig(model="different-model", provider="openai")
         result = load_checkpoint(str(tmp_path), dataset_hash, cfg2)
         assert result is None
 
     def test_clear_removes_file(self, tmp_path, cfg, dataset_hash, sample_results):
-
         save_checkpoint(str(tmp_path), dataset_hash, cfg, ["MTR-001"], sample_results)
         assert checkpoint_path(str(tmp_path)).exists()
         clear_checkpoint(str(tmp_path))
@@ -128,7 +123,6 @@ class TestSaveLoadCheckpoint:
     def test_checkpoint_file_is_valid_json(
         self, tmp_path, cfg, dataset_hash, sample_results
     ):
-
         save_checkpoint(str(tmp_path), dataset_hash, cfg, ["MTR-001"], sample_results)
         with open(checkpoint_path(str(tmp_path))) as f:
             data = json.load(f)
