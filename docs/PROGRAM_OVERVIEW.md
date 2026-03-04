@@ -50,7 +50,7 @@ No runtime imports exist between LostBench, ScribeGoat2, SafeShift, or RadSlice.
 
 ## Scale
 
-- **6 models tested:** GPT-5.2, Claude Opus 4.6, Claude Sonnet 4.5, Claude Sonnet 4.6, Gemini 3.1 Pro, Grok 4.1 Fast
+- **7 models tested:** GPT-5.2, Claude Opus 4.6, Claude Sonnet 4.5, Claude Sonnet 4.6, Gemini 3.1 Pro, Grok 4.1 Fast, Grok 4 Fast
 - **131 scenarios** across 9 corpus types (50 emergency, 15 defer, 8 code-agent, 8 tool-use, 8 multimodal, 9 integrated, 10 adversarial, 3 crisis-resource, 20 generated seeds) + 17 original mined seeds
 - **83 experiment runs** logged in `results/index.yaml`
 - **3,400+ graded seed responses** from 17 original seeds (4 models × 2 conditions × 5 trials) + **200 transcripts** from 20 generated seeds (2 models × 2 conditions × 5 trials)

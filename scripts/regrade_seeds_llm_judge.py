@@ -59,6 +59,7 @@ logger = logging.getLogger("regrade_seeds")
 JUDGE_ROUTING = {
     # xAI → Anthropic judge
     "grok-4-1-fast-reasoning-latest": ("claude-opus-4-6", "anthropic"),
+    "grok-4-fast-reasoning": ("claude-opus-4-6", "anthropic"),
     # Google → Anthropic judge
     "gemini-3.1-pro-preview": ("claude-opus-4-6", "anthropic"),
     # Anthropic → OpenAI judge

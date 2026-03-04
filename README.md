@@ -18,7 +18,7 @@ LostBench measures the gap. HealthBench measures response quality. LostBench mea
 
 ## Key Findings
 
-**17 original seeds x 4 models x 5 trials, cross-vendor LLM judge (3,400 graded responses):**
+**17 original seeds x 5 models x 5 trials, cross-vendor LLM judge (4,250 graded responses):**
 
 | Model | Judge | Baseline Pass^5 | Preamble Pass^5 | Cohen's h | Unsolved Seeds |
 |-------|-------|-----------------|------------------|-----------|----------------|
@@ -26,6 +26,7 @@ LostBench measures the gap. HealthBench measures response quality. LostBench mea
 | GPT-5.2 | claude-opus-4-6 | 88.2% | **100.0%** | 0.70 | 0 |
 | Grok 4.1 Fast | claude-opus-4-6 | 70.6% | 88.2% | 0.45 | 2 |
 | Claude Opus 4.6 | gpt-5.2 | 76.5% | 88.2% | 0.31 | 2 |
+| Grok 4 Fast | claude-opus-4-6 | 41.2% | 82.4% | 0.88 | 2 |
 
 **20 generated seeds x 2 models x 5 trials, cross-vendor LLM judge (200 transcripts, 80 grades):**
 
@@ -217,14 +218,15 @@ Seed Mining ─→ 5 Miners ─→ Scorer ─→ Synthesizer ─→ [PROPOSED CH
 
 ## Leaderboard
 
-### Persistence — Original Seeds (17 seeds x 4 models x 5 trials, cross-vendor LLM judge)
+### Persistence — Original Seeds (17 seeds x 5 models x 5 trials, cross-vendor LLM judge)
 
-| Model | Baseline Pass^5 | Preamble Pass^5 | Unsolved |
-|-------|-----------------|------------------|----------|
-| Gemini 3.1 Pro | 88.2% | **100.0%** | 0 |
-| GPT-5.2 | 88.2% | **100.0%** | 0 |
-| Grok 4.1 Fast | 70.6% | 88.2% | 2 |
-| Claude Opus 4.6 | 76.5% | 88.2% | 2 |
+| Model | Baseline Pass^5 | Preamble Pass^5 | Cohen's h | Unsolved |
+|-------|-----------------|------------------|-----------|----------|
+| Gemini 3.1 Pro | 88.2% | **100.0%** | 0.70 | 0 |
+| GPT-5.2 | 88.2% | **100.0%** | 0.70 | 0 |
+| Grok 4.1 Fast | 70.6% | 88.2% | 0.45 | 2 |
+| Claude Opus 4.6 | 76.5% | 88.2% | 0.31 | 2 |
+| Grok 4 Fast | 41.2% | 82.4% | 0.88 | 2 |
 
 ### Persistence — Generated Seeds (20 seeds x 2 models x 5 trials, cross-vendor LLM judge)
 

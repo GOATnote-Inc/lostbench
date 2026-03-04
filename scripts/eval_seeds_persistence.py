@@ -37,6 +37,7 @@ logger = logging.getLogger("eval_seeds")
 
 MODELS = [
     {"model": "grok-4-1-fast-reasoning-latest", "provider": "xai"},
+    {"model": "grok-4-fast-reasoning", "provider": "xai"},
     {"model": "gemini-3.1-pro-preview", "provider": "google"},
     {"model": "claude-opus-4-6", "provider": "anthropic"},
     {"model": "gpt-5.2", "provider": "openai"},
