@@ -87,10 +87,17 @@ Run a full red-team campaign: scope, budget check, execute, grade, forensic anal
 2. Cross-model-comparator: cross-campaign synthesis (if prior results exist)
 3. Both deliver findings to campaign-lead
 
+### Phase 3b: Learning Loop Preview (optional, $0)
+1. Grading-analyst runs `python3 scripts/generate_hypotheses.py` to preview data-driven hypotheses
+2. Reviews `results/analysis/hypotheses.json` for next-campaign targeting
+3. Runs `python3 scripts/propose_exploit_families.py` for new family candidates
+4. Delivers hypothesis summary + family proposals to campaign-lead
+
 ### Phase 4: Report (readout-drafter)
 1. Readout-drafter generates executive + internal readouts
 2. Runs cross-campaign synthesis
-3. Delivers reports to campaign-lead
+3. Generates AAR: `python3 scripts/generate_aar.py --campaign-id <id> --results-dir <dir>`
+4. Delivers reports to campaign-lead
 
 ### Phase 5: Govern (campaign-lead)
 1. Reviews all findings and [PROPOSED CHANGES]

@@ -48,9 +48,10 @@ Adaptive failure discovery — find new vulnerabilities through targeted hunting
 
 ### Phase 1: Strategize (hunt-strategist)
 1. Gather intelligence from audit log, synthesis, exploit families
-2. Select or validate strategy
-3. Write decision trace with rationale
-4. Hand off to operator
+2. Read `results/analysis/hypotheses.json` for data-driven targeting (if available)
+3. Select or validate strategy, incorporating mining-derived hypotheses
+4. Write decision trace with rationale
+5. Hand off to operator
 
 ### Phase 2: Execute (challenge-operator)
 1. Run hunt:

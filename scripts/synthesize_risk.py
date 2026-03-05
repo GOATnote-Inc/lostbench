@@ -29,6 +29,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INDEX_PATH = REPO_ROOT / "results" / "index.yaml"
 TAXONOMY_PATH = REPO_ROOT / "configs" / "attack_taxonomy.yaml"
+ANALYSIS_DIR = REPO_ROOT / "results" / "analysis"
 DEFAULT_OUTPUT = REPO_ROOT / "results" / "synthesis"
 
 MODEL_DISPLAY = {
@@ -649,6 +650,239 @@ def render_trendlines_md(trendlines: list[dict]) -> str:
     return "\n".join(lines)
 
 
+# ── Deliverable 5: Pressure Fingerprint Cards ──
+
+
+def load_pressure_effectiveness(path: Path) -> dict | None:
+    """Load pressure_effectiveness.json if it exists."""
+    if not path.exists():
+        return None
+    with open(path) as f:
+        return json.load(f)
+
+
+def load_trajectory_analysis(path: Path) -> dict | None:
+    """Load trajectory_analysis.json if it exists."""
+    if not path.exists():
+        return None
+    with open(path) as f:
+        return json.load(f)
+
+
+def load_reasoning_clusters(path: Path) -> dict | None:
+    """Load judge_reasoning_clusters.json if it exists."""
+    if not path.exists():
+        return None
+    with open(path) as f:
+        return json.load(f)
+
+
+def _wilson_lower(successes: int, total: int, z: float = 1.96) -> float:
+    """Wilson score interval lower bound."""
+    if total == 0:
+        return 0.0
+    p = successes / total
+    denom = 1 + z * z / total
+    center = p + z * z / (2 * total)
+    spread = z * math.sqrt((p * (1 - p) + z * z / (4 * total)) / total)
+    return max(0.0, (center - spread) / denom)
+
+
+def build_pressure_fingerprint_cards(
+    pressure: dict,
+    trajectory: dict | None,
+    clusters: dict | None,
+) -> dict:
+    """Build per-model pressure fingerprint cards.
+
+    Each card contains:
+    - Top 5 vulnerable pressure types with fail_rate + Wilson lower
+    - Dominant trajectory archetype
+    - Linguistic harbinger summary (imperative_trend delta)
+    - Top failure themes from judge reasoning
+    - Narrative summary
+
+    Data sourced from LLM judge (Layer 2) reasoning, not deterministic
+    pattern matching (Layer 0). Pattern matching has a documented 30-97%
+    false negative rate and should not be relied upon for safety analysis.
+    """
+    cards: dict[str, dict] = {}
+
+    for model_id in PRIMARY_MODELS:
+        model_pressure = pressure.get(model_id, {})
+        if not isinstance(model_pressure, dict):
+            continue
+
+        # Top 5 vulnerable pressure types
+        pressure_types = []
+        for ptype, stats in model_pressure.items():
+            if not isinstance(stats, dict):
+                continue
+            fail_rate = stats.get("fail_rate")
+            total = stats.get("total", 0)
+            if fail_rate is not None and total >= 10:
+                fail_count = stats.get("fail", int(fail_rate * total))
+                wl = _wilson_lower(fail_count, total)
+                pressure_types.append(
+                    {
+                        "pressure_type": ptype,
+                        "fail_rate": round(fail_rate, 4),
+                        "wilson_lower": round(wl, 4),
+                        "n": total,
+                        "mean_failure_turn": stats.get("mean_failure_turn"),
+                    }
+                )
+
+        pressure_types.sort(key=lambda x: x["fail_rate"], reverse=True)
+        top_5 = pressure_types[:5]
+
+        # Dominant trajectory archetype
+        dominant_archetype = None
+        archetype_rate = None
+        if trajectory:
+            matrix = trajectory.get("model_archetype_matrix", {})
+            model_archetypes = matrix.get(model_id, {})
+            best_arch = None
+            best_rate = 0
+            for arch, data in model_archetypes.items():
+                if arch.startswith("_") or not isinstance(data, dict):
+                    continue
+                rate = data.get("rate", 0)
+                if rate > best_rate:
+                    best_rate = rate
+                    best_arch = arch
+            dominant_archetype = best_arch
+            archetype_rate = round(best_rate, 4) if best_arch else None
+
+        # Linguistic harbingers
+        imperative_delta = None
+        hedging_delta = None
+        if trajectory:
+            harbingers = trajectory.get("linguistic_harbingers", {})
+            model_h = harbingers.get(model_id, {})
+            imperative_delta = model_h.get("imperative_delta")
+            hedging_delta = model_h.get("hedging_delta")
+
+        # Top failure themes
+        top_themes = []
+        if clusters:
+            keyword = clusters.get("keyword_analysis", {})
+            theme_counts = keyword.get("theme_counts", {})
+            for theme, count in sorted(theme_counts.items(), key=lambda x: -x[1])[:3]:
+                top_themes.append({"theme": theme, "count": count})
+
+        # Build narrative
+        display = display_model(model_id)
+        narrative_parts = []
+        if top_5:
+            narrative_parts.append(
+                f"{display} is specifically vulnerable to {top_5[0]['pressure_type']} "
+                f"(fail_rate={top_5[0]['fail_rate']:.1%})"
+            )
+        if dominant_archetype:
+            narrative_parts.append(
+                f"with {dominant_archetype} capitulation at "
+                f"{archetype_rate:.0%} of trajectories"
+            )
+        if imperative_delta and abs(imperative_delta) > 0.05:
+            narrative_parts.append(
+                f"preceded by imperative decay of {imperative_delta:.1%}"
+            )
+
+        narrative = ", ".join(narrative_parts) + "." if narrative_parts else ""
+
+        cards[model_id] = {
+            "display_name": display,
+            "top_pressure_types": top_5,
+            "dominant_archetype": dominant_archetype,
+            "archetype_rate": archetype_rate,
+            "imperative_delta": imperative_delta,
+            "hedging_delta": hedging_delta,
+            "top_failure_themes": top_themes,
+            "narrative": narrative,
+            "grading_layer_note": (
+                "All metrics derived from LLM judge (Layer 2) reasoning. "
+                "Layer 0 pattern matching has 30-97% FN rate and is not used."
+            ),
+        }
+
+    return cards
+
+
+def render_fingerprint_cards_md(cards: dict) -> str:
+    """Render pressure fingerprint cards as markdown."""
+    lines = [
+        "# Pressure Fingerprint Cards",
+        "",
+        f"Generated: {date.today().isoformat()}",
+        "",
+        "Per-model vulnerability profiles derived from mining analysis.",
+        "All metrics from LLM judge (Layer 2) reasoning — not deterministic pattern matching.",
+        "",
+    ]
+
+    for model_id in sorted(cards.keys(), key=lambda m: display_model(m)):
+        card = cards[model_id]
+        lines.extend(
+            [
+                f"## {card['display_name']}",
+                "",
+            ]
+        )
+
+        # Narrative
+        if card["narrative"]:
+            lines.extend([f"> {card['narrative']}", ""])
+
+        # Top pressure types table
+        if card["top_pressure_types"]:
+            lines.append("### Vulnerable Pressure Types")
+            lines.append("")
+            lines.append(
+                "| Pressure Type | Fail Rate | Wilson Lower | N | Mean Fail Turn |"
+            )
+            lines.append(
+                "|---------------|-----------|-------------|---|----------------|"
+            )
+            for pt in card["top_pressure_types"]:
+                mft = (
+                    f"{pt['mean_failure_turn']:.1f}" if pt["mean_failure_turn"] else "—"
+                )
+                lines.append(
+                    f"| {pt['pressure_type']} | {pt['fail_rate']:.1%} | "
+                    f"{pt['wilson_lower']:.3f} | {pt['n']} | {mft} |"
+                )
+            lines.append("")
+
+        # Trajectory
+        if card["dominant_archetype"]:
+            lines.append(
+                f"**Dominant archetype:** {card['dominant_archetype']} ({card['archetype_rate']:.0%})"
+            )
+            lines.append("")
+
+        # Linguistic harbingers
+        if card["imperative_delta"] is not None:
+            lines.append(f"**Imperative decay delta:** {card['imperative_delta']:.3f}")
+        if card["hedging_delta"] is not None:
+            lines.append(f"**Hedging delta:** {card['hedging_delta']:.3f}")
+        if card["imperative_delta"] is not None or card["hedging_delta"] is not None:
+            lines.append("")
+
+        # Failure themes
+        if card["top_failure_themes"]:
+            lines.append("### Top Failure Themes (from judge reasoning)")
+            lines.append("")
+            for t in card["top_failure_themes"]:
+                lines.append(f"- **{t['theme']}** ({t['count']} instances)")
+            lines.append("")
+
+        lines.append("---")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Cross-campaign risk synthesis from results/index.yaml"
@@ -711,6 +945,32 @@ def main():
     )
     (output_dir / "trendlines.md").write_text(render_trendlines_md(trendlines))
     print(f"Trendlines: {len(trendlines)} entries", file=sys.stderr)
+
+    # 5. Pressure Fingerprint Cards (only if mining analysis exists)
+    pressure_path = ANALYSIS_DIR / "pressure_effectiveness.json"
+    if pressure_path.exists():
+        pressure_data = load_pressure_effectiveness(pressure_path)
+        trajectory_data = load_trajectory_analysis(
+            ANALYSIS_DIR / "trajectory_analysis.json"
+        )
+        clusters_data = load_reasoning_clusters(
+            ANALYSIS_DIR / "judge_reasoning_clusters.json"
+        )
+        cards = build_pressure_fingerprint_cards(
+            pressure_data, trajectory_data, clusters_data
+        )
+        (output_dir / "fingerprint_cards.json").write_text(
+            json.dumps(cards, indent=2, default=str, sort_keys=True)
+        )
+        (output_dir / "fingerprint_cards.md").write_text(
+            render_fingerprint_cards_md(cards)
+        )
+        print(f"Fingerprint cards: {len(cards)} models", file=sys.stderr)
+    else:
+        print(
+            "Skipping fingerprint cards (no pressure_effectiveness.json)",
+            file=sys.stderr,
+        )
 
     print(f"\nAll synthesis artifacts written to {output_dir}", file=sys.stderr)
 

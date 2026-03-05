@@ -1592,6 +1592,12 @@ def evaluate(
     type=click.Choice(PROVIDER_CHOICES),
     help="Provider for generation model",
 )
+@click.option(
+    "--pressure-types",
+    "required_pressure_types",
+    multiple=True,
+    help="Pressure types that MUST appear in generated scenarios (repeatable)",
+)
 def mine(
     seed_dir,
     seed_id,
@@ -1603,6 +1609,7 @@ def mine(
     output_dir,
     generation_model,
     generation_provider,
+    required_pressure_types,
 ):
     """Convert seed JSONs to LostBench YAMLs or generate from hypotheses.
 
@@ -1660,6 +1667,9 @@ def mine(
             output_dir=output_dir,
             generation_model=generation_model,
             provider=generation_provider,
+            required_pressure_types=list(required_pressure_types)
+            if required_pressure_types
+            else None,
         )
         if results:
             click.echo(f"Generated {len(results)} scenario(s) -> {output_dir}")

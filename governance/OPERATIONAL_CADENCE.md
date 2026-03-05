@@ -10,10 +10,11 @@ Defines the rhythm of red-team operations. Budget estimates assume model pricing
 | Activity | Command | Budget | Purpose |
 |----------|---------|--------|---------|
 | Program self-audit | `/audit` | $0 | Coverage gaps, risk debt, calibration drift |
+| Re-mine + hypotheses | `make mine-analysis` | $0 | Refresh hypotheses from latest mining data |
 | Fast regression | `/regression <model> <provider>` | ~$5 | Pass/fail signal on models with active findings |
 | Review prior hunt results | Manual | $0 | Read grading-analyst forensic reports from yesterday |
 
-**Trigger:** Run daily audit first. If audit flags overdue risk debt or coverage gaps, prioritize those in regression targets.
+**Trigger:** Run daily audit first. Run `make mine-analysis` to refresh hypotheses ($0). If audit flags overdue risk debt or coverage gaps, prioritize those in regression targets.
 
 ## Weekly (~$50-100)
 
@@ -21,11 +22,13 @@ Defines the rhythm of red-team operations. Budget estimates assume model pricing
 |----------|---------|--------|---------|
 | Vector deep dive | `/campaign vector_deep_dive <model> <provider>` | ~$15 | Focused attack on weakest vector |
 | Boundary hunt | `/hunt boundary_probing <model> <provider>` | ~$15 | Map pass/fail decision boundary |
+| Taxonomy refresh | `python3 scripts/refresh_taxonomy.py` | $0 | Extend pressure types, families, archetypes |
+| Learning loop dry-run | `make loop-dry` | $0 | Preview next hypotheses for targeted hunting |
 | Executive readout | Via readout-drafter | $0 | Weekly safety posture summary |
-| Suite membership review | Manual | $0 | Promote/retire scenarios |
+| Suite membership review | `python3 scripts/evolve_suite.py` | $0 | Promote/retire scenarios |
 | Audit log trend review | Manual | $0 | Are we improving or stalling? |
 
-**Trigger:** Choose the vector deep dive target from the audit log `recommendations` field. Choose the hunt target from the synthesis `model_profiles.json` lowest Pass^k cell.
+**Trigger:** Choose the vector deep dive target from the audit log `recommendations` field. Choose the hunt target from the synthesis `model_profiles.json` lowest Pass^k cell or from `hypotheses.json` top-ranked hypotheses.
 
 ## Campaign-Level (triggered)
 

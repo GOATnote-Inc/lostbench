@@ -55,6 +55,14 @@ Read `configs/exploit_families.yaml`:
 - Flag any family that reverted from mitigated → active
 - Check `last_tested` dates — any family untested > 14 days?
 
+### Phase 4b: Mining Artifact Staleness
+
+Check freshness of learning loop artifacts:
+- `results/analysis/hypotheses.json` — stale if > 7 days old → recommend `make mine-analysis`
+- `configs/attack_taxonomy.yaml` `last_modified` — stale if > 14 days old → recommend `python3 scripts/refresh_taxonomy.py`
+- `results/suite_membership.yaml` `scenario_tracking` — if empty dict → recommend `python3 scripts/evolve_suite.py`
+- `results/analysis/proposed_families.yaml` — if exists and > 14 days old → recommend campaign-lead review
+
 ### Phase 5: Governance Review Check
 
 Read `results/audit_log.yaml`:

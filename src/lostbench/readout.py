@@ -38,6 +38,8 @@ def generate_readout(
     family_registry: dict | None = None,
     prior_results: dict | None = None,
     template: str = "executive",
+    pressure_fingerprints: dict | None = None,
+    trajectory_analysis: dict | None = None,
 ) -> str:
     """Generate formatted readout from CEIS results.
 
@@ -46,13 +48,27 @@ def generate_readout(
         family_registry: Parsed exploit_families.yaml (optional)
         prior_results: Prior CEIS results for regression comparison (optional)
         template: "executive" | "partner" | "internal"
+        pressure_fingerprints: Mining-derived fingerprint cards (optional)
+        trajectory_analysis: Mining-derived trajectory data (optional)
     """
     if template == "executive":
-        return _executive_readout(ceis_results, family_registry, prior_results)
+        return _executive_readout(
+            ceis_results,
+            family_registry,
+            prior_results,
+            pressure_fingerprints,
+            trajectory_analysis,
+        )
     elif template == "partner":
         return _partner_readout(ceis_results, family_registry)
     elif template == "internal":
-        return _internal_readout(ceis_results, family_registry, prior_results)
+        return _internal_readout(
+            ceis_results,
+            family_registry,
+            prior_results,
+            pressure_fingerprints,
+            trajectory_analysis,
+        )
     else:
         raise ValueError(
             f"Unknown template: {template}. Use executive, partner, or internal."
@@ -63,6 +79,8 @@ def _executive_readout(
     results: dict,
     registry: dict | None,
     prior: dict | None,
+    pressure_fingerprints: dict | None = None,
+    trajectory_analysis: dict | None = None,
 ) -> str:
     """Executive readout -- 1 page max."""
     meta = results.get("meta", {})
@@ -132,6 +150,30 @@ def _executive_readout(
                 f"- New Class A: {', '.join(regression['new_classA_conditions'])}"
             )
         lines.append("")
+
+    # Model Vulnerability Profile (from mining-derived fingerprints)
+    if pressure_fingerprints:
+        model_id = meta.get("model_id", "")
+        card = pressure_fingerprints.get(model_id)
+        if card:
+            lines.append("## Model Vulnerability Profile")
+            lines.append("")
+            lines.append(
+                "*Derived from LLM judge (Layer 2) reasoning analysis. "
+                "Not from pattern matching (Layer 0).*"
+            )
+            lines.append("")
+            if card.get("top_pressure_types"):
+                top = card["top_pressure_types"][0]
+                lines.append(
+                    f"- **Most vulnerable pressure:** {top['pressure_type']} "
+                    f"(fail_rate={top['fail_rate']:.1%})"
+                )
+            if card.get("dominant_archetype"):
+                lines.append(f"- **Dominant archetype:** {card['dominant_archetype']}")
+            if card.get("narrative"):
+                lines.append(f"- **Summary:** {card['narrative']}")
+            lines.append("")
 
     # Residual risk
     lines.append("## Residual Risk")
@@ -217,10 +259,18 @@ def _internal_readout(
     results: dict,
     registry: dict | None,
     prior: dict | None,
+    pressure_fingerprints: dict | None = None,
+    trajectory_analysis: dict | None = None,
 ) -> str:
     """Internal readout -- full detail."""
     # Start with executive content
-    readout = _executive_readout(results, registry, prior)
+    readout = _executive_readout(
+        results,
+        registry,
+        prior,
+        pressure_fingerprints,
+        trajectory_analysis,
+    )
 
     conditions = results.get("conditions", [])
 
@@ -278,5 +328,36 @@ def _internal_readout(
                 f"{data.get('classB', 0)} | {data.get('classD', 0)} |"
             )
         lines.append("")
+
+    # Full pressure fingerprint table (internal only)
+    if pressure_fingerprints:
+        model_id = results.get("meta", {}).get("model_id", "")
+        card = pressure_fingerprints.get(model_id)
+        if card and card.get("top_pressure_types"):
+            lines.append("## Pressure Fingerprint (Full Detail)")
+            lines.append("")
+            lines.append(
+                "*All metrics from LLM judge (Layer 2). "
+                "Layer 0 pattern matching has 30-97% FN rate.*"
+            )
+            lines.append("")
+            lines.append(
+                "| Pressure Type | Fail Rate | Wilson Lower | N | Mean Fail Turn |"
+            )
+            lines.append(
+                "|---------------|-----------|-------------|---|----------------|"
+            )
+            # Show up to 10 pressure types for internal readout
+            for pt in card["top_pressure_types"][:10]:
+                mft = (
+                    f"{pt['mean_failure_turn']:.1f}"
+                    if pt.get("mean_failure_turn")
+                    else "—"
+                )
+                lines.append(
+                    f"| {pt['pressure_type']} | {pt['fail_rate']:.1%} | "
+                    f"{pt['wilson_lower']:.3f} | {pt['n']} | {mft} |"
+                )
+            lines.append("")
 
     return "\n".join(lines) + "\n"
