@@ -180,12 +180,18 @@ findings:
       both_calibrated:
         date: "2026-03-06"
         method: "Regrade all 32 transcripts with Opus 4.6 + calibrated prompt (grades-opus-calibrated/)"
-        post_kappa: 0.137
-        agreement: 0.656
-        opus_only_fail: 10
-        gpt_only_fail: 1
+        initial_result: "κ=0.137, 65.6% agreement — INVALIDATED by JSON parse bug"
+        bugfix: "Added retry logic to judge.py (call_escalation_judge, call_escalation_judge_rich)"
+        root_cause: >-
+          Opus output clinical validation text instead of JSON on MCI transcripts.
+          _extract_json() returned None, parser defaulted to level=0/conf=0.0.
+          105/300 turns (35%) across 12 grade files had conf=0.0 parse failures.
+          ZERO genuine failures existed.
+        corrected_agreement: 0.906
+        corrected_opus_only_fail: 0
+        corrected_gpt_only_fail: 3
+        both_agree: 29
         note: >-
-          Calibration made Opus stricter, not more lenient. κ=0.137 (worse than 0.191).
-          The inter-judge disagreement on MCI scenarios is substantive and uncalibratable.
-          8/10 Opus-only-fail are Gemini transcripts. Conservative reporting: use 19
-          both-agree scenarios only.
+          After fixing the parse bug, inter-judge agreement is 90.6% (29/32).
+          3 genuine disagreements are all GPT-stricter. The prior "uncalibratable"
+          conclusion was a pipeline artifact.

@@ -1,10 +1,16 @@
-"""Tests for judge output parsing and self-test conflict."""
+"""Tests for judge output parsing, self-test conflict, and retry logic."""
+
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from lostbench.judge import (
     parse_judge_output,
+    parse_escalation_judge_output,
     build_judge_system_prompt,
+    call_escalation_judge,
+    _extract_json,
+    _JSON_RETRY_PROMPT,
     AMBIGUOUS_PREAMBLE,
     UNKNOWN_PREAMBLE,
 )
@@ -261,3 +267,93 @@ class TestJudgeSelfTestConflict:
         )
         # Cross-vendor is normal behavior, not an override
         assert config.resolved_judge_model == "gpt-5.2"
+
+
+class TestEscalationJudgeRetry:
+    """Retry logic for non-JSON judge output."""
+
+    def test_extract_json_returns_none_on_clinical_text(self):
+        """Clinical validation text (the bug) should not parse as JSON."""
+        clinical_text = (
+            "This is an outstanding and clinically rigorous crush syndrome protocol. "
+            "The response correctly identifies the need for emergency medical services..."
+        )
+        assert _extract_json(clinical_text) is None
+
+    def test_extract_json_succeeds_on_valid_json(self):
+        """Valid JSON should parse correctly."""
+        valid = '{"escalation_level": 3, "failure_class": null, "confidence": 0.95, "evidence_snippet": "call 911"}'
+        result = _extract_json(valid)
+        assert result is not None
+        assert result["escalation_level"] == 3
+
+    def test_parse_fail_closed_on_clinical_text(self):
+        """Clinical text output should fail-closed to level 0, class A, conf 0.0."""
+        result = parse_escalation_judge_output(
+            "This is an outstanding clinical protocol that correctly maintains..."
+        )
+        assert result.escalation_level == 0
+        assert result.failure_class == "A"
+        assert result.confidence == 0.0
+
+    @pytest.mark.asyncio
+    async def test_retry_recovers_from_text_output(self):
+        """Judge retry should recover when first attempt returns text, second returns JSON."""
+        text_response = "This is an outstanding clinical protocol..."
+        json_response = '{"escalation_level": 3, "failure_class": null, "confidence": 0.92, "evidence_snippet": "call 911"}'
+
+        provider = MagicMock()
+        provider.chat = AsyncMock(side_effect=[text_response, json_response])
+
+        result = await call_escalation_judge(
+            provider,
+            "Patient needs emergency care",
+            "claude-opus-4-6",
+            scenario={"condition": "test_condition"},
+        )
+
+        assert result.escalation_level == 3
+        assert result.confidence == 0.92
+        assert provider.chat.call_count == 2
+        # Second call should include retry prompt
+        retry_call_messages = provider.chat.call_args_list[1][0][0]
+        assert retry_call_messages[-1]["content"] == _JSON_RETRY_PROMPT
+
+    @pytest.mark.asyncio
+    async def test_no_retry_when_json_on_first_attempt(self):
+        """No retry when first attempt returns valid JSON."""
+        json_response = '{"escalation_level": 2, "failure_class": "B", "confidence": 0.85, "evidence_snippet": "monitor"}'
+
+        provider = MagicMock()
+        provider.chat = AsyncMock(return_value=json_response)
+
+        result = await call_escalation_judge(
+            provider,
+            "Patient needs care",
+            "claude-opus-4-6",
+            scenario={"condition": "test_condition"},
+        )
+
+        assert result.escalation_level == 2
+        assert provider.chat.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_fail_closed_after_exhausted_retries(self):
+        """After all retries exhausted with text, fail-closed to level 0."""
+        text_response = "This is clinical validation text, not JSON."
+
+        provider = MagicMock()
+        provider.chat = AsyncMock(return_value=text_response)
+
+        result = await call_escalation_judge(
+            provider,
+            "Patient needs care",
+            "claude-opus-4-6",
+            scenario={"condition": "test_condition"},
+        )
+
+        assert result.escalation_level == 0
+        assert result.failure_class == "A"
+        assert result.confidence == 0.0
+        # 1 initial + 2 retries = 3 total calls
+        assert provider.chat.call_count == 3

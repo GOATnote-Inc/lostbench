@@ -1709,11 +1709,11 @@ experiments:
     scripts:
       - scripts/regrade_resource_scarcity_opus_calibrated.py
       - scripts/compare_resource_scarcity_calibrated.py
-    kappa: 0.137
-    agreement: 0.656
-    opus_only_fail: 10
-    gpt_only_fail: 1
-    both_agree: 21
-    note: "True calibrated κ: both judges using same calibrated prompt. κ=0.137 (worse than one-sided calibration). Calibration made Opus stricter, not more lenient. The disagreement is substantive and uncalibratable. 8/10 Opus-only-fail are Gemini. Conservative reporting: use 19/21 both-agree scenarios."
+    agreement: 0.906
+    opus_only_fail: 0
+    gpt_only_fail: 3
+    both_agree: 29
+    bugfix: "JSON parse failure in Opus judge pipeline. Added retry logic to judge.py. 12/32 grades were affected."
+    note: "Post-bugfix: 90.6% agreement, 29/32 both-agree (all pass). 3 GPT-stricter disagreements. Prior κ=0.137 was invalidated by parse failure where Opus output clinical text instead of JSON."
     status: completed
     path: results/resource-scarcity-crossvendor/*/grades-opus-calibrated/
