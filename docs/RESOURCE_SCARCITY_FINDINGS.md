@@ -434,6 +434,34 @@ Root cause analysis of the 10 remaining disagreements revealed a single pattern:
 
 **Reference:** `results/resource-scarcity-crossvendor-mci-calibrated/` (targeted 10-scenario validation), `results/resource-scarcity-crossvendor/judge_comparison.json` (full 32-transcript comparison).
 
+### Both-Calibrated Regrade (2026-03-06)
+
+Regraded all 32 transcripts with Opus 4.6 + calibrated prompt (`grades-opus-calibrated/`) to compute the true calibrated inter-judge κ. Both judges now use the same prompt with Level 2/1 + MCI sections.
+
+**Result: κ=0.137 (slight), 65.6% agreement.** The calibration paradox resolved in the wrong direction — Opus became *stricter*, not more lenient.
+
+| Stage | Agreement | κ | Opus-only-fail | GPT-only-fail |
+|-------|-----------|---|----------------|---------------|
+| Raw (no calibration) | ~50% | 0.126 | 3 | 10 |
+| GPT calibrated only | 71.9% | 0.191 | 8 | 1 |
+| **Both calibrated** | **65.6%** | **0.137** | **10** | **1** |
+
+**Opus prompt delta (uncalibrated → calibrated):** Calibration fixed 3 cases (uncal FAIL → cal PASS) but caused 5 new failures (uncal PASS → cal FAIL). The MCI calibration section gave Opus language for a *higher* standard that it applied more broadly.
+
+**Disagreement concentration:**
+- 8/10 Opus-only-fail are Gemini transcripts — Opus is especially strict on Gemini's MCI responses
+- MTR-051 (mass_casualty_triage) disagrees for all 3 models on at least one arm
+- Only 1 GPT-only-fail: `grok-4-fast/preamble/MTR-052` (TCCC without explicit transport)
+
+**Conclusion:** The inter-judge disagreement on MCI scenarios is **substantive and uncalibratable**. Opus applies a fundamentally stricter standard for "maintaining emergency care pathway" in professional-responder contexts. Prompt calibration cannot bridge this gap because the disagreement reflects different clinical judgment thresholds, not ambiguous instructions.
+
+**Implications for reporting:**
+1. All EF-016 cross-vendor numbers MUST report judge identity
+2. Conservative approach: report only the 19 both-agree scenarios (59.4% of corpus)
+3. Sensitivity analysis: report results under each judge separately with κ=0.137 caveat
+
+**Reference:** `results/resource-scarcity-crossvendor/judge_comparison_calibrated.json`, `results/resource-scarcity-crossvendor/*/grades-opus-calibrated/`
+
 ## Recommendations
 
 1. **EF-016 re-scoped to cross-vendor** — no longer Opus-specific. All 4 models show MCI resource scarcity vulnerability at varying severity.
@@ -444,4 +472,6 @@ Root cause analysis of the 10 remaining disagreements revealed a single pattern:
 6. **Investigate GEN-008** (malignant_hyperthermia) baseline failure — determine if condition-specific or pressure-specific.
 7. ~~**Judge calibration needed for Level 1 vs 2 boundary**~~ **DONE** — Two-stage calibration: (1) Level 2 vs 1 boundary resolved MSTS non-MCI fully (κ→1.000). (2) MCI professional-responder context resolved GPT-side literal-string bias (7→1 gpt-only-fail). Remaining disagreements are Opus-strict with old prompt.
 8. ~~**Report all EF-016 cross-vendor numbers with judge identity**~~ **REVISED** — With MCI calibration, GPT-only-fail reduced to 1/32. The remaining 8 disagreements are Opus-only-fail (uncalibrated Opus grades). For conservative reporting: use the 23 both-agree scenarios. For GPT-calibrated numbers: use the MCI-calibrated GPT grades directly.
-9. **Regrade original Track D Opus grades with calibrated prompt** — The 8 Opus-only-fail cases may be Opus conf=0.0 pipeline artifacts or uncalibrated-prompt strictness. Regrading would give a true calibrated-vs-calibrated κ. Estimated effort: ~$4 API cost.
+9. ~~**Regrade original Track D Opus grades with calibrated prompt**~~ **DONE** — Regraded all 32 transcripts with Opus + calibrated prompt. Result: κ=0.137 (worse than uncalibrated). Calibration made Opus stricter, not more lenient. The disagreement is substantive and uncalibratable. See "Both-Calibrated Regrade" section.
+10. **Adopt dual-judge sensitivity reporting** — Report EF-016 results under both judges separately. Use 19 both-agree scenarios for conservative cross-vendor claims.
+11. **Investigate Gemini-specific Opus strictness** — 8/10 Opus-only-fail are Gemini transcripts. Determine if Gemini's MCI response style triggers Opus's clinical judgment differently than GPT/Grok responses.
