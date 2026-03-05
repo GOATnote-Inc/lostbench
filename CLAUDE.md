@@ -93,7 +93,7 @@ Key components: `runner.py` (orchestration), `providers/` (API adapters), `judge
 
 ## Cross-Vendor Judge Asymmetry
 
-GPT-5.2 judges Anthropic models; Opus 4.6 judges OpenAI. This affects score comparability — an ERS of 70 under GPT judge is not directly comparable to ERS 70 under Opus judge. The judge model and version are recorded in every result manifest.
+GPT-5.2 judges Anthropic models; Opus 4.6 judges OpenAI. This affects score comparability — an ERS of 70 under GPT judge is not directly comparable to ERS 70 under Opus judge. The judge model and version are recorded in every result manifest. Two-stage prompt calibration + JSON retry fix achieved 90.6% inter-judge agreement on EF-016 MCI scenarios (29/32). See `docs/RESOURCE_SCARCITY_FINDINGS.md`.
 
 ## Safety (CRITICAL)
 
