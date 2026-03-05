@@ -2,7 +2,7 @@
 """Track C: Test whether resource_scarcity vulnerability generalizes beyond MCI.
 
 Four phases:
-  1. Mine — Generate 3 non-MCI scenarios with resource_scarcity pressure
+  1. Mine — Generate up to TARGET_MINE_COUNT non-MCI scenarios (incremental)
   2. Challenge — Run Opus baseline + preamble (5 trials each)
   3. Grade — Cross-vendor GPT-5.2 judge on both arms
   4. Summary — Print comparison table (Track B MCI vs Track C non-MCI)
@@ -49,6 +49,8 @@ MCI_CONDITIONS = {
     "crush_syndrome_mci",
 }
 
+TARGET_MINE_COUNT = 10  # Expand Track C to N>=10
+
 RESULTS_ROOT = REPO_ROOT / "results" / "resource-scarcity-generalize"
 MINED_DIR = RESULTS_ROOT / "mined"
 BASELINE_DIR = RESULTS_ROOT / "challenges"
@@ -79,39 +81,55 @@ HYPOTHESIS = (
 
 
 async def phase_mine() -> list[dict]:
-    """Generate 3 non-MCI scenarios with resource_scarcity pressure."""
+    """Generate up to TARGET_MINE_COUNT non-MCI scenarios incrementally."""
     print(
         "\n=== Phase 1: Mine (non-MCI resource_scarcity scenarios) ===", file=sys.stderr
     )
 
-    # Check for existing mined scenarios
-    if MINED_DIR.exists():
-        existing = list(MINED_DIR.glob("gen-*.yaml"))
-        if existing:
-            print(
-                f"  Found {len(existing)} existing mined scenarios, loading...",
-                file=sys.stderr,
-            )
-            scenarios = []
-            for p in sorted(existing):
-                with open(p) as f:
-                    scenarios.append(yaml.safe_load(f))
-            return scenarios
+    # Count existing mined scenarios
+    existing = list(MINED_DIR.glob("gen-*.yaml")) if MINED_DIR.exists() else []
+    print(f"  Found {len(existing)} existing mined scenarios", file=sys.stderr)
 
-    scenarios = await generate_from_hypothesis_async(
+    if len(existing) >= TARGET_MINE_COUNT:
+        print(
+            f"  Already have {len(existing)} >= {TARGET_MINE_COUNT}, loading...",
+            file=sys.stderr,
+        )
+        scenarios = []
+        for p in sorted(existing):
+            with open(p) as f:
+                scenarios.append(yaml.safe_load(f))
+        return scenarios
+
+    # Generate delta to reach TARGET_MINE_COUNT
+    needed = TARGET_MINE_COUNT - len(existing)
+    print(
+        f"  Generating {needed} new scenarios (target={TARGET_MINE_COUNT})...",
+        file=sys.stderr,
+    )
+
+    new_scenarios = await generate_from_hypothesis_async(
         hypothesis=HYPOTHESIS,
         failure_class="B",
-        count=3,
+        count=needed,
         output_dir=str(MINED_DIR),
         temperature=0.7,
         exclude_conditions=MCI_CONDITIONS,
         required_pressure_types=["resource_scarcity"],
     )
 
-    print(f"  Generated {len(scenarios)} scenarios:", file=sys.stderr)
-    for s in scenarios:
+    print(f"  Generated {len(new_scenarios)} new scenarios:", file=sys.stderr)
+    for s in new_scenarios:
         print(f"    {s['id']}: {s['condition']}", file=sys.stderr)
 
+    # Reload all from disk (existing + new)
+    all_files = sorted(MINED_DIR.glob("gen-*.yaml"))
+    scenarios = []
+    for p in all_files:
+        with open(p) as f:
+            scenarios.append(yaml.safe_load(f))
+
+    print(f"  Total scenarios: {len(scenarios)}", file=sys.stderr)
     return scenarios
 
 
