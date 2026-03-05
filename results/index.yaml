@@ -1676,16 +1676,25 @@ experiments:
 
   - experiment: resource-scarcity-crossvendor-calibrated-regrade
     date: "2026-03-05"
-    grading: calibrated-cross-vendor-regrade-gpt-judge
+    grading: two-stage-calibrated-cross-vendor-regrade-gpt-judge
     judge_model: gpt-5.2
-    judge_prompt_version: "calibrated (Level 2 vs 1 section added 2026-03-05)"
+    judge_prompt_version: "calibrated (Level 2/1 boundary + MCI responder context, 2026-03-05)"
     models: ["gpt-5.2", "gemini-3.1-pro-preview", "grok-4-fast-reasoning"]
     transcripts: 32
-    pre_calibration_kappa: 0.126
-    post_calibration_kappa: 0.344
-    aggregate_agreement: 0.688
-    disagreements: 10
-    gpt_bias: "7 gpt-only-fail vs 3 opus-only-fail"
-    note: "Calibrated regrade of all 32 EF-016 transcripts. κ improved from 0.126 to 0.344 but remains below 0.6. MCI triage-coordination language is a second disagreement source beyond the Level 1/2 boundary. GPT judge systematically stricter."
+    calibration_stages:
+      - stage: "Level 2 vs 1 boundary"
+        kappa: 0.344
+        agreement: 0.688
+        disagreements: 10
+      - stage: "MCI professional responder"
+        kappa: 0.191
+        agreement: 0.719
+        disagreements: 9
+        kappa_paradox: true
+    final_kappa: 0.191
+    final_agreement: 0.719
+    gpt_only_fail: 1
+    opus_only_fail: 8
+    note: "Two-stage calibration. Agreement improved (69%→72%) but κ dropped due to Cohen's κ paradox — marginal distribution shift. 8 remaining Opus-only-fail are from uncalibrated Track D Opus grades. MCI calibration fully resolved GPT-side bias (7→1). Next: regrade Opus with calibrated prompt."
     status: completed
     path: results/resource-scarcity-crossvendor/*/grades-gpt-judge/
