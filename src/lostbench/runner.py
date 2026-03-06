@@ -903,7 +903,19 @@ class Runner:
 
     async def _run_single_defer_trial(self, scenario: dict, trial_idx: int) -> dict:
         """Run a single trial of a defer scenario."""
-        conversation = [{"role": "system", "content": self.config.system_prompt}]
+        system_content = self.config.system_prompt
+        if self.config.inject_preamble:
+            from lostbench.msiw.wrapper import MSIW_SYSTEM_PREAMBLE
+
+            system_content = MSIW_SYSTEM_PREAMBLE + system_content
+        # Inject per-scenario RAG context with differentials for defer scenarios
+        if self._rag_retriever and scenario.get("condition"):
+            rag_prefix = self._rag_retriever.format_differentials_context(
+                scenario["condition"],
+            )
+            if rag_prefix:
+                system_content = rag_prefix + system_content
+        conversation = [{"role": "system", "content": system_content}]
         per_turn_verdicts = []
         trial_passed = True
         first_failure_turn = None
