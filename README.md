@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Scenarios: 159](https://img.shields.io/badge/scenarios-159-green.svg)]()
-[![OpenEM Conditions: 363](https://img.shields.io/badge/OpenEM_conditions-363-blue.svg)]()
+[![OpenEM Conditions: 370](https://img.shields.io/badge/OpenEM_conditions-370-blue.svg)]()
 
 ## The Problem
 
@@ -47,7 +47,7 @@ The **preamble** is the dominant mitigation mechanism. Enforcement alone never h
 - **Multi-turn persistence:** 5-turn conversations with escalating pressure, not single-turn Q&A
 - **Pass^k, not pass@k:** Every trial must succeed. 80% per-trial = 33% pass^5. Strict logical AND.
 - **Cross-vendor judged:** GPT-5.2 judges Anthropic models; Opus judges OpenAI. Target model never judges itself.
-- **Clinically grounded:** 159 scenarios linked to 363 [OpenEM](https://github.com/GOATnote-Inc/openem-corpus) conditions with time-to-harm windows
+- **Clinically grounded:** 159 scenarios linked to 370 [OpenEM](https://github.com/GOATnote-Inc/openem-corpus) conditions with time-to-harm windows
 - **Adaptive discovery:** 4-strategy hunt engine finds new failures without human scenario authoring
 - **RAG-informed evaluation:** OpenEM escalation triggers and confusion pairs injected into model context for differential-aware testing
 
@@ -410,7 +410,7 @@ results/
 ├── seeds-gen-eval/               # 20 generated seeds eval (2 models)
 ├── seeds-cycle-eval/             # 279-seed Phase 1 deterministic screen
 ├── seeds-cycle-eval-stochastic/  # Phase 2 stochastic characterization (740 transcripts)
-├── defer-rag-2x2/                # Defer corpus RAG evaluation (363-condition index)
+├── defer-rag-2x2/                # Defer corpus RAG evaluation (370-condition index)
 ├── ceis-n5/                      # GPT-5.2 n=5 deep dive
 ├── ceis-{vector}-{model}-n3/     # Adversarial vector baselines
 ├── rag-v2/                       # RAG experiment (original 157-condition index)
@@ -440,7 +440,7 @@ results/
 ## Related Projects
 
 - **[ScribeGoat2](https://github.com/GOATnote-Inc/scribegoat2)** — Research lab and evaluation framework. LostBench was extracted from the SG2 eval pipeline as a standalone benchmark.
-- **[OpenEM Corpus](https://github.com/GOATnote-Inc/openem-corpus)** — 363-condition emergency medicine knowledge base. Provides clinical grounding, confusion pairs, and escalation triggers for LostBench scenarios and RAG evaluation.
+- **[OpenEM Corpus](https://github.com/GOATnote-Inc/openem-corpus)** — 370-condition emergency medicine knowledge base. Provides clinical grounding, confusion pairs, and escalation triggers for LostBench scenarios and RAG evaluation.
 - **[SafeShift](https://github.com/GOATnote-Inc/safeshift)** — Benchmarks whether inference optimizations degrade safety. Apache 2.0.
 - **[RadSlice](https://github.com/GOATnote-Inc/radslice)** — Multimodal radiology benchmark. 330 imaging tasks across 133 OpenEM conditions. 65 cross-referenced to LostBench.
 - **Cross-repo architecture:** [`CROSS_REPO_ARCHITECTURE.md`](https://github.com/GOATnote-Inc/scribegoat2/blob/main/docs/CROSS_REPO_ARCHITECTURE.md)

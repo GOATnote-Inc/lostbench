@@ -54,7 +54,7 @@ No runtime imports exist between LostBench, ScribeGoat2, SafeShift, or RadSlice.
 - **131 scenarios** across 9 corpus types (50 emergency, 15 defer, 8 code-agent, 8 tool-use, 8 multimodal, 9 integrated, 10 adversarial, 3 crisis-resource, 20 generated seeds) + 17 original mined seeds
 - **83 experiment runs** logged in `results/index.yaml`
 - **3,400+ graded seed responses** from 17 original seeds (4 models × 2 conditions × 5 trials) + **200 transcripts** from 20 generated seeds (2 models × 2 conditions × 5 trials)
-- **363 OpenEM conditions** (80 physician-reviewed)
+- **370 OpenEM conditions** (80 physician-reviewed)
 - **320 RadSlice imaging tasks** across 4 modalities
 - **~13,500 tests** across all 5 repos (LostBench 892, ScribeGoat2 1,868, OpenEM 9,391, SafeShift 140, RadSlice 1,218)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Coverage cycle — OpenEM-targeted seed generation.
 
-Wires OpenEM's 363 conditions directly into generation, telling the LLM
+Wires OpenEM's 370 conditions directly into generation, telling the LLM
 "generate a scenario for *this specific condition*" with clinical metadata
 baked into the prompt. Expected yield: near 100% (vs ~35% brute-force).
 

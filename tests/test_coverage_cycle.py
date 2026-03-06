@@ -281,10 +281,10 @@ def test_run_cycle_dry_run(tmp_path):
             },
         ],
         "summary": {
-            "total_conditions": 363,
+            "total_conditions": 370,
             "covered": 90,
-            "uncovered": 273,
-            "coverage_pct": 24.8,
+            "uncovered": 280,
+            "coverage_pct": 24.3,
             "p0_uncovered": 157,
             "p1_uncovered": 50,
             "p2": 66,

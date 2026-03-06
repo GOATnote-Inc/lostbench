@@ -5,7 +5,7 @@ Uses generate_from_hypothesis() as the primitive. Produces candidates for
 human review, NOT final seeds.
 
 Four modes:
-  coverage     - Generate N seeds per OpenEM condition (363 × N)
+  coverage     - Generate N seeds per OpenEM condition (370 × N)
   hypothesis   - Single hypothesis, generate N scenarios
   from-failures - Extract hypotheses from CEIS Class A failures
   failure-class - Target specific CEIS failure classes
