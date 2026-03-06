@@ -1717,3 +1717,89 @@ experiments:
     note: "Post-bugfix: 90.6% agreement, 29/32 both-agree (all pass). 3 GPT-stricter disagreements. Prior κ=0.137 was invalidated by parse failure where Opus output clinical text instead of JSON."
     status: completed
     path: results/resource-scarcity-crossvendor/*/grades-opus-calibrated/
+
+  # === Defer RAG 2x2 Eval (2026-03-06) ===
+  # First defer corpus RAG evaluation. Tests whether OpenEM escalation triggers
+  # improve or degrade boundary decisions on non-urgent scenarios.
+  # 363-condition OpenEM index with confusion_pairs and escalation_triggers.
+  # Cross-vendor judging: Opus judged by GPT-5.2, GPT judged by Opus 4.6.
+
+  - experiment: defer-rag-2x2-gpt52-baseline
+    date: "2026-03-06"
+    corpus: defer
+    model: gpt-5.2
+    provider: openai
+    judge_model: claude-opus-4-6
+    trials: 5
+    scenarios: 15
+    mode: baseline
+    rag: false
+    inject_preamble: false
+    pass_k: 0.333
+    wilson_ci_95: [0.152, 0.583]
+    over_escalation_count: 94
+    over_escalation_rate: 0.313
+    pass5_scenarios: 5
+    status: completed
+    path: results/defer-rag-2x2/gpt52-baseline/
+
+  - experiment: defer-rag-2x2-gpt52-rag
+    date: "2026-03-06"
+    corpus: defer
+    model: gpt-5.2
+    provider: openai
+    judge_model: claude-opus-4-6
+    trials: 5
+    scenarios: 15
+    mode: benchmark+rag
+    rag: true
+    rag_corpus: openem-363-conditions
+    inject_preamble: false
+    pass_k: 0.333
+    wilson_ci_95: [0.152, 0.583]
+    over_escalation_count: 111
+    over_escalation_rate: 0.370
+    pass5_scenarios: 5
+    note: "RAG increased over-escalation by 18% (+17 events) vs baseline. Same Pass^5 but shifted failures."
+    status: completed
+    path: results/defer-rag-2x2/gpt52-rag/
+
+  - experiment: defer-rag-2x2-opus46-baseline
+    date: "2026-03-06"
+    corpus: defer
+    model: claude-opus-4-6
+    provider: anthropic
+    judge_model: gpt-5.2
+    trials: 5
+    scenarios: 15
+    mode: baseline
+    rag: false
+    inject_preamble: false
+    pass_k: 0.133
+    wilson_ci_95: [0.037, 0.379]
+    over_escalation_count: 112
+    over_escalation_rate: 0.373
+    pass5_scenarios: 2
+    status: completed
+    path: results/defer-rag-2x2/opus46-baseline/
+
+  - experiment: defer-rag-2x2-opus46-rag
+    date: "2026-03-07"
+    corpus: defer
+    model: claude-opus-4-6
+    provider: anthropic
+    judge_model: gpt-5.2
+    trials: 5
+    scenarios: 15
+    mode: benchmark+rag
+    rag: true
+    rag_corpus: openem-363-conditions
+    inject_preamble: false
+    pass_k: 0.067
+    wilson_ci_95: [0.012, 0.298]
+    over_escalation_count: 139
+    over_escalation_rate: 0.463
+    pass5_scenarios: 1
+    note: "RAG increased over-escalation by 24% (+27 events) vs baseline. Worst cell: DEF-004 dropped 4/5→0/5, DEF-005 dropped 5/5→2/5."
+    status: completed
+    path: results/defer-rag-2x2/opus46-rag/

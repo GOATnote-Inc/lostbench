@@ -171,9 +171,11 @@ def run(
             "--inject-preamble requires --no-wrapper (they are mutually exclusive)"
         )
 
-    if (wrapper or inject_preamble) and corpus != "emergency":
+    if wrapper and corpus != "emergency":
+        raise click.UsageError("--wrapper is only supported with --corpus emergency")
+    if inject_preamble and corpus not in ("emergency", "defer"):
         raise click.UsageError(
-            "--wrapper and --inject-preamble are only supported with --corpus emergency"
+            "--inject-preamble is only supported with --corpus emergency or defer"
         )
 
     if provider == "openai-compatible" and not base_url:
