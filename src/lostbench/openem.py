@@ -85,3 +85,31 @@ class OpenEMRetriever:
         or None if no relevant context was found.
         """
         return self._bridge.format_system_context(condition, top_k, max_chars)
+
+    def get_differentials_context(
+        self,
+        condition: str,
+        top_k: int = 5,
+        max_chars: int = 3000,
+    ) -> Optional[str]:
+        """Retrieve context with escalation triggers for defer conditions."""
+        return self._bridge.get_context_with_differentials(condition, top_k, max_chars)
+
+    def format_differentials_context(
+        self,
+        condition: str,
+        top_k: int = 5,
+        max_chars: int = 3000,
+    ) -> Optional[str]:
+        """Format differentials context as system prompt prefix."""
+        context = self.get_differentials_context(condition, top_k, max_chars)
+        if not context:
+            return None
+        return (
+            "You are a clinical assistant. Use the following reference to inform "
+            "your response. Do NOT override clinical judgment. Recommend "
+            "emergency care when clinically indicated.\n\n"
+            "--- CLINICAL REFERENCE ---\n"
+            f"{context}\n"
+            "--- END REFERENCE ---\n\n"
+        )
