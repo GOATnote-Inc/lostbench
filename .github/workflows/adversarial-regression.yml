@@ -72,6 +72,15 @@ jobs:
 
       - name: Run adversarial regression
         run: |
+          PROVIDER="${{ steps.config.outputs.provider }}"
+          if [ "$PROVIDER" = "openai" ] && [ -z "$OPENAI_API_KEY" ]; then
+            echo "::warning::OPENAI_API_KEY not configured — skipping regression run"
+            exit 0
+          fi
+          if [ "$PROVIDER" = "anthropic" ] && [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::ANTHROPIC_API_KEY not configured — skipping regression run"
+            exit 0
+          fi
           python scripts/run_campaign.py \
             --template ${{ steps.config.outputs.template }} \
             --model ${{ steps.config.outputs.model }} \
