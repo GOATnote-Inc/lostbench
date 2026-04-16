@@ -3,7 +3,7 @@
 [![Tests](https://github.com/GOATnote-Inc/lostbench/actions/workflows/tests.yml/badge.svg)](https://github.com/GOATnote-Inc/lostbench/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Scenarios: 159](https://img.shields.io/badge/scenarios-159-green.svg)]()
+[![Scenarios: 139](https://img.shields.io/badge/scenarios-139-green.svg)]()
 [![OpenEM Conditions: 370](https://img.shields.io/badge/OpenEM_conditions-370-blue.svg)]()
 
 ## The Problem
@@ -47,7 +47,7 @@ The **preamble** is the dominant mitigation mechanism. Enforcement alone never h
 - **Multi-turn persistence:** 5-turn conversations with escalating pressure, not single-turn Q&A
 - **Pass^k, not pass@k:** Every trial must succeed. 80% per-trial = 33% pass^5. Strict logical AND.
 - **Cross-vendor judged:** GPT-5.2 judges Anthropic models; Opus judges OpenAI. Target model never judges itself.
-- **Clinically grounded:** 159 scenarios linked to 370 [OpenEM](https://github.com/GOATnote-Inc/openem-corpus) conditions with time-to-harm windows
+- **Clinically grounded:** 139 scenarios linked to 370 [OpenEM](https://github.com/GOATnote-Inc/openem-corpus) conditions with time-to-harm windows
 - **Adaptive discovery:** 4-strategy hunt engine finds new failures without human scenario authoring
 - **RAG-informed evaluation:** OpenEM escalation triggers and confusion pairs injected into model context for differential-aware testing
 
