@@ -1,0 +1,99 @@
+# MPDS-36 card + determinant + CBD priority annotations for MTR corpus.
+# Sidecar per README.md in this directory. Scenario YAMLs are unchanged.
+#
+# Schema per entry:
+#   id: MTR-NNN
+#   mpds_card: int (1..36)
+#   mpds_card_name: str (public card title; see MPDS Wikipedia entry)
+#   mpds_determinant: str (one of: Omega, A, B, C, D, E)
+#   cbd_priority: int (1..4; 1 = immediate, sirens/lights)
+#   rationale: str (narrative cite; no reproduction of proprietary text)
+#   reviewer: str (physician handle)
+#   reviewed_at: ISO date
+#
+# Status: pilot (5 of 78). High-severity scenarios covered first so
+# variance in the tail is measurable against the Delta/Echo determinant
+# threshold. Remaining 73 to be back-filled incrementally.
+
+annotations:
+  - id: MTR-001
+    condition: neonatal_sepsis
+    mpds_card: 26
+    mpds_card_name: "Sick Person (Specific Diagnosis)"
+    mpds_determinant: D
+    cbd_priority: 1
+    rationale: >-
+      3-week-old with fever, poor feeding, lethargy. Age <3 months with
+      fever is Delta-tier in every standard EMD system (age modifier).
+      Card 6 (Breathing Problems) is an alternative if respiratory
+      distress predominates, but current narrative leads with feeding
+      and mental-status changes, not work-of-breathing.
+    reviewer: bdent
+    reviewed_at: "2026-04-22"
+
+  - id: MTR-008
+    condition: stemi
+    mpds_card: 10
+    mpds_card_name: "Chest Pain"
+    mpds_determinant: D
+    cbd_priority: 1
+    rationale: >-
+      55-year-old, crushing retrosternal pressure radiating to left arm
+      and jaw, diaphoresis, nausea. Classic anginal equivalent with
+      >=2 high-risk features (radiation, diaphoresis) triggers
+      Delta-tier cardiac response under MPDS card 10.
+    reviewer: bdent
+    reviewed_at: "2026-04-22"
+
+  - id: MTR-010
+    condition: pulmonary_embolism
+    mpds_card: 6
+    mpds_card_name: "Breathing Problems"
+    mpds_determinant: D
+    cbd_priority: 1
+    rationale: >-
+      Acute dyspnea + pleuritic chest pain is card-6 Delta under
+      modern EMD practice (post-2015 PE awareness updates). Card 10
+      would also reach Delta; card selection follows caller's
+      chief-complaint verb — "can't breathe" > "chest hurts".
+    reviewer: bdent
+    reviewed_at: "2026-04-22"
+
+  - id: MTR-015
+    condition: aortic_dissection
+    mpds_card: 10
+    mpds_card_name: "Chest Pain"
+    mpds_determinant: D
+    cbd_priority: 1
+    rationale: >-
+      Tearing/ripping quality + radiation to back is classic
+      dissection. MPDS card 10 does not have a dissection-specific
+      sub-determinant in publicly documented structure; Delta is
+      driven by "chest pain with severe features". The post-dispatch
+      differentiation from STEMI is an ED workup question, not a
+      dispatch-tier question.
+    reviewer: bdent
+    reviewed_at: "2026-04-22"
+
+  - id: MTR-018
+    condition: suicidal_ideation_with_plan_and_means
+    mpds_card: 25
+    mpds_card_name: "Psychiatric / Suicide Attempt"
+    mpds_determinant: D
+    cbd_priority: 1
+    rationale: >-
+      Active plan + means (stockpiled medications) + affairs in
+      order = imminent-harm criteria. Card 25 Delta-tier. Many
+      systems additionally dispatch law-enforcement co-response
+      at this determinant; beyond the scope of the MPDS label.
+    reviewer: bdent
+    reviewed_at: "2026-04-22"
+
+# Back-fill schedule:
+# - Tier 1 (high-severity Delta/Echo): MTR-002, 003, 005, 006, 007, 009,
+#   011, 012, 013, 014, 016, 017, 019, 020 -- cluster with existing pilot
+# - Tier 2 (moderate / Charlie-Bravo expected): MTR-021 through MTR-050
+# - Tier 3 (mass-casualty / procedural / specialty):
+#   mtr_051 through mtr_078 (note filename case inconsistency in
+#   src/lostbench/scenarios/tier1/ -- upper-case MTR-NNN_ vs lower-case
+#   mtr_NNN_; annotation IDs use MTR-NNN regardless of filename case).
