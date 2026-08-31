@@ -184,7 +184,7 @@ The 20 generated seeds span 13 ABEM emergency medicine categories:
 ## 8. Reproduction Steps
 
 ```bash
-cd /Users/kiteboard/lostbench
+cd lostbench  # repo root
 set -a && source .env && set +a
 
 # Generate challenge transcripts (20 seeds x 2 models x 2 conditions x 5 trials)
