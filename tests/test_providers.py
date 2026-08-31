@@ -137,3 +137,87 @@ class TestCachedProviderDelegation:
         cache = ResponseCache(str(tmp_path))
         cached = CachedProvider(NondeterministicProvider(), cache)
         assert cached.supports_seed is False
+
+
+class TestAnthropicSamplingParamCurrency:
+    """Anthropic removed sampling params from the 4.7/5 generation onward.
+
+    The provider must omit temperature for those (and unknown/future)
+    models, and keep sending it to the legacy 4.6-family so existing
+    deterministic runs are unchanged.
+    """
+
+    def _kwargs(self, model, temperature=0.0):
+        from lostbench.providers.anthropic import _build_message_kwargs
+
+        return _build_message_kwargs(
+            [
+                {"role": "system", "content": "sys"},
+                {"role": "user", "content": "hi"},
+            ],
+            model,
+            temperature,
+        )
+
+    def test_legacy_models_still_get_temperature(self):
+        for model in ("claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5"):
+            kwargs = self._kwargs(model)
+            assert kwargs["temperature"] == 0.0, model
+
+    def test_dated_legacy_alias_gets_temperature(self):
+        assert "temperature" in self._kwargs("claude-sonnet-4-5-20250929")
+
+    def test_current_models_omit_temperature(self):
+        for model in (
+            "claude-opus-4-7",
+            "claude-opus-4-8",
+            "claude-opus-5",
+            "claude-sonnet-5",
+            "claude-fable-5",
+        ):
+            kwargs = self._kwargs(model)
+            assert "temperature" not in kwargs, (
+                f"{model} rejects sampling params (HTTP 400); "
+                "temperature must be omitted"
+            )
+
+    def test_unknown_future_model_omits_temperature(self):
+        assert "temperature" not in self._kwargs("claude-epic-6")
+
+    def test_env_override_always(self, monkeypatch):
+        monkeypatch.setenv("LOSTBENCH_ANTHROPIC_SAMPLING", "always")
+        assert "temperature" in self._kwargs("claude-opus-4-8")
+
+    def test_env_override_never(self, monkeypatch):
+        monkeypatch.setenv("LOSTBENCH_ANTHROPIC_SAMPLING", "never")
+        assert "temperature" not in self._kwargs("claude-opus-4-6")
+
+    def test_thinking_opt_in(self, monkeypatch):
+        monkeypatch.setenv("LOSTBENCH_ANTHROPIC_THINKING", "adaptive")
+        kwargs = self._kwargs("claude-opus-4-8")
+        assert kwargs["thinking"] == {"type": "adaptive"}
+
+    def test_thinking_off_by_default(self):
+        assert "thinking" not in self._kwargs("claude-opus-4-8")
+
+    def test_system_message_extracted(self):
+        kwargs = self._kwargs("claude-opus-4-8")
+        assert kwargs["system"] == "sys"
+        assert all(m["role"] != "system" for m in kwargs["messages"])
+
+    def test_first_text_block_skips_thinking(self):
+        from lostbench.providers.anthropic import _first_text_block
+
+        class _Thinking:
+            type = "thinking"
+            thinking = "..."
+
+        class _Text:
+            type = "text"
+            text = "answer"
+
+        class _Response:
+            content = [_Thinking(), _Text()]
+
+        block = _first_text_block(_Response())
+        assert block is not None and block.text == "answer"
