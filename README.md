@@ -6,6 +6,16 @@
 [![Scenarios: 139](https://img.shields.io/badge/scenarios-139-green.svg)]()
 [![OpenEM Conditions: 370](https://img.shields.io/badge/OpenEM_conditions-370-blue.svg)]()
 
+## Status and Scope
+
+**Research benchmark. Not for clinical use.** LostBench is an evaluation
+harness for studying model behavior under controlled, fully synthetic
+scenarios. It is not a medical device, produces no medical advice, and must
+not be used to guide care. The MSIW wrapper is an evaluation instrument for
+measuring mitigation effects — not a deployable safety layer. Results
+reflect controlled conditions with automated (LLM-judge) grading, not human
+clinical adjudication and not real-world patient outcomes.
+
 ## The Problem
 
 Every frontier model can identify a STEMI. None of them reliably maintain "go to the ER now" when the patient pushes back.
@@ -218,7 +228,7 @@ Decision framework with three dispositions:
 | **ESCALATE** | Requires human review before resolution | Same |
 | **CLEAR** | Finding resolved or accepted | Same |
 
-Budget gate: `configs/model_pricing.yaml` + `max_cost_usd` in each campaign template. Cost exceeding budget triggers automatic BLOCK.
+Budget gate: `configs/model_pricing.yaml` + `max_cost_usd` in each campaign template. `lostbench ceis run` estimates cost before the first API call and exits non-zero with BLOCK when the estimate exceeds the budget (fail-closed if pricing data is missing).
 
 ### After-Action Reviews
 
@@ -243,10 +253,22 @@ Structured AARs after every major campaign:
 ```bash
 git clone https://github.com/GOATnote-Inc/lostbench.git && cd lostbench
 pip install -e ".[dev]"
-cp .env.example .env  # Add OPENAI_API_KEY and/or ANTHROPIC_API_KEY
-source .env
+cp .env.example .env       # Add OPENAI_API_KEY and/or ANTHROPIC_API_KEY
+set -a; source .env; set +a  # export the keys (.env has no 'export' lines)
 
 lostbench evaluate --model gpt-5.2 --provider openai --mode quick
+```
+
+Note: `--mode quick` is a pattern-only plumbing smoke test — emergency
+scenarios are reported as UNGRADED without the LLM judge. Use
+`--mode standard` for a scored result.
+
+**Faster clone** (~600 MB of committed eval transcripts live in `results/`;
+skip downloading them if you only need the code):
+
+```bash
+git clone --filter=blob:none --sparse https://github.com/GOATnote-Inc/lostbench.git
+cd lostbench && git sparse-checkout set --no-cone '/*' '!results/'
 ```
 
 ### Evaluate Your Model
@@ -410,7 +432,6 @@ results/
 ├── seeds-gen-eval/               # 20 generated seeds eval (2 models)
 ├── seeds-cycle-eval/             # 279-seed Phase 1 deterministic screen
 ├── seeds-cycle-eval-stochastic/  # Phase 2 stochastic characterization (740 transcripts)
-├── defer-rag-2x2/                # Defer corpus RAG evaluation (370-condition index)
 ├── ceis-n5/                      # GPT-5.2 n=5 deep dive
 ├── ceis-{vector}-{model}-n3/     # Adversarial vector baselines
 ├── rag-v2/                       # RAG experiment (original 157-condition index)
@@ -422,18 +443,18 @@ results/
 
 | Document | Content |
 |----------|---------|
-| [`PHASE3_FINDINGS.md`](docs/PHASE3_FINDINGS.md) | MSIW 2x2 factorial analysis, enforcement interference, preamble dominance |
-| [`SEEDS_PERSISTENCE_FINDINGS.md`](docs/SEEDS_PERSISTENCE_FINDINGS.md) | 5-model persistence analysis, unsolved seed deep dives |
-| [`GEN_EVAL_FINDINGS.md`](docs/GEN_EVAL_FINDINGS.md) | Generated seeds: GEN-004 universally resistant, attack family discovery |
-| [`CYCLE_EVAL_FINDINGS.md`](docs/CYCLE_EVAL_FINDINGS.md) | 279-seed two-phase methodology, failure distribution analysis |
-| [`ADVERSARIAL_FINDINGS.md`](docs/ADVERSARIAL_FINDINGS.md) | 43-scenario adversarial campaign results |
+| [`PHASE3_FINDINGS.md`](PHASE3_FINDINGS.md) | MSIW 2x2 factorial analysis, enforcement interference, preamble dominance |
+| [`SEEDS_PERSISTENCE_FINDINGS.md`](SEEDS_PERSISTENCE_FINDINGS.md) | 5-model persistence analysis, unsolved seed deep dives |
+| [`GEN_EVAL_FINDINGS.md`](GEN_EVAL_FINDINGS.md) | Generated seeds: GEN-004 universally resistant, attack family discovery |
+| [`CYCLE_EVAL_FINDINGS.md`](CYCLE_EVAL_FINDINGS.md) | 279-seed two-phase methodology, failure distribution analysis |
+| [`ADVERSARIAL_FINDINGS.md`](ADVERSARIAL_FINDINGS.md) | 43-scenario adversarial campaign results |
 | [`RESOURCE_SCARCITY_FINDINGS.md`](docs/RESOURCE_SCARCITY_FINDINGS.md) | MCI triage under resource constraints |
 
 ## Reproducibility
 
-- **Deterministic:** `temperature=0.0`, `seed=42` for all evaluations
+- **Deterministic where supported:** `temperature=0.0`, `seed=42` requested for all evaluations (providers and models that do not accept sampling/seed parameters run at provider defaults; recorded in manifests)
 - **Cached:** Model and judge API responses cached by `SHA-256(model, messages, temperature, seed)`
-- **Manifest-tracked:** Every result directory recorded in `results/index.yaml` with model, judge, date, config hash
+- **Manifest-tracked:** Result directories recorded in `results/index.yaml` with model, judge, and date; dataset/system-prompt hashes live in each run's `lostbench_manifest.json` where captured
 - **Re-gradable:** Transcripts are graded offline — CEIS pipeline runs without API calls on cached transcripts
 - **Cross-vendor:** Judge model identity recorded in every manifest. Results are not comparable across judge models without calibration data.
 

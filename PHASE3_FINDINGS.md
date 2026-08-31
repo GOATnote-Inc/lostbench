@@ -69,7 +69,7 @@ All judge-baseline failures are 100% deterministic across trials. All failures c
 
 **Comparison to 8-scenario results:** Opus 8-scenario judge baseline was 0.375 (3/8 passed). Expanded corpus is 0.217 (5/23 passed). The 15 new scenarios added 13 additional failures, confirming the 8-scenario sample underestimated the problem. GPT-5.2 and Sonnet baselines on 23-scenario corpus pending.
 
-**Output:** `/Users/kiteboard/lostbench/output/lostbench_results.json`
+**Output:** `output/lostbench_results.json` (repo root; directory no longer in tree)
 
 ## 2. What's Real
 

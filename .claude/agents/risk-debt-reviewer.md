@@ -54,7 +54,7 @@ Output a summary count and direct the physician:
 PENDING RISK DEBT: [N] items requiring physician sign-off
 
 To adjudicate these items with full agent-assisted review:
-  cd /Users/kiteboard/scribegoat2
+  cd ../scribegoat2  # sibling checkout of GOATnote-Inc/scribegoat2
   /adjudicate --risk-debt
 
 After adjudication, this agent will update risk_debt.yaml with:

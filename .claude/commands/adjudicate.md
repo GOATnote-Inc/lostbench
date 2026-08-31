@@ -29,7 +29,7 @@ Full adjudication infrastructure lives in ScribeGoat2. After reviewing pending i
 
 ```
 To adjudicate with full agent-assisted review (7 agents):
-  cd /Users/kiteboard/scribegoat2
+  cd ../scribegoat2  # sibling checkout of GOATnote-Inc/scribegoat2
   /adjudicate --risk-debt
 ```
 
