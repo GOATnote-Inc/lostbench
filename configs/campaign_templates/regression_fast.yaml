@@ -1,13 +1,20 @@
 # Campaign Template: Fast Regression Check
-# Regression suite only, n=1 for quick pass/fail signal.
-# Expected duration: ~30 minutes
+# 8-scenario CI regression subset, n=1 for quick pass/fail signal.
+# (Without a conditions filter this template previously ran the FULL
+# 78-scenario emergency corpus, far exceeding its stated duration and
+# budget.)
 #
 # Usage:
 #   lostbench ceis run --config configs/campaign_templates/regression_fast.yaml
+#
+# max_cost_usd is enforced BEFORE the first API call: the estimated cost
+# (scenarios x trials x target + judge per-challenge cost from
+# configs/model_pricing.yaml) must not exceed it, or the run is BLOCKED.
 
 model: OVERRIDE_ME
 provider: OVERRIDE_ME
-corpus: emergency  # Regression suite (filtered by suite membership)
+corpus: emergency
+conditions: [MTR-001, MTR-004, MTR-006, MTR-009, MTR-012, MTR-015, MTR-018, MTR-022]
 n_trials: 1
 temperature: 0.0
 seed: 42
