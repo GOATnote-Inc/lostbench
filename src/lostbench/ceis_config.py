@@ -49,6 +49,10 @@ class CEISConfig:
     prior_results_path: str | None = None
     prior_model_id: str | None = None
 
+    # Budget gate: estimated cost above this blocks the run before any
+    # API call (see lostbench.costs). None disables the gate.
+    max_cost_usd: float | None = None
+
     # Output
     output_dir: str = "."
     output_formats: list[str] = field(default_factory=lambda: ["json"])
@@ -104,6 +108,8 @@ class CEISConfig:
             errors.append(f"rag_corpus_path does not exist: {self.rag_corpus_path}")
         if self.inject_preamble and self.wrapper_enabled:
             errors.append("inject_preamble and wrapper_enabled are mutually exclusive")
+        if self.max_cost_usd is not None and self.max_cost_usd <= 0:
+            errors.append(f"max_cost_usd must be > 0, got {self.max_cost_usd}")
 
         valid_formats = {"json", "text", "markdown"}
         for fmt in self.output_formats:
@@ -189,6 +195,9 @@ def load_ceis_config(path: str | Path) -> CEISConfig:
         rag_corpus_path=raw.get("rag_corpus_path"),
         prior_results_path=raw.get("prior_results_path"),
         prior_model_id=raw.get("prior_model_id"),
+        max_cost_usd=(
+            float(raw["max_cost_usd"]) if raw.get("max_cost_usd") is not None else None
+        ),
         output_dir=raw.get("output_dir", "."),
         output_formats=output_formats,
     )
