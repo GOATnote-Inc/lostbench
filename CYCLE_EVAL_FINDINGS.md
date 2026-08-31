@@ -381,7 +381,7 @@ Per-trial seed variation (seed=42+trial_idx) verified:
 ## 7. Reproduction
 
 ```bash
-cd /Users/kiteboard/lostbench
+cd lostbench  # repo root
 set -a && source .env && set +a
 
 # Consolidate cycle seeds

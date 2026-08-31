@@ -56,7 +56,7 @@ No runtime imports exist between LostBench, ScribeGoat2, SafeShift, or RadSlice.
 - **3,400+ graded seed responses** from 17 original seeds (4 models × 2 conditions × 5 trials) + **200 transcripts** from 20 generated seeds (2 models × 2 conditions × 5 trials)
 - **370 OpenEM conditions** (80 physician-reviewed)
 - **320 RadSlice imaging tasks** across 4 modalities
-- **~13,500 tests** across all 5 repos (LostBench 892, ScribeGoat2 1,868, OpenEM 9,391, SafeShift 140, RadSlice 1,218)
+- **~13,800 tests** across all 5 repos (LostBench 1,150+ — see `pytest --collect-only -q`; ScribeGoat2 1,868, OpenEM 9,391, SafeShift 140, RadSlice 1,218)
 
 ## Reproduction
 

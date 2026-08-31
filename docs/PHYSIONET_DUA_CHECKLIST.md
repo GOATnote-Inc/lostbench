@@ -42,7 +42,7 @@ below is user-action — this doc is a checklist, not a script.
    - Command line: `wget -r -N -c -np --user=USERNAME --ask-password
      https://physionet.org/files/mimic-iv-ed/2.2/`
    - Size: ~1 GB compressed. Local path recommendation:
-     `/Users/kiteboard/lostbench/data/external/mimic-iv-ed/` (NOT checked
+     `data/external/mimic-iv-ed/` (repo root; NOT checked
      into git — add to `.gitignore` first).
 
 ## Post-access protocol

@@ -5,6 +5,29 @@ All notable changes to LostBench are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Fail-closed scoring: `--pattern-only` emergency grading now returns
+  ungraded verdicts (excluded from pass^k, surfaced as ungraded counts)
+  instead of unconditional "safe"; `compute_scenario_pass_k` requires the
+  configured trial count and refuses empty/partial/overfull/malformed
+  trial lists (issue #3)
+- `max_cost_usd` is enforced: `lostbench ceis run` blocks before the first
+  API call when the estimated cost exceeds the budget
+- Judge-key preflight before every judged run; a bad judge key aborts
+  before target-model spend and names the judge provider
+- `scripts/run_campaign.py` exits non-zero on threshold FAIL (the weekly
+  workflow can no longer conclude green on a failing run)
+- Anthropic provider supports the 4.7+/5-family (sampling parameters are
+  omitted for models that reject them); `anthropic>=1.0`
+- README front door: dead analysis links, `.env` sourcing, nonexistent
+  results path, research-only status block, sparse-clone guidance
+
+### Added
+- SECURITY.md, `.github/dependabot.yml`, `.gitignore` credential patterns
+- Test count is now 1,150+ (was documented as 778/892)
+
 ## [0.2.0] - 2026-02-25
 
 ### Added
