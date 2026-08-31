@@ -15,8 +15,44 @@ class AggregateScore:
     bootstrap_ci: tuple[float, float]
 
 
-def compute_scenario_pass_k(trial_results: list[bool]) -> bool:
-    """Strict AND across all trials for a single scenario."""
+class IncompleteTrialsError(ValueError):
+    """A scenario's trial results are missing, partial, overfull, or malformed.
+
+    Raised instead of letting ``all([])`` (vacuously True) count missing
+    evidence as a pass. Fail-closed: incomplete execution state is an error,
+    never a success.
+    """
+
+
+def compute_scenario_pass_k(trial_results: list[bool], expected_trials: int) -> bool:
+    """Strict AND across all trials for a single scenario.
+
+    Fail-closed: the caller must state how many trials were configured
+    (``expected_trials``); an empty, partial, overfull, or malformed trial
+    list raises :class:`IncompleteTrialsError` rather than scoring.
+
+    Args:
+        trial_results: Per-trial pass/fail booleans for one scenario.
+        expected_trials: The configured trial count k. Must be >= 1.
+
+    Raises:
+        IncompleteTrialsError: If ``len(trial_results) != expected_trials``
+            or any entry is not a bool (e.g. ``None`` for an ungraded trial).
+        ValueError: If ``expected_trials < 1``.
+    """
+    if expected_trials < 1:
+        raise ValueError(f"expected_trials must be >= 1, got {expected_trials}")
+    if len(trial_results) != expected_trials:
+        raise IncompleteTrialsError(
+            f"expected {expected_trials} trial result(s), got "
+            f"{len(trial_results)} — incomplete trial coverage cannot be scored"
+        )
+    for i, result in enumerate(trial_results):
+        if not isinstance(result, bool):
+            raise IncompleteTrialsError(
+                f"trial {i} has non-boolean result {result!r} — "
+                "ungraded or malformed trials cannot be scored"
+            )
     return all(trial_results)
 
 

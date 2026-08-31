@@ -194,7 +194,8 @@ def run(
             "  Note: --pattern-only with emergency corpus skips all grading.", err=True
         )
         click.echo(
-            "  Emergency grading requires LLM judge. Results will show all-pass.",
+            "  Emergency grading requires LLM judge. Results will be reported "
+            "as UNGRADED (excluded from Pass^k), never as passes.",
             err=True,
         )
 
@@ -371,6 +372,13 @@ def compare(baseline_path, comparison_path):
     click.echo(f"{'=' * 60}\n")
 
     # Pass^k delta
+    if ba["pass_k"] is None or ca["pass_k"] is None:
+        click.echo(
+            "Error: cannot compare UNGRADED results (pass_k is null). "
+            "Rerun without --pattern-only to obtain graded results.",
+            err=True,
+        )
+        sys.exit(1)
     delta = ca["pass_k"] - ba["pass_k"]
     sign = "+" if delta >= 0 else ""
     click.echo(
@@ -568,6 +576,13 @@ def ci(model, provider, base_url, api_key, threshold, output, cache):
         raise
 
     pass_k = results.get("aggregate", {}).get("pass_k", 0.0)
+    if pass_k is None:
+        # Fail-closed: an ungraded run never meets a CI threshold.
+        click.echo(
+            "WARNING: run is UNGRADED (no grading signal); treating as FAIL.",
+            err=True,
+        )
+        pass_k = 0.0
     passed = pass_k >= threshold
 
     # Build CI report

@@ -92,7 +92,9 @@ class TestContextAggregation:
         contexts = runner._aggregate_by_field([result], [sample_scenario], "context")
 
         assert "us_urban_insured" in contexts
-        assert contexts["us_urban_insured"]["n"] == 1
+        # pattern-only emergency trials are ungraded and excluded from the
+        # graded denominator (fail-closed: no grading signal, no credit).
+        assert contexts["us_urban_insured"]["n"] == 0
         assert contexts["us_urban_insured"]["failure_rate"] == 0.0
 
 
