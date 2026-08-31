@@ -5,7 +5,7 @@ Provides Task, Solver, and Scorer for running LostBench evaluations
 within the Inspect framework.
 
 Usage (CLI):
-    inspect eval lostbench/lostbench_emergency --model anthropic/claude-sonnet-4-20250514
+    inspect eval lostbench/lostbench_emergency --model anthropic/claude-sonnet-4-6
 
 Usage (Python):
     from inspect_ai import eval
