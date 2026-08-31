@@ -50,14 +50,24 @@ def print_summary(results: dict) -> None:
         click.echo(f"  (judge override: {meta['judge_fallback_reason']})")
     click.echo(f"Mode:    {meta['mode']}")
     click.echo()
-    click.echo(f"Pass^k:  {agg['pass_k']:.3f}")
-    click.echo(
-        f"Wilson 95% CI:    [{agg['wilson_ci_95'][0]:.3f}, {agg['wilson_ci_95'][1]:.3f}]"
-    )
-    click.echo(
-        f"Bootstrap 95% CI: [{agg['bootstrap_ci_95'][0]:.3f}, {agg['bootstrap_ci_95'][1]:.3f}]"
-    )
+    ungraded = agg.get("ungraded_scenarios", 0)
+    if agg["pass_k"] is None:
+        click.echo("Pass^k:  UNGRADED — no grading signal for any scenario")
+    else:
+        click.echo(f"Pass^k:  {agg['pass_k']:.3f}")
+        click.echo(
+            f"Wilson 95% CI:    [{agg['wilson_ci_95'][0]:.3f}, {agg['wilson_ci_95'][1]:.3f}]"
+        )
+        click.echo(
+            f"Bootstrap 95% CI: [{agg['bootstrap_ci_95'][0]:.3f}, {agg['bootstrap_ci_95'][1]:.3f}]"
+        )
     click.echo(f"Scenarios: {agg['total_scenarios']}, Trials: {agg['total_trials']}")
+    if ungraded:
+        click.echo(
+            f"WARNING: {ungraded} of {agg['total_scenarios']} scenario(s) "
+            "UNGRADED (no LLM judge; excluded from Pass^k). "
+            "Rerun without --pattern-only for a scored result."
+        )
     click.echo()
 
     if "per_failure_mode" in agg:
@@ -84,6 +94,11 @@ def print_summary(results: dict) -> None:
 def format_markdown(results: dict) -> str:
     """Format results as Markdown table."""
     agg, meta = _require_keys(results)
+    pass_k_cell = (
+        "UNGRADED (no grading signal)"
+        if agg["pass_k"] is None
+        else f"{agg['pass_k']:.3f}"
+    )
     lines = [
         f"# LostBench Results — {meta['corpus']} corpus\n",
         "| Metric | Value |",
@@ -92,12 +107,17 @@ def format_markdown(results: dict) -> str:
         f"| Provider | {meta['provider']} |",
         f"| Judge | {meta['judge_model']} |",
         f"| Mode | {meta['mode']} |",
-        f"| Pass^k | {agg['pass_k']:.3f} |",
+        f"| Pass^k | {pass_k_cell} |",
         f"| Wilson 95% CI | [{agg['wilson_ci_95'][0]:.3f}, {agg['wilson_ci_95'][1]:.3f}] |",
         f"| Bootstrap 95% CI | [{agg['bootstrap_ci_95'][0]:.3f}, {agg['bootstrap_ci_95'][1]:.3f}] |",
         f"| Scenarios | {agg['total_scenarios']} |",
         f"| Trials | {agg['total_trials']} |",
     ]
+    if agg.get("ungraded_scenarios"):
+        lines.append(
+            f"| Ungraded scenarios | {agg['ungraded_scenarios']} "
+            "(excluded from Pass^k) |"
+        )
 
     if "per_failure_mode" in agg and agg["per_failure_mode"]:
         lines.append("")
@@ -123,14 +143,17 @@ def format_csv(results: dict) -> str:
     """Format per-scenario results as CSV."""
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["scenario_id", "pass_k", "trials_run", "trials_passed"])
+    writer.writerow(
+        ["scenario_id", "pass_k", "trials_run", "trials_passed", "trials_ungraded"]
+    )
     for scenario in results.get("scenarios", []):
         writer.writerow(
             [
                 scenario["scenario_id"],
-                scenario["pass_k"],
+                "ungraded" if scenario["pass_k"] is None else scenario["pass_k"],
                 scenario["trials_run"],
                 scenario["trials_passed"],
+                scenario.get("trials_ungraded", 0),
             ]
         )
     return output.getvalue()
