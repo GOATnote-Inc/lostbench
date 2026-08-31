@@ -56,10 +56,16 @@ LAB_MODELS: dict[str, dict[str, Any]] = {
 
 MODEL_DISPLAY: dict[str, str] = {
     "gpt-5.2": "GPT-5.2",
+    # Dated IDs kept so historical results keep rendering
     "claude-sonnet-4-5-20250929": "Sonnet 4.5",
     "claude-sonnet-4-6": "Sonnet 4.6",
     "claude-opus-4-6": "Opus 4.6",
     "claude-opus-4-5-20251101": "Opus 4.5",
+    "claude-opus-4-7": "Opus 4.7",
+    "claude-opus-4-8": "Opus 4.8",
+    "claude-opus-5": "Opus 5",
+    "claude-sonnet-5": "Sonnet 5",
+    "claude-haiku-4-5": "Haiku 4.5",
     "grok-4-1-fast-reasoning-latest": "Grok 4.1 Fast",
     "gemini-3.1-pro-preview": "Gemini 3.1 Pro",
 }
@@ -69,6 +75,11 @@ JUDGE_MAP: dict[str, str] = {
     "claude-opus-4-6": "GPT-5.2",
     "claude-sonnet-4-5-20250929": "GPT-5.2",
     "claude-sonnet-4-6": "GPT-5.2",
+    "claude-opus-4-7": "GPT-5.2",
+    "claude-opus-4-8": "GPT-5.2",
+    "claude-opus-5": "GPT-5.2",
+    "claude-sonnet-5": "GPT-5.2",
+    "claude-haiku-4-5": "GPT-5.2",
     "gpt-5.2": "Opus 4.6",
     "grok-4-1-fast-reasoning-latest": "GPT-5.2",
     "gemini-3.1-pro-preview": "GPT-5.2",
