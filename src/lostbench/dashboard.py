@@ -223,7 +223,10 @@ def generate_dashboard_markdown(
             enforce = modes.get("enforce_only")
             wrapper = modes.get("full_wrapper")
 
-            def _fmt_lift(val: float | None) -> str:
+            def _fmt_lift(val: float | None, base: float = base) -> str:
+                # base bound as a default arg: a closure over the loop
+                # variable would silently use the last row's baseline if
+                # this helper ever escaped the iteration (ruff B023)
                 if val is None:
                     return "-"
                 delta = val - base

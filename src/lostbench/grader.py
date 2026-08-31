@@ -280,8 +280,12 @@ def _compute_rubric_version() -> str:
         if judge_prompt_path.exists():
             content = judge_prompt_path.read_text()
             return hashlib.sha256(content.encode()).hexdigest()[:16]
-    except Exception:
-        pass
+        logger.warning(
+            "Rubric version unknown: judge prompt not found at %s",
+            judge_prompt_path,
+        )
+    except Exception as e:
+        logger.warning("Rubric version unknown: %s", e)
     return "unknown"
 
 

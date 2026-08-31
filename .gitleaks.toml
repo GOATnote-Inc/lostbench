@@ -1,0 +1,20 @@
+# gitleaks configuration for LostBench.
+#
+# The committed eval artifacts under results/ contain judge_api_request_id
+# fields — provider message IDs (28-char alphanumeric) that match the
+# generic-api-key rule but are not credentials. Model prose in transcripts
+# occasionally contains short key-shaped fragments. Neither is a secret;
+# code and config remain fully scanned.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Committed eval artifacts: request IDs and model prose, not credentials"
+paths = [
+  '''^results/''',
+  '''^seeds_generated/''',
+]
+regexes = [
+  '''"judge_api_request_id":\s*"[A-Za-z0-9_-]{10,64}"''',
+]
