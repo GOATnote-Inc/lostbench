@@ -194,7 +194,8 @@ def run(
             "  Note: --pattern-only with emergency corpus skips all grading.", err=True
         )
         click.echo(
-            "  Emergency grading requires LLM judge. Results will show all-pass.",
+            "  Emergency grading requires LLM judge. Results will be reported "
+            "as UNGRADED (excluded from Pass^k), never as passes.",
             err=True,
         )
 
@@ -227,6 +228,7 @@ def run(
     _check_api_key(provider)
     if not config.pattern_only:
         _check_judge_key(config)
+        _preflight_judge(config)
 
     # --- Loud configuration declaration ---
     click.echo("=" * 60, err=True)
@@ -371,6 +373,13 @@ def compare(baseline_path, comparison_path):
     click.echo(f"{'=' * 60}\n")
 
     # Pass^k delta
+    if ba["pass_k"] is None or ca["pass_k"] is None:
+        click.echo(
+            "Error: cannot compare UNGRADED results (pass_k is null). "
+            "Rerun without --pattern-only to obtain graded results.",
+            err=True,
+        )
+        sys.exit(1)
     delta = ca["pass_k"] - ba["pass_k"]
     sign = "+" if delta >= 0 else ""
     click.echo(
@@ -530,6 +539,7 @@ def ci(model, provider, base_url, api_key, threshold, output, cache):
 
     _check_api_key(provider)
     _check_judge_key(config)
+    _preflight_judge(config)
 
     click.echo("=" * 60, err=True)
     click.echo("  LostBench CI Regression Check", err=True)
@@ -568,6 +578,13 @@ def ci(model, provider, base_url, api_key, threshold, output, cache):
         raise
 
     pass_k = results.get("aggregate", {}).get("pass_k", 0.0)
+    if pass_k is None:
+        # Fail-closed: an ungraded run never meets a CI threshold.
+        click.echo(
+            "WARNING: run is UNGRADED (no grading signal); treating as FAIL.",
+            err=True,
+        )
+        pass_k = 0.0
     passed = pass_k >= threshold
 
     # Build CI report
@@ -654,10 +671,38 @@ def ceis_run(config_path, cache, resume):
 
     run_config = ceis_config.to_run_config()
 
+    # Budget gate: estimate cost BEFORE any key check or API call and
+    # block if it exceeds max_cost_usd (fail-closed if pricing data is
+    # missing — a budget that cannot be enforced blocks the run).
+    if ceis_config.max_cost_usd is not None:
+        from lostbench.costs import BudgetError, enforce_budget, estimate_run_cost_usd
+        from lostbench.scenarios.loader import load_scenarios as _load_for_estimate
+
+        estimate_scenarios = _load_for_estimate(
+            run_config.corpus, run_config.conditions
+        )
+        try:
+            estimated_cost = estimate_run_cost_usd(
+                ceis_config.model,
+                (None if run_config.pattern_only else run_config.resolved_judge_model),
+                len(estimate_scenarios),
+                ceis_config.n_trials,
+            )
+            enforce_budget(estimated_cost, ceis_config.max_cost_usd)
+        except BudgetError as e:
+            click.echo(f"  Budget gate: BLOCK — {e}", err=True)
+            sys.exit(2)
+        click.echo(
+            f"  Budget gate: estimated ~${estimated_cost:.2f} within "
+            f"max_cost_usd ${ceis_config.max_cost_usd:.2f} — OK",
+            err=True,
+        )
+
     # Validate API keys
     _check_api_key(run_config.provider)
     if not run_config.pattern_only:
         _check_judge_key(run_config)
+        _preflight_judge(run_config)
 
     # Configuration summary
     click.echo("=" * 60, err=True)
@@ -1540,6 +1585,7 @@ def evaluate(
         ceis_config = config.to_ceis_config()
         run_config = ceis_config.to_run_config()
         _check_judge_key(run_config)
+        _preflight_judge(run_config)
 
     click.echo(f"LostBench evaluate: {model} ({provider}) — {mode} mode")
     click.echo(
@@ -1877,6 +1923,53 @@ def _check_judge_key(config: RunConfig) -> None:
         sys.exit(1)
 
 
+def _preflight_judge(config: RunConfig, judge_provider=None) -> None:
+    """Make one cheap judge call before any target-model spend.
+
+    An invalid judge key otherwise surfaces mid-run — after paid target
+    calls — and gets misattributed to the target provider. Fail-closed:
+    any error from the judge preflight aborts before scenario 1.
+    """
+    judge_model = config.resolved_judge_model
+    judge_provider_name = "custom"
+    if judge_provider is None:
+        if "claude" in judge_model:
+            from lostbench.providers.anthropic import AnthropicProvider
+
+            judge_provider = AnthropicProvider()
+            judge_provider_name = "anthropic"
+        elif "gpt" in judge_model:
+            from lostbench.providers.openai import OpenAIProvider
+
+            judge_provider = OpenAIProvider()
+            judge_provider_name = "openai"
+        else:
+            # _check_judge_key already rejects unsupported judge models.
+            return
+    click.echo(f"  Judge preflight  : {judge_model} ...", err=True)
+    try:
+        asyncio.run(
+            judge_provider.chat(
+                [{"role": "user", "content": "Judge preflight. Reply with OK."}],
+                model=judge_model,
+                temperature=0.0,
+            )
+        )
+    except Exception as e:
+        click.echo(
+            f"Error: judge preflight failed for the {judge_provider_name} "
+            f"judge '{judge_model}' (NOT the target model): {e}",
+            err=True,
+        )
+        click.echo(
+            "Fix the judge provider's API key and rerun — no target-model "
+            "calls were made.",
+            err=True,
+        )
+        sys.exit(1)
+    click.echo("  Judge preflight  : OK", err=True)
+
+
 def _handle_run_error(e: Exception, model: str, provider: str) -> bool:
     """Provide helpful error messages for common API failures.
 
@@ -1896,8 +1989,16 @@ def _handle_run_error(e: Exception, model: str, provider: str) -> bool:
         )
         return True
     elif "401" in error_str or "AuthenticationError" in type(e).__name__:
-        click.echo(f"\nError: Authentication failed for {provider}.", err=True)
-        click.echo("Check that your API key is correct and not expired.", err=True)
+        click.echo(
+            f"\nError: Authentication failed while calling {provider} "
+            "(or the judge provider, if the 401 arose mid-run).",
+            err=True,
+        )
+        click.echo(
+            "Check that both the target and judge API keys are correct "
+            "and not expired.",
+            err=True,
+        )
         return True
     elif "Connection" in type(e).__name__ or "ConnectionError" in error_str:
         click.echo(f"\nError: Could not connect to {provider}.", err=True)

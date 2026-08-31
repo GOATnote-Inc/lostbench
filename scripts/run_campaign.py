@@ -103,6 +103,19 @@ def generate_campaign_summary(output_dir: Path) -> dict:
     return summary
 
 
+def campaign_failed(summary: dict) -> bool:
+    """True if the campaign must exit non-zero.
+
+    Fail-closed: a campaign with no gradeable runs, or any run whose
+    meets_threshold is not True, is a failure. A threshold FAIL must
+    never leave the process (or CI) green.
+    """
+    runs = summary.get("runs", [])
+    if not runs:
+        return True
+    return any(run.get("meets_threshold") is not True for run in runs)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Campaign Runner — orchestrate multi-config CEIS campaigns"
@@ -197,6 +210,16 @@ def main():
     for run in summary["runs"]:
         status = "PASS" if run.get("meets_threshold") else "FAIL"
         print(f"  {run['corpus']}: ERS={run['ers']} Pass^k={run['pass_k']} [{status}]")
+
+    # Fail-closed exit: a threshold FAIL (or a campaign with no gradeable
+    # runs) exits non-zero so CI goes red instead of masking the failure.
+    if campaign_failed(summary):
+        print(
+            "Campaign FAILED: at least one run did not meet its threshold "
+            "(or no gradeable runs were produced).",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
 
 if __name__ == "__main__":
