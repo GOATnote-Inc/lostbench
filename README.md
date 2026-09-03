@@ -6,6 +6,9 @@
 [![Scenarios: 139](https://img.shields.io/badge/scenarios-139-green.svg)]()
 [![OpenEM Conditions: 370](https://img.shields.io/badge/OpenEM_conditions-370-blue.svg)]()
 
+
+> **Maintenance status (2026-09):** passive. This repository is kept available as a reference implementation; CI runs on pushes and pull requests only, Dependabot security alerts remain enabled, and no scheduled jobs or hosted services consume ongoing resources. No active development is planned.
+
 ## Status and Scope
 
 **Research benchmark. Not for clinical use.** LostBench is an evaluation
